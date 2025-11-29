@@ -25,9 +25,6 @@ end myexample
 -- cellular automata that recognizes 1^(2^n) in real-time
 
 
-
-def unary : Alphabet := ⟨ Unit ⟩
-
 inductive Exp2State
 | Border
 | Cell
@@ -40,24 +37,13 @@ deriving DecidableEq, Repr, Fintype
 def exp: @tCellAutomaton 𝒰 := {
   Q := Exp2State,
   δ := fun left center right =>
-    sorry,
+    center,
   border := Exp2State.Border,
   p := fun n => 0,
   t := fun n => n,
-  embed := sorry,
-  F_pos := sorry,
+  embed := fun _ => Exp2State.Border,
+  F_pos := fun _ => false,
 }
 
-
-
-
-
-instance i {A: Alphabet} (C: tCellAutomaton) (w: Word) : Decidable (w ∈ C.L) := by
-    unfold tCellAutomaton.L
-    unfold Membership.mem
-    unfold Language.instMembershipList
-    simp [Set.Mem]
-    infer_instance
-
-
--- #eval! ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp.L w))
+#guard ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp.L w))
+  = [false, true, true, false, true, false, false, false, true, false, false, false]
