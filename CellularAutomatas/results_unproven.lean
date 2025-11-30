@@ -14,6 +14,9 @@ variable {A: Alphabet}
 theorem exp_word_length_rt: ∃ C: @CA_rt 𝒰, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
     sorry
 
+
+
+
 theorem linear_time_dead_border (C: CA_lt):
         ∃ C': tCellAutomaton, C'.dead C'.border ∧ C'.similar C := by
     sorry
@@ -40,17 +43,43 @@ theorem ca_rt_equals_lt_of_closure_under_reversal:
 
 
 section advice_theorems
-
     theorem advice_two_stage_rt_closed {A O: Alphabet} (a: TwoStageAdvice A O):
-            rt_closed a.advice := by
+            a.advice.rt_closed := by
         sorry
 
     theorem advice_two_stage_closed_under_composition {A O' O: Alphabet} (a1: TwoStageAdvice A O') (a2: TwoStageAdvice O' O):
             ∃ a: TwoStageAdvice A O, a.advice.f = a2.advice.f ∘ a1.advice.f := by
         sorry
 
+
+
+
+
     theorem advice_prefixes_in_L_rt_closed [A: Alphabet] (C: CA_rt):
-            rt_closed (advice_prefixes_in_L C.val.L) := by
+            (Advice.prefixes_in_L C.val.L).rt_closed := by
         sorry
+
+    theorem advice_exp_middle_rt_closed [A: Alphabet]:
+            (@Advice.exp_middle A).rt_closed := by
+        sorry
+
+    -- For some c ∈ Γ, consider L_c = { w | adv(w)_|w| = c }. Since adv is rt_closed, we have L_c ∈ L(RT)!
+    -- w[0..i+1] ∈ L_c <-> adv(w)_i = c (because adv is prefix-stable).
+    -- Because advice_prefixes_in_L is rt_closed, we have adv = advice_prefixes_in_L(L_c1) + advice_prefixes_in_L(L_c2) + ...
+
+    theorem prefix_stable_of_rt_closed {A Γ: Alphabet} (adv: Advice A Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable) :
+            adv.is_two_stage_advice := by
+        sorry
+
+    theorem exp_middle_two_stage_advice :
+            (@Advice.exp_middle 𝒰).is_two_stage_advice := by
+        sorry
+
+
+    -- peeking into the future!
+    theorem advice_shift_left_rt {A: Alphabet} (k: ℕ) (filler: α) (adv: Advice A Γ) (h: adv.is_two_stage_advice):
+            (Advice.shift_left k filler adv).is_two_stage_advice := by
+        sorry
+
 
 end advice_theorems

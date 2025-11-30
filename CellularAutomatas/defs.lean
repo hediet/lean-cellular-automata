@@ -36,7 +36,13 @@ section Word -- MARK: Word
     def 𝒰 : Alphabet := ⟨ Unit ⟩
     def ℬ : Alphabet := ⟨ Bool ⟩
 
+    def char : Alphabet where
+        α := Char
+        fin := sorry
+
+
     def ProductAlphabet (a b: Alphabet) : Alphabet := ⟨ a.α × b.α ⟩
+
 
     infix:50 " ⨉ " => ProductAlphabet
 
@@ -309,12 +315,30 @@ instance {A: Alphabet} (C: @tCellAutomaton A) : DecidablePred C.L :=
 
 section OCellAutomaton -- MARK: OCellAutomaton
 
-    structure Advice (A Γ: Alphabet) where
+    structure Advice.{u} (A Γ: Alphabet.{u}) where
         f: @Word A → @Word Γ
         len: ∀ w: @Word A, (f w).length = w.length
 
-    def Advice.annotate {A Γ: Alphabet} (adv: Advice A Γ) (w: @Word A): @Word (A ⨉ Γ) :=
-        List.zipWith (·,·) w (adv.f w)
+    def tensor_product {α β} (w: List α) (a: List β) := List.zipWith (·,·) w a
+
+    infixl:65 " ⊗ " => tensor_product
+
+    @[app_unexpander tensor_product]
+    def unexpandTensorProduct : Lean.PrettyPrinter.Unexpander
+      | `($_ $w $a) => `($w ⊗ $a)
+      | _ => throw ()
+
+
+    def Advice.annotate {A Γ: Alphabet} (adv: Advice A Γ) (w: @Word A): @Word (A ⨉ Γ) := w ⊗ (adv.f w)
+
+    def Advice.compose {A Γ₁ Γ₂: Alphabet} (adv1: Advice A Γ₁) (adv2: Advice Γ₁ Γ₂): Advice A Γ₂ :=
+        ⟨ fun w => adv2.f (adv1.f w), by simp [adv1.len, adv2.len] ⟩
+
+    def Advice.prefix_stable {A Γ: Alphabet} (adv: Advice A Γ): Prop :=
+        ∀ w: @Word A, ∀ i: ℕ,
+            adv.f (w⟦0..i⟧) = (adv.f w)⟦0..i⟧
+
+
 
     structure OCellAutomaton [A: Alphabet] where
         /-- The alphabet of the advice. -/
@@ -324,7 +348,6 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
 
     def OCellAutomaton.L {A: Alphabet} (C: @OCellAutomaton A): Language α := { w | C.adv.annotate w ∈ C.C.L }
-
 
     def OCellAutomaton.with_advice (A Γ: Alphabet) (S: Set (@tCellAutomaton (A ⨉ Γ))) (adv: Advice A Γ): Set (@OCellAutomaton A) :=
         { @OCellAutomaton.mk A Γ adv C | C ∈ S }
@@ -337,9 +360,14 @@ section OCellAutomaton -- MARK: OCellAutomaton
         L ca := OCellAutomaton.L ca
 
 
+    def Advice.rt_closed {A: Alphabet} {Γ: Alphabet} (f: Advice A Γ) :=
+        ℒ (@CA_rt (A ⨉ Γ) + f) = ℒ (@CA_rt A)
 
 
-    structure FiniteStateMachine [A: Alphabet] where
+
+
+
+    structure FiniteStateMachine.{u} [A: Alphabet.{u}] where
         Q: Type u
         [decQ: DecidableEq Q]
         [finQ: Fintype Q]
@@ -363,10 +391,11 @@ section OCellAutomaton -- MARK: OCellAutomaton
     end FiniteStateMachine
 
 
+
     def LCellAutomaton.Qalpha {A: Alphabet} { C: @LCellAutomaton A }: Alphabet := ⟨ C.Q ⟩
 
-    def LCellAutomaton.scan_temporal {A: Alphabet} (C: LCellAutomaton) (i: ℤ) (w: @Word A): @Word C.Qalpha :=
-        List.map (C.comp w · i) (List.range w.length)
+    def LCellAutomaton.scan_temporal {A: Alphabet} (C: LCellAutomaton) (w: @Word A): @Word C.Qalpha :=
+        List.map (C.comp w · 0) (List.range w.length)
 
     structure TwoStageAdvice (A: Alphabet) (O: Alphabet) where
         C: @LCellAutomaton A
@@ -378,7 +407,7 @@ section OCellAutomaton -- MARK: OCellAutomaton
         def advice {A O: Alphabet} (adv: TwoStageAdvice A O): Advice A O :=
             ⟨
                 fun w => w
-                    |> adv.C.scan_temporal 0
+                    |> adv.C.scan_temporal
                     |> adv.M.scan_right_rev
                     |> List.map adv.t ,
                 by simp [LCellAutomaton.scan_temporal, FiniteStateMachine.scan_right_rev, FiniteStateMachine.scan_left]
@@ -387,11 +416,48 @@ section OCellAutomaton -- MARK: OCellAutomaton
     end TwoStageAdvice
 
 
-    def rt_closed {A: Alphabet} {Γ: Alphabet} (f: Advice A Γ) :=
-        ℒ (@CA_rt (A ⨉ Γ) + f) = ℒ (@CA_rt A)
 
-    def advice_prefixes_in_L {A: Alphabet} (L: Language A.α) [h: DecidablePred L]: Advice A ℬ :=
+    def Advice.is_two_stage_advice {A O: Alphabet} (adv: Advice A O): Prop :=
+        ∃ ts_adv: TwoStageAdvice A O, adv = ts_adv.advice
+
+
+
+    def Advice.prefixes_in_L {A: Alphabet} (L: Language A.α) [h: DecidablePred L]: Advice A ℬ :=
         ⟨ fun w => (List.range w.length).map (fun i => decide (L (w⟦0..i+1⟧))), by simp ⟩
 
+
+    def Advice.exp {A: Alphabet}: Advice A ℬ :=
+        ⟨
+            fun w => (List.range w.length).map fun i => i == 2 ^ (Nat.log2 i),
+            by simp
+        ⟩
+
+
+    def Advice.shift_left {A: Alphabet} (k: ℕ) (filler: α) (adv: Advice A Γ): Advice A Γ :=
+        ⟨
+            fun w => adv.f $ (w.drop k) ++ (List.replicate (k.min w.length) filler),
+            by
+                simp [adv.len]
+                grind
+        ⟩
+
+
+    -- runs the biggest value 2^k such that 2^(k+1) <= n, if such exists
+    def exp_middle_idx (n: ℕ) :=
+        (List.range n).map (2 ^ ·)
+        |> List.filter (· * 2 ≤ n)
+        |> List.max?
+
+    -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
+    def Advice.exp_middle {A: Alphabet}: Advice A ℬ :=
+        ⟨
+            fun w =>
+                let idx := exp_middle_idx w.length
+                (List.range w.length).map fun i => some (i + 1) == idx,
+            by simp
+        ⟩
+
+    #eval! (List.range 10).map (fun n => (n, exp_middle_idx n))
+    #eval! (@Advice.exp 𝒰).f (List.replicate 8 ())
 
 end OCellAutomaton

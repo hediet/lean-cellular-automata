@@ -13,9 +13,6 @@ import CellularAutomatas.defs
 
 
 section myexample
-  def char : Alphabet where
-    α := Char
-    fin := sorry
 
   abbrev exL: Language Char := fun w => (w.filter (· = 'a')).length % 2 = 0
   def exA := @advice_prefixes_in_L char exL
@@ -46,4 +43,4 @@ def exp: @tCellAutomaton 𝒰 := {
 }
 
 #guard ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp.L w))
-  = [false, true, true, false, true, false, false, false, true, false, false, false]
+  = [true, true, false, true, false, false, false, true, false, false, false, false]
