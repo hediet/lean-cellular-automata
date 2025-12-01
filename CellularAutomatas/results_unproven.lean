@@ -76,10 +76,24 @@ section advice_theorems
         sorry
 
 
-    -- peeking into the future!
-    theorem advice_shift_left_rt {A: Alphabet} (k: ℕ) (filler: α) (adv: Advice A Γ) (h: adv.is_two_stage_advice):
-            (Advice.shift_left k filler adv).is_two_stage_advice := by
+    -- peeking into the future! Speed up theorem for two-stage advices.
+    theorem advice_shift_left_rt {A: Alphabet} (extension: Word) (adv: Advice A Γ) (h: adv.is_two_stage_advice):
+            (Advice.shift_left extension adv).is_two_stage_advice := by
         sorry
 
+
+
+    /-
+        marking the middle is not a two stage advice.
+        a two stage advice
+        w := any word
+        v := adv(w)
+
+        w1 ~R w2 <=>
+
+        wwww www
+        vvvv vvv
+
+    -/
 
 end advice_theorems

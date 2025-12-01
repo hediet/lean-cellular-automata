@@ -433,12 +433,10 @@ section OCellAutomaton -- MARK: OCellAutomaton
         ⟩
 
 
-    def Advice.shift_left {A: Alphabet} (k: ℕ) (filler: α) (adv: Advice A Γ): Advice A Γ :=
+    def Advice.shift_left {A Γ: Alphabet} (extension: @Word A) (adv: Advice A Γ): Advice A Γ :=
         ⟨
-            fun w => adv.f $ (w.drop k) ++ (List.replicate (k.min w.length) filler),
-            by
-                simp [adv.len]
-                grind
+            fun w => (adv.f (w.append extension)).drop extension.length,
+            by simp [adv.len]
         ⟩
 
 
