@@ -8,4 +8,4 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 
-variable {A: Alphabet}
+variable {α: Type u} [Alphabet α]
