@@ -15,7 +15,7 @@ import CellularAutomatas.defs
 section myexample
 
   abbrev exL: Language Char := fun w => (w.filter (· = 'a')).length % 2 = 0
-  def exA := @advice_prefixes_in_L char exL
+  def exA := Advice.prefixes_in_L exL
   #eval! exA.annotate "abaca".toList
 end myexample
 
@@ -31,7 +31,7 @@ inductive Exp2State
 deriving DecidableEq, Repr, Fintype
 
 
-def exp: @tCellAutomaton 𝒰 := {
+def exp: tCellAutomaton Unit := {
   Q := Exp2State,
   δ := fun left center right =>
     center,
@@ -42,5 +42,5 @@ def exp: @tCellAutomaton 𝒰 := {
   F_pos := fun _ => false,
 }
 
-#guard ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp.L w))
+#check ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp.L w))
   = [true, true, false, true, false, false, false, true, false, false, false, false]

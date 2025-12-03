@@ -1,4 +1,4 @@
 {
-    "editor.indentSize": 4,
-    
+    "editor.indentSize": 2,
+    "editor.detectIndentation": false
 }
