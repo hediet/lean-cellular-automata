@@ -73,41 +73,4 @@ section advice_theorems
       (Advice.shift_left extension adv).is_two_stage_advice := by
     sorry
 
-
-
-  def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv.f (p.append s))⟦0..p.length⟧
-
-
-  lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
-    rel_repr adv.advice p s =
-      (adv.M.scanr_q
-        (adv.C.scan_temporal p)
-        (adv.M.scanr_reduce
-          (adv.C.scan_temporal (p.append s))⟦p.length..*⟧
-        )
-      ).map adv.t
-        := by
-    dsimp [rel_repr, TwoStageAdvice.advice]
-    rw [← List.map_take]
-    congr 1
-    let W := adv.C.scan_temporal (List.append p s)
-    change (adv.M.scanr W).take p.length = _
-    have h_split : W = W⟦0..p.length⟧ ++ W⟦p.length..*⟧ := (List.take_append_drop p.length W).symm
-    conv in (adv.M.scanr W) => rw [h_split]
-    have h_indep : W⟦0..p.length⟧ = adv.C.scan_temporal p := by
-      simp [W]
-      change (adv.C.scan_temporal (List.append p s)).take p.length = _
-      erw [scan_temporal_independence (p := p) (s := s)]
-    rw [h_indep]
-    have h_len_p : (adv.C.scan_temporal p).length = p.length := by simp [LCellAutomaton.scan_temporal]
-    conv => lhs; arg 1; rw [← h_len_p]
-    erw [@scanr_append_take _ _ adv.M (adv.C.scan_temporal p) (W⟦p.length..*⟧)]
-    simp [W]
-
-
-
-  theorem middle_not_two_stage_advice : ¬ (Advice.middle α).is_two_stage_advice := by
-    sorry
-
-
 end advice_theorems

@@ -7,9 +7,11 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.middle_not_two_stage
+import CellularAutomatas.proofs.scan_lemmas
 
 variable {α: Type u} [Alphabet α]
+variable {Γ: Type u} [Alphabet Γ]
 
-theorem middle_not_two_stage_advice : ¬ Advice.is_two_stage_advice (Advice.middle α) := by
-  exact middle_not_two_stage.middle_not_two_stage_advice
+
+theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
+  sorry
