@@ -40,7 +40,7 @@ section Word -- MARK: Word
   infix:50 " ⨉ " => Prod
 
 
-  def Word (α: Type u) := List α
+  abbrev Word (α: Type u) := List α
 
   namespace Word
     variable {α: Type u}

@@ -8,6 +8,8 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 
+namespace two_stage_advice
+
 variable {α Γ: Type u} [Alphabet α] [Alphabet Γ]
 
 theorem advice_two_stage_closed_under_composition {O': Type u} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
@@ -89,3 +91,4 @@ theorem advice_two_stage_rt_closed (a: TwoStageAdvice α Γ):
     intro C h
 
     sorry
+end two_stage_advice
