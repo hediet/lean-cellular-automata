@@ -85,10 +85,5 @@ lemma rt_closed (adv: Advice α Γ):
 
   := sorry
 
-theorem advice_two_stage_rt_closed (a: TwoStageAdvice α Γ):
-        a.advice.rt_closed := by
-    rw [rt_closed]
-    intro C h
 
-    sorry
 end two_stage_advice
