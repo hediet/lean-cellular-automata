@@ -10,11 +10,14 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
 
+namespace results
+
 variable {α: Type u} [Alphabet α]
 
-theorem middle_not_two_stage_advice : ¬ Advice.is_two_stage_advice (Advice.middle α) := by
-  exact middle_not_two_stage.middle_not_two_stage_advice
+theorem result_middle_not_two_stage_advice:
+    ¬ Advice.is_two_stage_advice (Advice.middle α) := by
+  exact middle_not_two_stage_advice
 
-theorem advice_prefixes_in_L_is_two_stage_advice (C: CA_rt α) :
+theorem result_advice_prefixes_in_L_is_two_stage_advice (C: CA_rt α) :
     Advice.is_two_stage_advice (Advice.prefixes_in_L C.val.L) := by
-  exact advice_prefixes_in_L_rt_closed.advice_prefixes_in_L_is_two_stage_advice C
+  exact advice_prefixes_in_L_is_two_stage_advice C

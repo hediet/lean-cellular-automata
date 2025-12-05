@@ -10,10 +10,6 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.scan_lemmas
 import CellularAutomatas.proofs.fsm_lemmas
 
-namespace advice_prefixes_in_L_rt_closed
-
-open fsm_lemmas
-
 variable {α: Type u} [Alphabet α]
 variable {Γ: Type v} [Alphabet Γ]
 
@@ -71,7 +67,7 @@ lemma CA_rt_to_TwoStage_eq (C: CA_rt α):
     have h_scan_eq : (C.val.toLCellAutomaton.scan_temporal w).take (i+1) = C.val.toLCellAutomaton.scan_temporal w_pref := by
       nth_rewrite 1 [h_w]
       rw [← h_pref_len]
-      apply scan_lemmas.scan_temporal_independence
+      apply scan_temporal_independence
 
     have h_len_scan_pref : ((C.val.toLCellAutomaton).scan_temporal w_pref).length = i + 1 := by
       simp [LCellAutomaton.scan_temporal]

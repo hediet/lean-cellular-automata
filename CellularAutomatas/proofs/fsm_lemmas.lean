@@ -1,8 +1,6 @@
 import CellularAutomatas.defs
 import Mathlib.Data.List.Basic
 
-namespace fsm_lemmas
-
 def IdentityReconstructM (Q: Type u) [Alphabet Q]: FiniteStateMachine Q := {
   Q := Q
   δ := fun _ a => a
@@ -18,5 +16,3 @@ lemma scanr_identity (Q: Type u) [Alphabet Q] (w: Word Q):
     simp [FiniteStateMachine.scanr_step]
     rw [ih]
     cases w <;> simp [IdentityReconstructM]
-
-end fsm_lemmas

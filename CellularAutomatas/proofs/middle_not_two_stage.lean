@@ -12,7 +12,6 @@ import Mathlib.Data.List.Range
 
 open TwoStageAdvice
 open Classical
-open scan_lemmas
 
 variable {α: Type u} [Alphabet α]
 variable {Γ: Type v} [Alphabet Γ]
@@ -25,8 +24,6 @@ def rel (adv: Advice α Γ) (p s1 s2: Word α) :=
 
 def Advice.finite_lookahead (adv: Advice α Γ) :=
   ∃ N: ℕ, ∀ p: Word α, (Set.univ.image (fun s: Word α => rel_repr adv p s)).encard ≤ N
-
-namespace middle_not_two_stage
 
 
 lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
@@ -219,4 +216,3 @@ theorem middle_not_two_stage_advice : ¬ Advice.is_two_stage_advice (Advice.midd
   have : K ≤ Fintype.card Q := le_trans h_markers_count h_bottleneck
   dsimp [K] at this
   omega
-end middle_not_two_stage

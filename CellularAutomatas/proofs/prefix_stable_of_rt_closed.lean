@@ -19,141 +19,139 @@ attribute [ext] Advice
 variable {α: Type u} [Alphabet α]
 variable {Γ: Type u} [Alphabet Γ]
 
-namespace prefix_stable_of_rt_closed
-
-  axiom advice_prefixes_in_L_rt_closed (C: CA_rt α):
+axiom advice_prefixes_in_L_rt_closed (C: CA_rt α):
     (Advice.prefixes_in_L C.val.L).rt_closed
 
-  def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
-    { w | (adv.f w).getLast? = some c }
+def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
+  { w | (adv.f w).getLast? = some c }
 
-  lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
       ∃ M : tCellAutomaton α, M ∈ CA_rt α ∧ M.L = L_c adv c := by
-    let myCA : tCellAutomaton (α × Γ) := {
-      Q := Option (α × Γ)
-      decQ := inferInstance
-      finQ := inferInstance
-      δ := fun _ _ r => r
-      embed := some
-      border := none
-      t := fun n => n - 1
-      p := fun _ => 0
-      F_pos := fun q => match q with
-        | some (_, g) => g == c
-        | none => false
-    }
-    have h_CA_in_rt : myCA ∈ CA_rt (α × Γ) := by
-      simp [CA_rt, t_rt, myCA, tCellAutomatons, CA]
+  let myCA : tCellAutomaton (α × Γ) := {
+    Q := Option (α × Γ)
+    decQ := inferInstance
+    finQ := inferInstance
+    δ := fun _ _ r => r
+    embed := some
+    border := none
+    t := fun n => n - 1
+    p := fun _ => 0
+    F_pos := fun q => match q with
+      | some (_, g) => g == c
+      | none => false
+  }
+  have h_CA_in_rt : myCA ∈ CA_rt (α × Γ) := by
+    simp [CA_rt, t_rt, myCA, tCellAutomatons, CA]
 
-    let O : OCellAutomaton α := ⟨Γ, adv, myCA⟩
-    have h_L : O.L = L_c adv c := by
-      ext w
-      simp [OCellAutomaton.L, L_c, tCellAutomaton.L, O, myCA]
-      unfold LCellAutomaton.comp
-      unfold CellAutomaton.nextt
-      unfold LCellAutomaton.embed_word
-      unfold Advice.annotate
-      unfold tensor_product
+  let O : OCellAutomaton α := ⟨Γ, adv, myCA⟩
+  have h_L : O.L = L_c adv c := by
+    ext w
+    simp [OCellAutomaton.L, L_c, tCellAutomaton.L, O, myCA]
+    unfold LCellAutomaton.comp
+    unfold CellAutomaton.nextt
+    unfold LCellAutomaton.embed_word
+    unfold Advice.annotate
+    unfold tensor_product
 
-      cases h_len : w.length with
-      | zero =>
-        simp
-        rw [List.length_eq_zero_iff] at h_len
-        subst h_len
-        simp [Word.range, LCellAutomaton.embed_word, apply_iterated]
-        simp [LCellAutomaton.embed_word]
-        split
-        · simp at ⊢
-        · simp
-      | succ n =>
-        simp
-        have h_next : ∀ c, myCA.toCellAutomaton.next c = fun i => c (i + 1) := by
-          intro c
-          funext i
-          simp [CellAutomaton.next, myCA]
+    cases h_len : w.length with
+    | zero =>
+      simp
+      rw [List.length_eq_zero_iff] at h_len
+      subst h_len
+      simp [Word.range, LCellAutomaton.embed_word, apply_iterated]
+      simp [LCellAutomaton.embed_word]
+      split
+      · simp at ⊢
+      · simp
+    | succ n =>
+      simp
+      have h_next : ∀ c, myCA.toCellAutomaton.next c = fun i => c (i + 1) := by
+        intro c
+        funext i
+        simp [CellAutomaton.next, myCA]
 
-        have shift_lemma : ∀ k i, (myCA.toCellAutomaton.nextt (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) k) i =
-          (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) (i + k) := by
-          intro k
-          induction k with
-          | zero => simp [CellAutomaton.nextt, apply_iterated]
-          | succ k ih =>
-            intro i
-            simp [CellAutomaton.nextt, apply_iterated]
-            rw [h_next]
-            simp
-            rw [ih]
-            ring_nf
-
-        simp [CellAutomaton.nextt]
-        rw [shift_lemma]
-        simp
-        have h_idx : 0 + (w.length - 1) = n := by
-          rw [h_len]
+      have shift_lemma : ∀ k i, (myCA.toCellAutomaton.nextt (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) k) i =
+        (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) (i + k) := by
+        intro k
+        induction k with
+        | zero => simp [CellAutomaton.nextt, apply_iterated]
+        | succ k ih =>
+          intro i
+          simp [CellAutomaton.nextt, apply_iterated]
+          rw [h_next]
           simp
-        rw [h_idx]
+          rw [ih]
+          ring_nf
 
-        have h_in_range : (n : ℤ) ∈ (w ⊗ adv.f w).range := by
-          unfold Word.range
-          simp
-          rw [List.length_zipWith]
-          rw [adv.len]
-          simp [h_len]
-          omega
+      simp [CellAutomaton.nextt]
+      rw [shift_lemma]
+      simp
+      have h_idx : 0 + (w.length - 1) = n := by
+        rw [h_len]
+        simp
+      rw [h_idx]
 
-        simp [LCellAutomaton.embed_word, h_in_range]
-        unfold Word.get'
+      have h_in_range : (n : ℤ) ∈ (w ⊗ adv.f w).range := by
+        unfold Word.range
         simp
-        rw [List.getElem_zipWith]
-        simp
-        have h_last : (adv.f w)[n] = (adv.f w).getLast (by rw [adv.len, h_len]; simp) := by
-          rw [List.getLast_eq_getElem]
-          congr
-          rw [adv.len, h_len]
-          simp
-        rw [h_last]
-        simp
-        rw [List.getLast?_eq_getLast]
-        simp
-        rw [adv.len, h_len]; simp
+        rw [List.length_zipWith]
+        rw [adv.len]
+        simp [h_len]
+        omega
 
-    have h_in : O.L ∈ ℒ (CA_rt (α × Γ) + adv) := by
-      use O
-      constructor
-      · use myCA
-        simp [h_CA_in_rt]
-      · rfl
+      simp [LCellAutomaton.embed_word, h_in_range]
+      unfold Word.get'
+      simp
+      rw [List.getElem_zipWith]
+      simp
+      have h_last : (adv.f w)[n] = (adv.f w).getLast (by rw [adv.len, h_len]; simp) := by
+        rw [List.getLast_eq_getElem]
+        congr
+        rw [adv.len, h_len]
+        simp
+      rw [h_last]
+      simp
+      rw [List.getLast?_eq_getLast]
+      simp
+      rw [adv.len, h_len]; simp
 
-    rw [h] at h_in
-    rcases h_in with ⟨M, hM_in, hM_L⟩
-    use M
+  have h_in : O.L ∈ ℒ (CA_rt (α × Γ) + adv) := by
+    use O
     constructor
-    · exact hM_in
-    · change DefinesLanguage.L M = L_c adv c
-      rw [← hM_L, h_L]
-  noncomputable def M_c (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) : tCellAutomaton α :=
-    Classical.choose (L_c_in_rt adv h c)
+    · use myCA
+      simp [h_CA_in_rt]
+    · rfl
 
-  lemma M_c_spec (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
-    (M_c adv h c) ∈ CA_rt α ∧ (M_c adv h c).L = L_c adv c :=
-    Classical.choose_spec (L_c_in_rt adv h c)
+  rw [h] at h_in
+  rcases h_in with ⟨M, hM_in, hM_L⟩
+  use M
+  constructor
+  · exact hM_in
+  · change DefinesLanguage.L M = L_c adv c
+    rw [← hM_L, h_L]
 
-  instance PiAlphabet {I : Type u} [Alphabet I] {Z : I → Type v} [∀ i, Alphabet (Z i)] : Alphabet (∀ i, Z i) where
-    dec := inferInstance
-    fin := inferInstance
-    inh := inferInstance
+noncomputable def M_c (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) : tCellAutomaton α :=
+  Classical.choose (L_c_in_rt adv h c)
 
-  lemma scanr_id {Q : Type u} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q → Q) (h_id : ∀ q a, δ q a = a) :
-    let M : FiniteStateMachine Q := { Q := Q, decQ := inferInstance, finQ := inferInstance, δ := δ, q0 := q0 }
-    M.scanr w = w := by
-    simp [FiniteStateMachine.scanr, FiniteStateMachine.scanr_q]
-    induction w with
-    | nil => simp
-    | cons a w ih =>
-      simp [List.foldr]
-      rw [ih]
-      cases w <;> simp [FiniteStateMachine.scanr_step, h_id]
+lemma M_c_spec (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+  (M_c adv h c) ∈ CA_rt α ∧ (M_c adv h c).L = L_c adv c :=
+  Classical.choose_spec (L_c_in_rt adv h c)
 
+instance PiAlphabet {I : Type u} [Alphabet I] {Z : I → Type v} [∀ i, Alphabet (Z i)] : Alphabet (∀ i, Z i) where
+  dec := inferInstance
+  fin := inferInstance
+  inh := inferInstance
+
+lemma scanr_id {Q : Type u} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q → Q) (h_id : ∀ q a, δ q a = a) :
+  let M : FiniteStateMachine Q := { Q := Q, decQ := inferInstance, finQ := inferInstance, δ := δ, q0 := q0 }
+  M.scanr w = w := by
+  simp [FiniteStateMachine.scanr, FiniteStateMachine.scanr_q]
+  induction w with
+  | nil => simp
+  | cons a w ih =>
+    simp [List.foldr]
+    rw [ih]
+    cases w <;> simp [FiniteStateMachine.scanr_step, h_id]
 
 theorem prefix_stable_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable) :
     adv.is_two_stage_advice := by
