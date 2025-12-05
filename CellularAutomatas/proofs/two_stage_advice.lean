@@ -8,8 +8,6 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 
-namespace two_stage_advice
-
 variable {α Γ: Type u} [Alphabet α] [Alphabet Γ]
 
 theorem advice_two_stage_closed_under_composition {O': Type u} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
@@ -84,6 +82,3 @@ lemma rt_closed (adv: Advice α Γ):
     ↔ ∀ C ∈ CA_rt (α × Γ), ∃ C' ∈ CA_rt α, C'.L = { w | (w ⊗ (adv.f w)) ∈ C.L }
 
   := sorry
-
-
-end two_stage_advice

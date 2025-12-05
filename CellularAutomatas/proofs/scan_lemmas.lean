@@ -1,8 +1,6 @@
 import CellularAutomatas.defs
 import Mathlib.Data.List.Basic
 
-namespace scan_lemmas
-
 
 lemma scanr_foldr_cons {α: Type u} [Alphabet α] {M: FiniteStateMachine α} (p: Word α) (q: M.Q) (tail: List M.Q) (q_ignored: M.Q):
     List.foldr (M.scanr_step q_ignored) (q :: tail) p = List.append (M.scanr_q p q) (q :: tail) := by
@@ -106,4 +104,3 @@ lemma scan_temporal_independence {α: Type u} [Alphabet α] (C: LCellAutomaton �
   · exfalso; unfold Word.range at *; simp at *; omega
   · exfalso; unfold Word.range at *; simp at *; omega
   · rfl
-end scan_lemmas

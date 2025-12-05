@@ -1,4 +1,5 @@
 import CellularAutomatas.defs
+
 open Set
 
 theorem ite_eq_of_true {α} { p: Prop } [Decidable p] (h: p) (a b: α): (if p then a else b) = a := by
