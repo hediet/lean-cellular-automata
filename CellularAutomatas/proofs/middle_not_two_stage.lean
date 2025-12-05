@@ -3,6 +3,7 @@ import CellularAutomatas.proofs.scan_lemmas
 import Mathlib.Data.Fintype.Card
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Set.Lattice
+import Mathlib.Data.Set.Card
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.Basic
 import Mathlib.Tactic.Linarith
@@ -13,13 +14,20 @@ open TwoStageAdvice
 open Classical
 open scan_lemmas
 
-namespace middle_not_two_stage
-
 variable {α: Type u} [Alphabet α]
 variable {Γ: Type v} [Alphabet Γ]
 
 -- We define rel_repr for generic Γ, but we will use it for Bool later.
 def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv.f (p ++ s)).take p.length
+
+def rel (adv: Advice α Γ) (p s1 s2: Word α) :=
+  rel_repr adv p s1 = rel_repr adv p s2
+
+def Advice.finite_lookahead (adv: Advice α Γ) :=
+  ∃ N: ℕ, ∀ p: Word α, (Set.univ.image (fun s: Word α => rel_repr adv p s)).encard ≤ N
+
+namespace middle_not_two_stage
+
 
 lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
     rel_repr adv.advice p s =
