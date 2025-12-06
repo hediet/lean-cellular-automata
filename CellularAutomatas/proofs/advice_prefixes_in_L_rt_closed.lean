@@ -17,7 +17,7 @@ variable {Γ: Type v} [Alphabet Γ]
 def CA_rt_to_TwoStage (C: CA_rt α): TwoStageAdvice α Bool :=
   {
     C := C.val.toLCellAutomaton
-    M := IdentityReconstructM C.val.Q
+    M := LastInputFSM C.val.Q
     t := C.val.F_pos
   }
 
@@ -25,7 +25,7 @@ lemma CA_rt_to_TwoStage_eq (C: CA_rt α):
   (CA_rt_to_TwoStage C).advice.f = (Advice.prefixes_in_L C.val.L).f := by
   funext w
   simp only [CA_rt_to_TwoStage, TwoStageAdvice.advice, Advice.prefixes_in_L]
-  rw [scanr_identity]
+  rw [LastInputFSM_scanr_eq]
   apply List.ext_getElem
   · simp [LCellAutomaton.scan_temporal]
   · intro i h1 h2

@@ -331,7 +331,7 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
   def Advice.prefix_stable {α: Type u} {Γ: Type v} (adv: Advice α Γ): Prop :=
     ∀ w: Word α, ∀ i: ℕ,
-      adv.f (w⟦0..i⟧) = (adv.f w)⟦0..i⟧
+      adv.f (w.take i) = (adv.f w).take i
 
 
 
@@ -341,6 +341,8 @@ section OCellAutomaton -- MARK: OCellAutomaton
     [instΓ: Alphabet Γ]
     adv: Advice α Γ
     C: tCellAutomaton (α × Γ)
+
+  instance (A : OCellAutomaton α) : Alphabet A.Γ := A.instΓ
 
 
   def OCellAutomaton.L {α: Type u} [instA: Alphabet α] (C: OCellAutomaton α): Language α :=

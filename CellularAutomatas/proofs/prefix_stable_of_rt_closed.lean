@@ -9,117 +9,252 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Linarith
+import Mathlib.Logic.Function.Iterate
+import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.scan_lemmas
+import CellularAutomatas.proofs.fsm_lemmas
+
+
+def ProdCA (α: Type u) (β: Type u) [DecidableEq β] [Fintype β] (f: β → LCellAutomaton α): LCellAutomaton α := {
+  Q := ∀ b: β, (f b).Q
+  δ := fun qL qC qR a => (f a).δ (qL a) (qC a) (qR a)
+  embed := fun a b => (f b).embed a
+  border := fun b => (f b).border
+}
+
+namespace ProdCA
+
+variable {α: Type u} [Alphabet α]
+variable {β: Type u} [Alphabet β]
+variable {f: β → LCellAutomaton α}
+
+lemma comp (f: β → LCellAutomaton α)
+    (w: Word α) (t: ℕ) (i: ℤ):
+    (ProdCA α β f).comp w t i = fun b => (f b).comp w t i := by
+  unfold LCellAutomaton.comp
+  unfold CellAutomaton.nextt
+
+  have nextt_proj (c: Config (ProdCA α β f).Q) (t: ℕ) (i: ℤ) (b: β):
+      (ProdCA α β f).next^[t] c i b = (f b).next^[t] (fun j => c j b) i := by
+    induction t generalizing i c with
+    | zero => rfl
+    | succ t ih =>
+      rw [Function.iterate_succ]
+      rw [Function.iterate_succ]
+      dsimp
+      rw [ih]
+      dsimp [CellAutomaton.next, ProdCA]
+      rfl
+
+  funext b
+  simp [apply_iterated]
+  rw [nextt_proj]
+  apply congr_arg (fun c => (f b).next^[t] c i)
+  funext j
+  unfold LCellAutomaton.embed_word
+  dsimp [ProdCA]
+  split_ifs <;> rfl
+
+
+-- zipMany over { x => [a, b, c], y => [1, 2, 3] } should be  [ {x => a, y => 1}, {x => b, y => 2}, {x => c, y => 3} ]
+
+def zipMany {γ: β -> Type v} [∀ b, Inhabited (γ b)] (f: (b: β) → Word (γ b)) : Word ((b: β) -> (γ b)) :=
+  let n := (f default).length
+  (List.range n).map fun i => fun b => (f b).getD i default
+
+lemma zipMany_get? {γ: β -> Type v} [∀ b, Inhabited (γ b)] (f: (b: β) → Word (γ b)) (i: ℕ):
+    (ProdCA.zipMany f)[i]? = if i < (f default).length then some (fun b => (f b).getD i default) else none := by
+  simp [zipMany]
+  grind
+
+
+lemma scan_temporal (f: β → LCellAutomaton α) (w: Word α):
+    (ProdCA α β f).scan_temporal w = zipMany (fun b => (f b).scan_temporal w) := by
+  unfold LCellAutomaton.scan_temporal
+  simp [zipMany]
+  intro t ht
+  funext b
+  rw [comp]
+  grind
+
+end ProdCA
 
 open Classical
+
 
 attribute [ext] Advice
 
 variable {α: Type u} [Alphabet α]
 variable {Γ: Type u} [Alphabet Γ]
 
-axiom advice_prefixes_in_L_rt_closed (C: CA_rt α):
-    (Advice.prefixes_in_L C.val.L).rt_closed
-
 def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
   { w | (adv.f w).getLast? = some c }
 
+namespace LcInRt
+
+def DiagonalShiftCA (A : Type u) [Alphabet A] : LCellAutomaton A := {
+  Q := Option A
+  decQ := inferInstance
+  finQ := inferInstance
+  δ := fun _ _ r => r
+  embed := some
+  border := none
+}
+
+@[simp]
+lemma DiagonalShiftCA_comp_p0  (w : Word α) :
+  (DiagonalShiftCA α).comp w t 0 = w[t]? := by
+  unfold LCellAutomaton.comp
+
+  have shift_next c : (DiagonalShiftCA α).toCellAutomaton.next c = fun i => c (i + 1) := by
+    funext i
+    simp [CellAutomaton.next, DiagonalShiftCA]
+
+  have shift_nextt k c i: ((DiagonalShiftCA α).toCellAutomaton.nextt c k) i = c (i + k) := by
+    induction k generalizing c with
+    | zero =>
+      simp [CellAutomaton.nextt, apply_iterated]
+    | succ k ih =>
+      rw [CellAutomaton.nextt, apply_iterated]
+      simp only [Nat.iterate]
+      rw [shift_next]
+      rw [← apply_iterated]
+      rw [← CellAutomaton.nextt]
+      rw [ih]
+      simp
+      ring_nf
+
+  rw [shift_nextt]
+  unfold LCellAutomaton.embed_word
+  dsimp [DiagonalShiftCA]
+  unfold Word.get'
+  unfold Word.range
+  grind
+
+lemma DiagonalShiftCA_scan_temporal {Q : Type u} [Alphabet Q] (w : Word Q) :
+  (DiagonalShiftCA Q).scan_temporal w = w.map some := by
+  unfold LCellAutomaton.scan_temporal
+  apply List.ext_getElem
+  · simp
+  · intro i h_i h_len
+    simp [←getElem?_pos]
+
+
+def AdvCALc (c : Γ) : tCellAutomaton (α × Γ) := {
+  toLCellAutomaton := DiagonalShiftCA (α × Γ)
+  t := fun n => n - 1
+  p := fun _ => 0
+  F_pos := fun q => match q with
+    | some (_, g) => g == c
+    | none => false
+}
+
+lemma myCA_in_rt (c : Γ) : AdvCALc c ∈ CA_rt (α × Γ) := by
+  simp [CA_rt, t_rt, AdvCALc, tCellAutomatons, CA]
+
+lemma OCellAutomaton.elem_L_iff {O: OCellAutomaton α}:
+  w ∈ O.L ↔ (O.adv.annotate w) ∈ O.C.L := by rfl
+
+lemma tCellAutomaton.elem_L_iff {C: tCellAutomaton α}:
+  w ∈ C.L ↔ C.F_pos ((C.comp w (C.t w.length)) 0) := by rfl
+
+@[simp]
+lemma scan_temporal_length {C: LCellAutomaton α} (w : Word α) :
+  (C.scan_temporal w).length = w.length := by
+  unfold LCellAutomaton.scan_temporal
+  simp
+
+lemma scan_temporal_get_last {C: tCellAutomaton α} (w : Word α):
+  (C.scan_temporal w).getLast? = if w = [] then none else ((C.comp w (w.length - 1)) 0) := by
+  cases h_w : w.length with
+  | zero =>
+    simp [LCellAutomaton.scan_temporal]
+    have h_nil : w = [] := List.length_eq_zero_iff.mp h_w
+    subst h_nil
+    unfold LCellAutomaton.comp
+    unfold LCellAutomaton.embed_word
+    simp
+  | succ n =>
+    have h_len_pos : w.length > 0 := by rw [h_w]; simp
+    have h_scan_len : (C.scan_temporal w).length = w.length := scan_temporal_length w
+    have h_scan_pos : (C.scan_temporal w).length > 0 := by rw [h_scan_len]; exact h_len_pos
+
+    rw [List.getLast?_eq_some_getLast (List.ne_nil_of_length_pos h_scan_pos)]
+    simp
+    rw [List.getLast_eq_getElem]
+    unfold LCellAutomaton.scan_temporal
+    simp
+    grind
+
+
+def O (adv : Advice α Γ) (c : Γ) : OCellAutomaton α := ⟨Γ, adv, AdvCALc c⟩
+
+lemma O_L_eq_L_c (adv : Advice α Γ) (c : Γ) : (O adv c).L = L_c adv c := by
+  ext w
+  simp [OCellAutomaton.L, L_c]
+  let w_ann := adv.annotate w
+  have h_len : w_ann.length = w.length := by
+    simp [w_ann, Advice.annotate, tensor_product, adv.len]
+
+  change (AdvCALc c).F_pos ((AdvCALc c).comp w_ann ((AdvCALc c).t w_ann.length) 0) ↔ (adv.f w).getLast? = some c
+  dsimp [AdvCALc]
+  rw [DiagonalShiftCA_comp_p0]
+
+  cases h_w : w.length with
+  | zero =>
+    have h_nil : w = [] := List.length_eq_zero_iff.mp h_w
+    subst h_nil
+    have h_ann_nil : w_ann = [] := by simp [w_ann, Advice.annotate, tensor_product]
+    rw [h_ann_nil]
+    simp
+    have h_f_nil : adv.f [] = [] := by
+      have := adv.len []
+      simp at this
+      exact this
+    rw [h_f_nil]
+    simp
+  | succ n =>
+    have h_ann_len_pos : w_ann.length > 0 := by rw [h_len, h_w]; simp
+    have h_idx : w_ann.length - 1 < w_ann.length := by omega
+
+    rw [List.getElem?_eq_getElem (h:=h_idx)]
+    simp
+
+    have h_idx_f : (adv.f w).length - 1 < (adv.f w).length := by
+      rw [adv.len]
+      rw [h_len] at h_idx
+      exact h_idx
+
+    have h_snd : (w_ann[w_ann.length - 1]).2 = (adv.f w)[(adv.f w).length - 1] := by
+      simp [w_ann, Advice.annotate, tensor_product]
+      simp [adv.len]
+
+    rw [h_snd]
+
+    have h_f_ne : adv.f w ≠ [] := by
+      rw [← List.length_pos_iff_ne_nil]
+      rw [adv.len, h_w]
+      simp
+
+    rw [List.getLast?_eq_some_getLast h_f_ne]
+    rw [List.getLast_eq_getElem]
+    simp
+
+
+end LcInRt
+
 lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
       ∃ M : tCellAutomaton α, M ∈ CA_rt α ∧ M.L = L_c adv c := by
-  let myCA : tCellAutomaton (α × Γ) := {
-    Q := Option (α × Γ)
-    decQ := inferInstance
-    finQ := inferInstance
-    δ := fun _ _ r => r
-    embed := some
-    border := none
-    t := fun n => n - 1
-    p := fun _ => 0
-    F_pos := fun q => match q with
-      | some (_, g) => g == c
-      | none => false
-  }
-  have h_CA_in_rt : myCA ∈ CA_rt (α × Γ) := by
-    simp [CA_rt, t_rt, myCA, tCellAutomatons, CA]
-
-  let O : OCellAutomaton α := ⟨Γ, adv, myCA⟩
-  have h_L : O.L = L_c adv c := by
-    ext w
-    simp [OCellAutomaton.L, L_c, tCellAutomaton.L, O, myCA]
-    unfold LCellAutomaton.comp
-    unfold CellAutomaton.nextt
-    unfold LCellAutomaton.embed_word
-    unfold Advice.annotate
-    unfold tensor_product
-
-    cases h_len : w.length with
-    | zero =>
-      simp
-      rw [List.length_eq_zero_iff] at h_len
-      subst h_len
-      simp [Word.range, LCellAutomaton.embed_word, apply_iterated]
-      simp [LCellAutomaton.embed_word]
-      split
-      · simp at ⊢
-      · simp
-    | succ n =>
-      simp
-      have h_next : ∀ c, myCA.toCellAutomaton.next c = fun i => c (i + 1) := by
-        intro c
-        funext i
-        simp [CellAutomaton.next, myCA]
-
-      have shift_lemma : ∀ k i, (myCA.toCellAutomaton.nextt (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) k) i =
-        (myCA.toLCellAutomaton.embed_word (w ⊗ adv.f w)) (i + k) := by
-        intro k
-        induction k with
-        | zero => simp [CellAutomaton.nextt, apply_iterated]
-        | succ k ih =>
-          intro i
-          simp [CellAutomaton.nextt, apply_iterated]
-          rw [h_next]
-          simp
-          rw [ih]
-          ring_nf
-
-      simp [CellAutomaton.nextt]
-      rw [shift_lemma]
-      simp
-      have h_idx : 0 + (w.length - 1) = n := by
-        rw [h_len]
-        simp
-      rw [h_idx]
-
-      have h_in_range : (n : ℤ) ∈ (w ⊗ adv.f w).range := by
-        unfold Word.range
-        simp
-        rw [List.length_zipWith]
-        rw [adv.len]
-        simp [h_len]
-        omega
-
-      simp [LCellAutomaton.embed_word, h_in_range]
-      unfold Word.get'
-      simp
-      rw [List.getElem_zipWith]
-      simp
-      have h_last : (adv.f w)[n] = (adv.f w).getLast (by rw [adv.len, h_len]; simp) := by
-        rw [List.getLast_eq_getElem]
-        congr
-        rw [adv.len, h_len]
-        simp
-      rw [h_last]
-      simp
-      rw [List.getLast?_eq_getLast]
-      simp
-      rw [adv.len, h_len]; simp
-
+  let O := LcInRt.O adv c
   have h_in : O.L ∈ ℒ (CA_rt (α × Γ) + adv) := by
     use O
     constructor
-    · use myCA
-      simp [h_CA_in_rt]
+    · change O ∈ OCellAutomaton.with_advice (CA_rt (α × Γ)) adv
+      simp [OCellAutomaton.with_advice]
+      use LcInRt.AdvCALc c
+      exact ⟨LcInRt.myCA_in_rt c, rfl⟩
     · rfl
 
   rw [h] at h_in
@@ -128,19 +263,18 @@ lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
   constructor
   · exact hM_in
   · change DefinesLanguage.L M = L_c adv c
-    rw [← hM_L, h_L]
+    rw [← hM_L, LcInRt.O_L_eq_L_c]
 
-noncomputable def M_c (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) : tCellAutomaton α :=
+noncomputable def CALc (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) : tCellAutomaton α :=
   Classical.choose (L_c_in_rt adv h c)
 
-lemma M_c_spec (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
-  (M_c adv h c) ∈ CA_rt α ∧ (M_c adv h c).L = L_c adv c :=
-  Classical.choose_spec (L_c_in_rt adv h c)
+lemma CALc_spec_1 (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+    (CALc adv h c) ∈ CA_rt α :=
+  (Classical.choose_spec (L_c_in_rt adv h c)).1
 
-instance PiAlphabet {I : Type u} [Alphabet I] {Z : I → Type v} [∀ i, Alphabet (Z i)] : Alphabet (∀ i, Z i) where
-  dec := inferInstance
-  fin := inferInstance
-  inh := inferInstance
+lemma CALc_spec_2 (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+    (CALc adv h c).L = L_c adv c :=
+  (Classical.choose_spec (L_c_in_rt adv h c)).2
 
 lemma scanr_id {Q : Type u} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q → Q) (h_id : ∀ q a, δ q a = a) :
   let M : FiniteStateMachine Q := { Q := Q, decQ := inferInstance, finQ := inferInstance, δ := δ, q0 := q0 }
@@ -153,178 +287,121 @@ lemma scanr_id {Q : Type u} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q →
     rw [ih]
     cases w <;> simp [FiniteStateMachine.scanr_step, h_id]
 
-theorem prefix_stable_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable) :
+
+lemma scan_temporal_in_F_pos {C: tCellAutomaton α} (hC: C ∈ CA_rt α) {w: Word α} (i: Nat) (h: i < (C.scan_temporal w).length ):
+    C.F_pos (C.scan_temporal w)[i] = true ↔ w.take (i+1) ∈ C.L := by
+  rw [LcInRt.scan_temporal_length] at h
+  have h_len : i < w.length := h
+  have h_take_len : (w.take (i+1)).length = i + 1 := by
+    rw [List.length_take]
+    rw [min_eq_left]
+    omega
+  have h_t : C.t (w.take (i+1)).length = i := by
+    simp [CA_rt, t_rt] at hC
+    rw [hC.2]
+    rw [h_take_len]
+    simp
+  dsimp [tCellAutomaton.L, Membership.mem, Set.Mem]
+  rw [h_t]
+  unfold LCellAutomaton.scan_temporal
+  rw [List.getElem_map]
+  simp
+  congr 1
+  apply nextt_congr
+  intro j hj
+  unfold LCellAutomaton.embed_word
+  split_ifs with h1 h2
+  · -- j in range of w and w.take
+    unfold Word.get'
+    simp
+  · -- j in range of w but not w.take
+    unfold Word.range at *
+    simp at *
+    grind
+  · -- j not in range of w but in range of w.take
+    unfold Word.range at *
+    simp at *
+    grind
+  · -- neither
+    rfl
+
+
+namespace PrefixStableProof
+
+  variable (adv: Advice α Γ) (h1: adv.rt_closed)
+
+  noncomputable abbrev M_prod := ProdCA α Γ (fun c => (CALc adv h1 c).toLCellAutomaton)
+
+  noncomputable def t_map (q: (M_prod adv h1).Q) : Γ :=
+    let valid_c := Finset.univ.filter (fun c => (CALc adv h1 c).F_pos (q c))
+    valid_c.toList.head?.getD default
+
+
+
+  noncomputable def ts_adv : TwoStageAdvice α Γ := {
+    C := M_prod adv h1
+    M := LastInputFSM (M_prod adv h1).Q
+    t := t_map adv h1
+  }
+
+  lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
+    grind
+
+  lemma f (h2: adv.prefix_stable): (ts_adv adv h1).advice = adv := by
+    apply Advice.ext
+    funext w
+    simp [TwoStageAdvice.advice]
+    unfold ts_adv
+    simp
+
+    rw [ProdCA.scan_temporal]
+
+    apply List.ext_getElem?
+
+    intro i
+    rw [List.getElem?_map]
+    erw [ProdCA.zipMany_get?]
+    simp
+
+    by_cases h_i : i < w.length
+    case neg => simp [h_i, adv.len]
+
+    simp [h_i]
+    unfold t_map
+    simp
+
+    simp [scan_temporal_in_F_pos (CALc_spec_1 adv h1 _)]
+    simp [CALc_spec_2 adv h1]
+    unfold L_c
+
+    have h2 := h2 w (i+1)
+
+    -- TODO@lean: This is annoying
+    suffices
+      some ((Finset.univ.filter (fun c => List.getLast? (adv.f (List.take (i + 1) w)) = some c)).toList.head?.getD default) = (adv.f w)[i]? by
+        grind
+
+    rw [h2]
+    have : i < (adv.f w).length := by
+      simp [h_i, adv.len]
+
+    rw [getLastOfTake this]
+
+    rw [List.getElem?_eq_getElem this]
+    simp
+    have h_singleton : (Finset.univ.filter (fun c => (adv.f w)[i] = c)) = {(adv.f w)[i]} := by grind
+    rw [h_singleton]
+    simp
+
+
+end PrefixStableProof
+
+
+
+
+theorem is_two_stage_of_rt_closed_and_prefix_stable (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable):
     adv.is_two_stage_advice := by
-  -- Construct the product automaton
-  let M_prod : LCellAutomaton α := {
-    Q := ∀ c: Γ, (M_c adv h1 c).Q
-    decQ := inferInstance
-    finQ := inferInstance
-    δ := fun qL qC qR c => (M_c adv h1 c).δ (qL c) (qC c) (qR c)
-    embed := fun a c => (M_c adv h1 c).embed a
-    border := fun c => (M_c adv h1 c).border
-  }
 
-  -- Define the trivial FSM
-  let M_fsm : FiniteStateMachine M_prod.Q := {
-    Q := M_prod.Q
-    decQ := inferInstance
-    finQ := inferInstance
-    δ := fun _ a => a -- Identity transition on input
-    q0 := M_prod.border -- Dummy initial state
-  }
-
-  -- Define the mapping t
-  let t_map (q: M_prod.Q) : Γ :=
-    let valid_c := { c | (M_c adv h1 c).F_pos (q c) }
-    if h: ∃! c, c ∈ valid_c then
-      Classical.choose h.exists
-    else
-      default
-
-  let ts_adv : TwoStageAdvice α Γ := {
-    C := M_prod
-    M := M_fsm
-    t := t_map
-  }
-
-  use ts_adv
-  apply Advice.ext
-  ext w
-  simp [TwoStageAdvice.advice]
-  have h_id : ∀ q a, M_fsm.δ q a = a := fun _ _ => rfl
-  rw [scanr_id (ts_adv.C.scan_temporal w) M_fsm.q0 M_fsm.δ h_id]
-
-  have h_goal : adv.f w = List.map ts_adv.t (ts_adv.C.scan_temporal w) := by
-    refine List.ext_getElem ?_ ?_
-    · simp [adv.len, LCellAutomaton.scan_temporal]
-    · intro i h_i h_len
-      have h_w_len : i < w.length := by rw [← adv.len w]; exact h_i
-      have h_scan_len : i < (M_prod.scan_temporal w).length := by simp [LCellAutomaton.scan_temporal, h_w_len]
-
-      let q := (M_prod.scan_temporal w)[i]
-      have h_q : q = (M_prod.scan_temporal w)[i] := rfl
-
-      -- Analyze q
-      -- q c = ((M_c adv h1 c).scan_temporal w)[i]
-      -- We need to prove this component-wise property of scan_temporal for product CA
-      have h_comp : ∀ c, q c = ((M_c adv h1 c).scan_temporal w)[i] := by
-        intro c
-        rw [h_q]
-        have h_c_len : i < ((M_c adv h1 c).scan_temporal w).length := by simp [LCellAutomaton.scan_temporal, h_w_len]
-        unfold LCellAutomaton.scan_temporal
-        rw [List.getElem_map]
-        simp
-        -- Need to show (M_prod.comp w i 0) c = (M_c c).comp w i 0
-        -- This follows from definition of M_prod
-        unfold LCellAutomaton.comp
-        unfold CellAutomaton.nextt
-        -- Induction on time i
-        -- Base case i=0: embed
-        -- Step: next
-        generalize h_idx : (0 : ℤ) = idx
-        induction i generalizing idx with
-        | zero =>
-          simp [apply_iterated]
-          unfold LCellAutomaton.embed_word
-          split_ifs
-          · rfl
-          · rfl
-        | succ i ih =>
-          simp [apply_iterated]
-          unfold CellAutomaton.next
-          rw [ih, ih, ih]
-          rfl
-        simp [LCellAutomaton.scan_temporal, h_w_len]
-
-      -- Now use scan_temporal_independence
-      -- ((M_c c).scan_temporal w)[i] depends only on w[0..i+1]
-      -- Let w_pref = w.take (i+1)
-      let w_pref := w.take (i+1)
-      let w_suff := w.drop (i+1)
-      have h_w : w = w_pref ++ w_suff := (List.take_append_drop (i+1) w).symm
-
-      have h_q_c : ∀ c, q c = ((M_c adv h1 c).scan_temporal w_pref)[i]'(by simp [w_pref, LCellAutomaton.scan_temporal]; omega) := by
-        intro c
-        rw [h_comp c]
-        have h_indep := scan_lemmas.scan_temporal_independence (M_c adv h1 c).toLCellAutomaton w_pref w_suff
-        rw [h_w]
-        rw [h_indep]
-        rw [List.getElem_append_left]
-        · simp [LCellAutomaton.scan_temporal]
-          simp [w_pref]
-          omega
-
-      -- Relate to acceptance
-      have h_accept : ∀ c, (M_c adv h1 c).F_pos (q c) ↔ w_pref ∈ (M_c adv h1 c).L := by
-        intro c
-        rw [h_q_c]
-        have h_rt := (M_c_spec adv h1 c).1
-        simp [CA_rt, t_rt] at h_rt
-        unfold tCellAutomaton.L
-        simp
-        rw [h_rt w_pref.length]
-        simp
-        have h_len_pref : w_pref.length = i + 1 := by
-          simp [w_pref]
-          omega
-        rw [h_len_pref]
-        simp
-        -- (comp w_pref i) 0 is exactly (scan_temporal w_pref)[i]
-        unfold LCellAutomaton.scan_temporal
-        rw [List.getElem_map]
-        · rfl
-        · simp [LCellAutomaton.scan_temporal, h_len_pref]; omega
-
-      -- Relate to L_c
-      have h_Lc : ∀ c, w_pref ∈ (M_c adv h1 c).L ↔ c = (adv.f w)[i] := by
-        intro c
-        rw [(M_c_spec adv h1 c).2]
-        unfold L_c
-        simp
-        -- (adv.f w_pref).getLast? = some c
-        rw [h2 w (i+1)] -- prefix_stable: adv.f (w.take (i+1)) = (adv.f w).take (i+1)
-        -- (adv.f w).take (i+1) getLast? = some c
-        rw [List.getLast?_eq_some_iff]
-        constructor
-        · intro h
-          rcases h with ⟨_, h_last⟩
-          rw [List.getLast_take] at h_last
-          · simp at h_last
-            rw [h_last]
-          · simp [adv.len]; omega
-        · intro h
-          subst h
-          constructor
-          · simp [adv.len]; omega
-          · rw [List.getLast_take]
-            · simp
-            · simp [adv.len]; omega
-
-      -- Combine
-      have h_iff : ∀ c, (M_c adv h1 c).F_pos (q c) ↔ c = (adv.f w)[i] := by
-        intro c
-        rw [h_accept, h_Lc]
-
-      -- Uniqueness
-      let target_c := (adv.f w)[i]
-      have h_unique : ∃! c, (M_c adv h1 c).F_pos (q c) := by
-        use target_c
-        simp [h_iff]
-
-      -- t_map
-      rw [List.getElem_map]
-      · change (adv.f w)[i] = ts_adv.t q
-        simp [ts_adv]
-        simp [t_map]
-        rw [dif_pos h_unique]
-        -- Classical.choose h.exists is target_c
-        have h_choose : Classical.choose h_unique.exists = target_c := by
-          apply h_unique.unique
-          · exact Classical.choose_spec h_unique.exists
-          · rw [h_iff]
-        rw [h_choose]
-      · simp [LCellAutomaton.scan_temporal, h_w_len]
-
-  rw [h_goal]
-  simp [List.getElem?_map]
+    unfold Advice.is_two_stage_advice
+    use PrefixStableProof.ts_adv adv h1
+    simp [PrefixStableProof.f adv h1 h2]

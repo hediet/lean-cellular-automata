@@ -9,10 +9,12 @@ import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.prefix_stable_of_rt_closed
 
 namespace results
 
 variable {α: Type u} [Alphabet α]
+variable {Γ: Type u} [Alphabet Γ]
 
 theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
@@ -21,3 +23,7 @@ theorem result_middle_not_two_stage_advice:
 theorem result_advice_prefixes_in_L_is_two_stage_advice (C: CA_rt α) :
     Advice.is_two_stage_advice (Advice.prefixes_in_L C.val.L) := by
   exact advice_prefixes_in_L_is_two_stage_advice C
+
+theorem result_is_two_stage_of_rt_closed_and_prefix_stable (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable):
+    Advice.is_two_stage_advice adv := by
+  exact is_two_stage_of_rt_closed_and_prefix_stable adv h1 h2
