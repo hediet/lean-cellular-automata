@@ -20,10 +20,12 @@ theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
   exact middle_not_two_stage_advice
 
-theorem result_advice_prefixes_in_L_is_two_stage_advice (C: CA_rt α) :
-    Advice.is_two_stage_advice (Advice.prefixes_in_L C.val.L) := by
-  exact advice_prefixes_in_L_is_two_stage_advice C
+theorem result_advice_prefixes_in_L_is_two_stage_advice:
+    ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefixes_in_L C.L) := by
+  intro C h
+  exact advice_prefixes_in_L_is_two_stage_advice ⟨ C, h ⟩
 
-theorem result_is_two_stage_of_rt_closed_and_prefix_stable (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable):
-    Advice.is_two_stage_advice adv := by
-  exact is_two_stage_of_rt_closed_and_prefix_stable adv h1 h2
+theorem result_is_two_stage_of_rt_closed_and_prefix_stable:
+    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.prefix_stable → adv.is_two_stage_advice := by
+  intro adv h
+  exact is_two_stage_of_rt_closed_and_prefix_stable adv h.1 h.2
