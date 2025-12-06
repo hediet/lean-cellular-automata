@@ -487,6 +487,13 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
   def middle_idx (n: ℕ) := n / 2
 
+  def Advice.middle (α: Type u): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
+
+  #guard (List.range 10).map (fun n => (n, middle_idx n)) =
+    [(0,0), (1,0), (2,1), (3,1), (4,2), (5,2), (6,3), (7,3), (8,4), (9,4)]
+
+  #guard (@Advice.middle Unit).f (List.replicate 10 ()) =
+    [false, false, false, false, true, false, false, false, false, false]
 
   -- runs the biggest value 2^k such that 2^(k+1) <= n, if such exists
   def exp_middle_idx (n: ℕ) :=
@@ -497,10 +504,11 @@ section OCellAutomaton -- MARK: OCellAutomaton
   -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
   def Advice.exp_middle (α: Type u): Advice α Bool := Advice.from_len_marker exp_middle_idx
 
-  def Advice.middle (α: Type u): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
+  #guard (List.range 10).map (fun n => (n, exp_middle_idx n)) =
+    [(0, none), (1, none), (2, some 1), (3, some 1), (4, some 2), (5, some 2), (6, some 2), (7, some 2), (8, some 4), (9, some 4)]
 
-  #eval! (List.range 10).map (fun n => (n, exp_middle_idx n))
-  #eval! (@Advice.exp_middle Unit).f (List.replicate 10 ())
-  #eval! (@Advice.middle Unit).f (List.replicate 10 ())
+  #guard (@Advice.exp_middle Unit).f (List.replicate 10 ()) =
+    [false, false, false, true, false, false, false, false, false, false]
+
 
 end OCellAutomaton
