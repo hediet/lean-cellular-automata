@@ -23,7 +23,7 @@ end Utilities
 
 section Word -- MARK: Word
 
-  class Alphabet (α: Type u) where
+  class Alphabet (α: Type) where
     [dec: DecidableEq α]
     [fin: Fintype α]
     [inh: Inhabited α]
@@ -34,7 +34,7 @@ section Word -- MARK: Word
   instance AlphabetBool : Alphabet Bool := ⟨⟩
 
 
-  instance ProductAlphabet {α β} [Alphabet α] [Alphabet β] : Alphabet (α × β) := ⟨⟩
+  instance ProductAlphabet {α β: Type} [Alphabet α] [Alphabet β] : Alphabet (α × β) := ⟨⟩
 
 
   infix:50 " ⨉ " => Prod
@@ -64,43 +64,17 @@ end Word
 
 
 
-universe v
 section LanguageDefinitions -- MARK: LanguageDefinitions
 
-  class DefinesLanguage (CA: Type u) where
-    α: Type v
+  class DefinesLanguage (CA) (α: outParam (Type)) where
     [inst: Alphabet α]
     L: CA -> Language α
 
-  def ℒ {CA: Type u} [d: DefinesLanguage CA] (s: (Set CA)): Set (Language d.α) :=
-    fun L => ∃ ca: CA, ca ∈ s ∧ L = DefinesLanguage.L ca
 
-  class DefinesTime (CA: Type u) where
-    α: Type v
-    [inst: Alphabet α]
-    time: CA -> Word α → WithTop ℕ
+  variable {CA: Type*} [Alphabet α]
 
-  noncomputable def time' {CA: Type u} [dt: DefinesTime CA] (C: CA) (w: Word dt.α): ℕ := (dt.time C w).getD 0
-
-
-
-  noncomputable def t_max {CA: Type u} [dt: DefinesTime CA] (ca: CA) (n: ℕ): WithTop ℕ :=
-    sSup (dt.time ca '' { w : Word dt.α | w.length = n })
-
-  def halts {CA: Type u} [DefinesTime CA] (ca: CA): Prop :=
-    ∀ n: ℕ, t_max ca n ≠ none
-
-  noncomputable def t_max' {CA: Type u} [DefinesTime CA] (ca: CA) (h: halts ca) (n: ℕ): ℕ :=
-    (t_max ca n).get (by simp_all[halts, Option.isSome_iff_ne_none])
-
-
-  def with_time { β: Type u } [DefinesTime β] (fns: Set (ℕ → ℕ)) (set: Set β): Set β :=
-    fun ca => ca ∈ set ∧ halts ca ∧ ((h: halts ca) → ((t_max' ca h) ∈ fns))
-
-
-  syntax "t⦃" term "⦄" : term
-  macro_rules | `(t⦃ $expr ⦄) => `(with_time { fun $(Lean.mkIdent `n) => $expr })
-
+  def ℒ [d: DefinesLanguage CA α] (s: (Set CA)): Set (Language α) :=
+      fun L => ∃ ca: CA, ca ∈ s ∧ L = DefinesLanguage.L ca
 
 
 end LanguageDefinitions
@@ -109,8 +83,9 @@ end LanguageDefinitions
 
 section CellAutomaton -- MARK: CellAutomaton
 
+  @[pp_with_univ]
   structure CellAutomaton where
-    Q: Type u
+    Q: Type
     [decQ: DecidableEq Q]
     [finQ: Fintype Q]
     δ: Q → Q → Q → Q
@@ -164,107 +139,54 @@ section LCellAutomaton -- MARK: LCellAutomaton
   A cellular automaton that can map words to a configuration.
   This is the basis for cellular automata that can recognize languages.
   -/
-  structure LCellAutomaton (α: Type u) extends CellAutomaton.{u} where
+  structure LCellAutomaton (α: Type) extends CellAutomaton where
     embed: α → Q
     border: Q
 
   namespace LCellAutomaton
 
-    def embed_word {α: Type u} [Alphabet α] (C: LCellAutomaton α) (w: Word α): Config C.Q :=
+    variable [Alphabet α] (C: LCellAutomaton α)
+
+    def embed_word (w: Word α): Config C.Q :=
       fun i =>
         if h: i ∈ w.range
         then C.embed (w.get' i h)
         else C.border
 
     /-- To compute the nth configuration of a word, we compute the nth follow configuration of the word's embedding. -/
-    def comp {α: Type u} [Alphabet α] (C: LCellAutomaton α) (w: Word α) := C.nextt (C.embed_word w)
+    def comp (w: Word α) := C.nextt (C.embed_word w)
 
     /-- A state is an internal state if embedding an input does not produce it. -/
-    def internal_state {α: Type u} [Alphabet α] {C: LCellAutomaton α} (q: C.Q) := ∀ a: α, C.embed a ≠ q
+    def internal_state {C: LCellAutomaton α} (q: C.Q) := ∀ a: α, C.embed a ≠ q
 
-    instance {α: Type u} (C: LCellAutomaton α) : Inhabited C.Q := ⟨ C.border ⟩
+    instance : Inhabited C.Q := ⟨ C.border ⟩
 
   end LCellAutomaton
 
 end LCellAutomaton
 
-section FCellAutomaton -- MARK: FCellAutomaton
-
-  /-- A cellular automaton that can recognize languages by defining "accepting" and "rejecting" states. -/
-  structure FCellAutomaton (α: Type u) extends LCellAutomaton α where
-    /--
-      * `none`: continue
-      * `some true`: accept
-      * `some false`: reject
-    -/
-    state_accepts: Q -> Option Bool
-
-  namespace FCellAutomaton
-
-
-    def config_accepts {α: Type u} (C: FCellAutomaton α) (c: Config C.Q) := C.state_accepts (c 0)
-
-    noncomputable def time {α: Type u} [Alphabet α] (C: FCellAutomaton α) (w: Word α): Option ℕ :=
-      min_nat { t | C.config_accepts (C.comp w t) ≠ none }
-
-    def accepts {α: Type u} [Alphabet α] (C: FCellAutomaton α) (w: Word α) :=
-      match C.time w with
-      | some t => C.config_accepts (C.comp w t) = some true
-      | none => False
-
-    def L {α: Type u} [Alphabet α] (C: FCellAutomaton α): Language α := { w: Word α | C.accepts w }
-
-    def F_pos {α: Type u} { C': FCellAutomaton α } := { q: C'.Q | C'.state_accepts q = some true }
-    def F_neg {α: Type u} { C': FCellAutomaton α } := { q: C'.Q | C'.state_accepts q = some false }
-
-    def accept_delta_closed {α: Type u} (C: FCellAutomaton α) := C.delta_closed_set C.F_pos ∧ C.delta_closed_set C.F_neg
-
-
-    def FCellAutomatons (α: Type u): Set (FCellAutomaton α) := fun _a => true
-
-    instance {α: Type u} [Alphabet α] : DefinesLanguage (FCellAutomaton α) where
-      α := α
-      L ca := ca.L
-
-    noncomputable instance {α: Type u} [Alphabet α] : DefinesTime (FCellAutomaton α) where
-      α := α
-      time ca w := ca.time w
-
-    --instance {α: Type u} : Coe (FCellAutomaton α) CellAutomaton where
-    --coe ca := ca.toCellAutomaton
-
-  end FCellAutomaton
-
-end FCellAutomaton
 
 section tCellAutomaton -- MARK: tCellAutomaton
 
-  structure tCellAutomaton (α: Type u) extends LCellAutomaton α where
+  structure tCellAutomaton (α: Type) extends LCellAutomaton α where
     t: ℕ → ℕ
     p: ℕ → ℕ
     F_pos: Q → Bool
 
-  def tCellAutomaton.L {α: Type u} [Alphabet α] (C: tCellAutomaton α): Language α := fun w =>
+  def tCellAutomaton.L [Alphabet α] (C: tCellAutomaton α): Language α := fun w =>
     (C.comp w (C.t w.length)) 0 |> C.F_pos
 
-  def tCellAutomatons (α: Type u): Set (tCellAutomaton α) := Set.univ
+  def tCellAutomatons (α: Type): Set (tCellAutomaton α) := Set.univ
 
-  instance {α: Type u} [Alphabet α] : DefinesLanguage (tCellAutomaton α) where
-    α := α
+  instance [Alphabet α] : DefinesLanguage (tCellAutomaton α) α where
     L ca := ca.L
 
-  instance {α: Type u} [Alphabet α] : DefinesTime (tCellAutomaton α) where
-    α := α
-    time ca w := some (ca.t w.length)
 
-  --instance {α: Type u} : Coe (tCellAutomaton α) CellAutomaton where
-  --  coe ca := ca.toCellAutomaton
-
-  def tCellAutomaton.similar {α: Type u} [Alphabet α] (C1 C2: tCellAutomaton α): Prop := C1.L = C2.L ∧ C1.t = C2.t ∧ C1.p = C2.p
+  def tCellAutomaton.similar [Alphabet α] (C1 C2: tCellAutomaton α): Prop := C1.L = C2.L ∧ C1.t = C2.t ∧ C1.p = C2.p
 
   section
 
-    variable (α: Type u)
+    variable (α: Type)
 
     def t_rt (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = n - 1 }
     def t_2n (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = 2 * n }
@@ -293,7 +215,7 @@ end tCellAutomaton
 
 
 
-instance {α: Type u} [Alphabet α] (C: tCellAutomaton α) (w: Word α) : Decidable (w ∈ C.L) := by
+instance [Alphabet α] (C: tCellAutomaton α) (w: Word α) : Decidable (w ∈ C.L) := by
   unfold tCellAutomaton.L
   unfold Membership.mem
   unfold Language.instMembershipList
@@ -301,16 +223,16 @@ instance {α: Type u} [Alphabet α] (C: tCellAutomaton α) (w: Word α) : Decida
   infer_instance
 
 
-instance {α: Type u} [Alphabet α] (C: tCellAutomaton α) : DecidablePred C.L :=
- fun w => by
-  unfold tCellAutomaton.L
-  infer_instance
+instance [Alphabet α] (C: tCellAutomaton α) : DecidablePred C.L :=
+  fun w => by
+    unfold tCellAutomaton.L
+    infer_instance
 
 
 
 section OCellAutomaton -- MARK: OCellAutomaton
 
-  structure Advice (α: Type u) (Γ: Type v) where
+  structure Advice (α: Type) (Γ: Type) where
     f: Word α → Word Γ
     len: ∀ w: Word α, (f w).length = w.length
 
@@ -324,20 +246,20 @@ section OCellAutomaton -- MARK: OCellAutomaton
   | _ => throw ()
 
 
-  def Advice.annotate {α: Type u} {Γ: Type v} (adv: Advice α Γ) (w: Word α): Word (α × Γ) := w ⊗ (adv.f w)
+  def Advice.annotate {Γ: Type} (adv: Advice α Γ) (w: Word α): Word (α × Γ) := w ⊗ (adv.f w)
 
-  def Advice.compose {α: Type u} {Γ₁: Type v} {Γ₂: Type w} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
+  def Advice.compose {Γ₁: Type} {Γ₂: Type} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
     ⟨ fun w => adv2.f (adv1.f w), by simp [adv1.len, adv2.len] ⟩
 
-  def Advice.prefix_stable {α: Type u} {Γ: Type v} (adv: Advice α Γ): Prop :=
+  def Advice.prefix_stable {Γ: Type} (adv: Advice α Γ): Prop :=
     ∀ w: Word α, ∀ i: ℕ,
       adv.f (w.take i) = (adv.f w).take i
 
 
 
-  structure OCellAutomaton (α: Type u) where
+  structure OCellAutomaton (α: Type) where
     /-- The alphabet of the advice. -/
-    Γ: Type v
+    Γ: Type
     [instΓ: Alphabet Γ]
     adv: Advice α Γ
     C: tCellAutomaton (α × Γ)
@@ -345,30 +267,30 @@ section OCellAutomaton -- MARK: OCellAutomaton
   instance (A : OCellAutomaton α) : Alphabet A.Γ := A.instΓ
 
 
-  def OCellAutomaton.L {α: Type u} [instA: Alphabet α] (C: OCellAutomaton α): Language α :=
+  def OCellAutomaton.L [instA: Alphabet α] (C: OCellAutomaton α): Language α :=
     have : Alphabet C.Γ := C.instΓ
     { w | C.C.L (C.adv.annotate w) }
 
-  def OCellAutomaton.with_advice {α: Type u} {Γ: Type v} [Alphabet Γ] (S: Set (tCellAutomaton (α × Γ))) (adv: Advice α Γ): Set (OCellAutomaton α) :=
+  def OCellAutomaton.with_advice {Γ: Type} [Alphabet Γ] (S: Set (tCellAutomaton (α × Γ))) (adv: Advice α Γ): Set (OCellAutomaton α) :=
     { OCellAutomaton.mk Γ adv C | C ∈ S }
 
-  instance {α: Type u} {Γ: Type v} [Alphabet Γ] : HAdd (Set (tCellAutomaton (α × Γ))) (Advice α Γ) (Set (OCellAutomaton α)) where
+  instance {Γ: Type} [Alphabet Γ] : HAdd (Set (tCellAutomaton (α × Γ))) (Advice α Γ) (Set (OCellAutomaton α)) where
     hAdd S adv := OCellAutomaton.with_advice S adv
 
-  instance {α: Type u} [Alphabet α] : DefinesLanguage (OCellAutomaton α) where
-    α := α
+  instance [Alphabet α] : DefinesLanguage (OCellAutomaton α) α where
     L ca := OCellAutomaton.L ca
 
 
-  def Advice.rt_closed {α: Type u} {Γ: Type v} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-    ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
+
+  def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+      ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
 
 
 
 
 
-  structure FiniteStateMachine (α: Type u) where
-    Q: Type u
+  structure FiniteStateMachine (α: Type) where
+    Q: Type
     [decQ: DecidableEq Q]
     [finQ: Fintype Q]
     δ: Q → α → Q
@@ -376,29 +298,28 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
   namespace FiniteStateMachine
 
-    instance {α: Type u} (M : FiniteStateMachine α) : DecidableEq M.Q := M.decQ
-    instance {α: Type u} (M : FiniteStateMachine α) : Fintype M.Q   := M.finQ
-    instance {α: Type u} (M : FiniteStateMachine α) : Inhabited M.Q := ⟨ M.q0 ⟩
+    instance (M : FiniteStateMachine α) : DecidableEq M.Q := M.decQ
+    instance (M : FiniteStateMachine α) : Fintype M.Q   := M.finQ
+    instance (M : FiniteStateMachine α) : Inhabited M.Q := ⟨ M.q0 ⟩
 
-    instance Qalpha {α: Type u} (M: FiniteStateMachine α): Alphabet M.Q := ⟨⟩
+    instance Qalpha (M: FiniteStateMachine α): Alphabet M.Q := ⟨⟩
 
-
-    def scanr_step {α: Type u} {M: FiniteStateMachine α} q a
+    def scanr_step {M: FiniteStateMachine α} q a
     | []   => [M.δ q a]
     | qs@(q::_) => (M.δ q a :: qs)
 
-    def scanr_q {α: Type u} {M: FiniteStateMachine α} (w: Word α) (q: M.Q): Word M.Q :=
+    def scanr_q {M: FiniteStateMachine α} (w: Word α) (q: M.Q): Word M.Q :=
       w.foldr (scanr_step q) []
 
-    def scanr {α: Type u} {M: FiniteStateMachine α} w := M.scanr_q w M.q0
+    def scanr {M: FiniteStateMachine α} w := M.scanr_q w M.q0
 
-    def scanr_reduce {α: Type u} {M: FiniteStateMachine α} (w: Word α): M.Q :=
+    def scanr_reduce {M: FiniteStateMachine α} (w: Word α): M.Q :=
       match M.scanr w with
       | []   => M.q0
       | q::_ => q
 
     @[simp, grind =]
-    lemma scanr_q_len {α: Type u} {M: FiniteStateMachine α} (q: M.Q) (w: List α):
+    lemma scanr_q_len {M: FiniteStateMachine α} (q: M.Q) (w: List α):
       (M.scanr_q w q).length = w.length := by
       induction w with
       | nil => simp [scanr_q]
@@ -419,7 +340,7 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
 
     @[simp, grind =]
-    lemma scanr_len {α: Type u} (M: FiniteStateMachine α) (w: List α): (M.scanr w).length = w.length := by
+    lemma scanr_len (M: FiniteStateMachine α) (w: List α): (M.scanr w).length = w.length := by
       simp [scanr, scanr_q_len]
 
 
@@ -428,17 +349,18 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
 
 
-  instance LCellAutomaton.Qalpha {α: Type u} { C: LCellAutomaton α }: Alphabet C.Q := ⟨⟩
+  instance LCellAutomaton.Qalpha { C: LCellAutomaton α }: Alphabet C.Q := ⟨⟩
 
-  def LCellAutomaton.scan_temporal {α: Type u} [Alphabet α] (C: LCellAutomaton α) (w: Word α): Word C.Q :=
+  def LCellAutomaton.scan_temporal [Alphabet α] (C: LCellAutomaton α) (w: Word α): Word C.Q :=
     List.map (C.comp w · 0) (List.range w.length)
 
-  structure TwoStageAdvice (α: Type u) [Alphabet α] (Γ: Type v) [Alphabet Γ] where
+  @[pp_with_univ]
+  structure TwoStageAdvice (α: Type) [Alphabet α] (Γ: Type) [Alphabet Γ] where
     C: LCellAutomaton α
     M: FiniteStateMachine C.Q
     t: M.Q → Γ
 
-  variable {α: Type u} {Γ: Type v} [Alphabet α] [Alphabet Γ]
+  variable {Γ: Type} [Alphabet α] [Alphabet Γ]
 
   namespace TwoStageAdvice
 
@@ -454,10 +376,8 @@ section OCellAutomaton -- MARK: OCellAutomaton
   end TwoStageAdvice
 
 
-
   def Advice.is_two_stage_advice (adv: Advice α Γ): Prop :=
     ∃ ts_adv: TwoStageAdvice α Γ, adv = ts_adv.advice
-
 
 
   def Advice.prefixes_in_L (L: Language α) [h: DecidablePred L]: Advice α Bool :=
@@ -487,7 +407,7 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
   def middle_idx (n: ℕ) := n / 2
 
-  def Advice.middle (α: Type u): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
+  def Advice.middle (α): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
 
   #guard (List.range 10).map (fun n => (n, middle_idx n)) =
     [(0,0), (1,0), (2,1), (3,1), (4,2), (5,2), (6,3), (7,3), (8,4), (9,4)]
@@ -502,7 +422,7 @@ section OCellAutomaton -- MARK: OCellAutomaton
     |> List.max?
 
   -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
-  def Advice.exp_middle (α: Type u): Advice α Bool := Advice.from_len_marker exp_middle_idx
+  def Advice.exp_middle (α): Advice α Bool := Advice.from_len_marker exp_middle_idx
 
   #guard (List.range 10).map (fun n => (n, exp_middle_idx n)) =
     [(0, none), (1, none), (2, some 1), (3, some 1), (4, some 2), (5, some 2), (6, some 2), (7, some 2), (8, some 4), (9, some 4)]

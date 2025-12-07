@@ -17,7 +17,7 @@ import CellularAutomatas.proofs.scan_lemmas
 import CellularAutomatas.proofs.fsm_lemmas
 
 
-def ProdCA (α: Type u) (β: Type u) [DecidableEq β] [Fintype β] (f: β → LCellAutomaton α): LCellAutomaton α := {
+def ProdCA (α: Type) (β: Type) [DecidableEq β] [Fintype β] (f: β → LCellAutomaton α): LCellAutomaton α := {
   Q := ∀ b: β, (f b).Q
   δ := fun qL qC qR a => (f a).δ (qL a) (qC a) (qR a)
   embed := fun a b => (f b).embed a
@@ -26,8 +26,8 @@ def ProdCA (α: Type u) (β: Type u) [DecidableEq β] [Fintype β] (f: β → LC
 
 namespace ProdCA
 
-variable {α: Type u} [Alphabet α]
-variable {β: Type u} [Alphabet β]
+variable {α: Type} [Alphabet α]
+variable {β: Type} [Alphabet β]
 variable {f: β → LCellAutomaton α}
 
 lemma comp (f: β → LCellAutomaton α)
@@ -86,15 +86,15 @@ open Classical
 
 attribute [ext] Advice
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type u} [Alphabet Γ]
+variable {α: Type} [Alphabet α]
+variable {Γ: Type} [Alphabet Γ]
 
 def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
   { w | (adv.f w).getLast? = some c }
 
 namespace LcInRt
 
-def DiagonalShiftCA (A : Type u) [Alphabet A] : LCellAutomaton A := {
+def DiagonalShiftCA (A : Type) [Alphabet A] : LCellAutomaton A := {
   Q := Option A
   decQ := inferInstance
   finQ := inferInstance
@@ -133,7 +133,7 @@ lemma DiagonalShiftCA_comp_p0  (w : Word α) :
   unfold Word.range
   grind
 
-lemma DiagonalShiftCA_scan_temporal {Q : Type u} [Alphabet Q] (w : Word Q) :
+lemma DiagonalShiftCA_scan_temporal {Q : Type} [Alphabet Q] (w : Word Q) :
   (DiagonalShiftCA Q).scan_temporal w = w.map some := by
   unfold LCellAutomaton.scan_temporal
   apply List.ext_getElem
@@ -257,7 +257,7 @@ lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
       exact ⟨LcInRt.myCA_in_rt c, rfl⟩
     · rfl
 
-  rw [h] at h_in
+  erw [h] at h_in
   rcases h_in with ⟨M, hM_in, hM_L⟩
   use M
   constructor
@@ -276,7 +276,7 @@ lemma CALc_spec_2 (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
     (CALc adv h c).L = L_c adv c :=
   (Classical.choose_spec (L_c_in_rt adv h c)).2
 
-lemma scanr_id {Q : Type u} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q → Q) (h_id : ∀ q a, δ q a = a) :
+lemma scanr_id {Q : Type} [Alphabet Q] (w : Word Q) (q0 : Q) (δ : Q → Q → Q) (h_id : ∀ q a, δ q a = a) :
   let M : FiniteStateMachine Q := { Q := Q, decQ := inferInstance, finQ := inferInstance, δ := δ, q0 := q0 }
   M.scanr w = w := by
   simp [FiniteStateMachine.scanr, FiniteStateMachine.scanr_q]
@@ -395,7 +395,6 @@ namespace PrefixStableProof
 
 
 end PrefixStableProof
-
 
 
 

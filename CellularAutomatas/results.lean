@@ -13,8 +13,8 @@ import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 
 namespace results
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type u} [Alphabet Γ]
+variable {α} [Alphabet α]
+variable {Γ} [Alphabet Γ]
 
 theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
