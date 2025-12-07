@@ -2,7 +2,7 @@ import CellularAutomatas.defs
 import Mathlib.Data.List.Basic
 
 
-lemma scanr_foldr_cons {α: Type u} [Alphabet α] {M: FiniteStateMachine α} (p: Word α) (q: M.Q) (tail: List M.Q) (q_ignored: M.Q):
+lemma scanr_foldr_cons [Alphabet α] {M: FiniteStateMachine α} (p: Word α) (q: M.Q) (tail: List M.Q) (q_ignored: M.Q):
     List.foldr (M.scanr_step q_ignored) (q :: tail) p = List.append (M.scanr_q p q) (q :: tail) := by
   induction p with
   | nil =>
@@ -19,7 +19,7 @@ lemma scanr_foldr_cons {α: Type u} [Alphabet α] {M: FiniteStateMachine α} (p:
     | nil => simp [FiniteStateMachine.scanr_step]
     | cons x xs => simp [FiniteStateMachine.scanr_step]
 
-lemma scanr_append_take {α: Type u} [Alphabet α] {M: FiniteStateMachine α} (p s: Word α):
+lemma scanr_append_take [Alphabet α] {M: FiniteStateMachine α} (p s: Word α):
     (M.scanr (p.append s)).take p.length = M.scanr_q p (M.scanr_reduce s) := by
   change List α at p s
   unfold FiniteStateMachine.scanr
@@ -86,7 +86,7 @@ theorem list_map_congr {α β} {f g : α → β} {l : List α} (h : ∀ x ∈ l,
   · apply h; simp
   · apply ih; intro x hx; apply h; simp [hx]
 
-lemma scan_temporal_independence {α: Type u} [Alphabet α] (C: LCellAutomaton α) (p s: Word α):
+lemma scan_temporal_independence [Alphabet α] (C: LCellAutomaton α) (p s: Word α):
   (C.scan_temporal (List.append p s)).take p.length = C.scan_temporal p := by
   unfold LCellAutomaton.scan_temporal
   rw [← List.map_take, List.take_range, min_eq_left (by simp)]

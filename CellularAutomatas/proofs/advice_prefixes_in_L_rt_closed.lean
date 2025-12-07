@@ -10,8 +10,8 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.scan_lemmas
 import CellularAutomatas.proofs.fsm_lemmas
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type v} [Alphabet Γ]
+variable {α: Type} [Alphabet α]
+variable {Γ: Type} [Alphabet Γ]
 
 
 def CA_rt_to_TwoStage (C: CA_rt α): TwoStageAdvice α Bool :=

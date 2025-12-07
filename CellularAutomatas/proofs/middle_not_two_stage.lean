@@ -13,8 +13,8 @@ import Mathlib.Data.List.Range
 open TwoStageAdvice
 open Classical
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type v} [Alphabet Γ]
+variable {α} [Alphabet α]
+variable {Γ} [Alphabet Γ]
 
 -- We define rel_repr for generic Γ, but we will use it for Bool later.
 def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv.f (p ++ s)).take p.length

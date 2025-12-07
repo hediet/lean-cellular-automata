@@ -9,10 +9,8 @@ import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.scan_lemmas
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type u} [Alphabet Γ]
-
-
+variable {α} [Alphabet α]
+variable {Γ} [Alphabet Γ]
 
 inductive ExpState
 | Init

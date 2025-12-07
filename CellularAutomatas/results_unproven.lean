@@ -9,8 +9,8 @@ import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.scan_lemmas
 
-variable {α: Type u} [Alphabet α]
-variable {Γ: Type u} [Alphabet Γ]
+variable {α} [Alphabet α]
+variable {Γ} [Alphabet Γ]
 
 
 theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
@@ -39,7 +39,7 @@ theorem ca_rt_equals_lt_of_closure_under_reversal: ℒ (CA α) = ℒ (CAr α) �
 
 section advice_theorems
 
-  theorem advice_two_stage_closed_under_composition {O': Type u} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
+  theorem advice_two_stage_closed_under_composition {O'} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
       ∃ a: TwoStageAdvice α Γ, a.advice.f = a2.advice.f ∘ a1.advice.f := by
     sorry
 

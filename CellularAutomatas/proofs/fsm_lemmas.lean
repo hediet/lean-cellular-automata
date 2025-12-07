@@ -1,14 +1,14 @@
 import CellularAutomatas.defs
 import Mathlib.Data.List.Basic
 
-def LastInputFSM (Q: Type u) [Alphabet Q]: FiniteStateMachine Q := {
+def LastInputFSM (Q) [Alphabet Q]: FiniteStateMachine Q := {
   Q := Q
   δ := fun _ a => a
   q0 := default
 }
 
 @[simp]
-lemma LastInputFSM_scanr_eq (Q: Type u) [Alphabet Q]:
+lemma LastInputFSM_scanr_eq [Alphabet Q]:
   (LastInputFSM Q).scanr = id := by
   funext w
   simp [FiniteStateMachine.scanr, FiniteStateMachine.scanr_q]
