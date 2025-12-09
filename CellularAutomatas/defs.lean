@@ -349,16 +349,97 @@ section OCellAutomaton -- MARK: OCellAutomaton
 
 
 
+
+  structure FiniteStateTransducer (α: Type) (β: Type) where
+      Q: Type
+      [decQ: DecidableEq Q]
+      [finQ: Fintype Q]
+      δ: Q → α → Q
+      q0: Q
+      f: Q → β
+
+  namespace FiniteStateTransducer
+    variable [Alphabet α] [Alphabet β]
+    variable {M: FiniteStateTransducer α β}
+
+    instance : DecidableEq M.Q := M.decQ
+    instance : Fintype M.Q   := M.finQ
+    instance : Inhabited M.Q := ⟨ M.q0 ⟩
+    instance Qalpha: Alphabet M.Q := ⟨⟩
+
+    def scanr_step a
+    | (q, w) => (M.δ q a, M.f (M.δ q a) :: w)
+
+    def scanr_q (w: Word α) (q: M.Q): Word β :=
+      (w.foldr (scanr_step) (q, [])).snd
+
+    def scanr w := M.scanr_q w M.q0
+
+    def compose (M1: FiniteStateTransducer β γ) (M2: FiniteStateTransducer α β): FiniteStateTransducer α γ := sorry
+
+    def map_input (f: γ → α): FiniteStateTransducer γ β := {
+      Q := M.Q
+      δ := fun q a => M.δ q (f a)
+      q0 := M.q0
+      f := M.f
+    }
+
+  end FiniteStateTransducer
+
+
+  variable [Alphabet α] {Γ: Type} [Alphabet Γ]
+
   instance LCellAutomaton.Qalpha { C: LCellAutomaton α }: Alphabet C.Q := ⟨⟩
 
   def LCellAutomaton.scan_temporal [Alphabet α] (C: LCellAutomaton α) (w: Word α): Word C.Q :=
     List.map (C.comp w · 0) (List.range w.length)
 
-  @[pp_with_univ]
   structure TwoStageAdvice (α: Type) [Alphabet α] (Γ: Type) [Alphabet Γ] where
     C: LCellAutomaton α
     M: FiniteStateMachine C.Q
     t: M.Q → Γ
+
+
+
+
+  structure CArtTransducer (α: Type) (Γ: Type) [Alphabet α] [Alphabet Γ] extends LCellAutomaton α where
+    f: Q → Γ
+
+  def CArtTransducer.advice [Alphabet α] [Alphabet Γ] (adv: CArtTransducer α Γ): Advice α Γ :=
+    ⟨
+      fun w => (adv.scan_temporal w).map adv.f,
+      by grind [LCellAutomaton.scan_temporal]
+    ⟩
+
+  def FiniteStateTransducer.advice [Alphabet α] [Alphabet β] (M: FiniteStateTransducer α β): Advice α β :=
+    ⟨
+      fun w => M.scanr w,
+      by sorry
+    ⟩
+
+
+  structure TwoStageAdvice2 (α: Type) (Γ: Type) [Alphabet α] [Alphabet Γ]  where
+    C: LCellAutomaton α
+    M: FiniteStateTransducer C.Q Γ
+
+  def TwoStageAdvice2.advice (adv: TwoStageAdvice2 α Γ): Advice α Γ :=
+    ⟨
+      adv.M.advice.f ∘ adv.C.scan_temporal,
+      by sorry
+    ⟩
+
+  def TwoStageAdvice2.cart_transducer (adv: TwoStageAdvice2 α Γ): CArtTransducer α adv.C.Q :=
+    {
+      toLCellAutomaton := adv.C,
+      f := id
+    }
+
+
+
+
+
+
+
 
   variable {Γ: Type} [Alphabet α] [Alphabet Γ]
 
