@@ -1,0 +1,3 @@
+[submodule "docs/bachelor-thesis"]
+	path = docs/bachelor-thesis
+	url = https://github.com/hediet/bachelors-thesis
