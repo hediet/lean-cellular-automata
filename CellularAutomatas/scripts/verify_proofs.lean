@@ -6,8 +6,8 @@
   Fails if any module uses disallowed axioms or if config references non-existent modules.
 -/
 import Lean
-import CellularAutomatas
-import scripts.VerifyConfig
+import CellularAutomatas.all
+import CellularAutomatas.scripts.VerifyConfig
 
 open Lean Elab Command
 
@@ -89,5 +89,3 @@ def analyzeAndVerify (env : Environment) (config : List (Name × List Name)) : I
       for detail in err.details do
         IO.eprintln s!"  • {detail}"
     throwError s!"Verification failed with {errors.length} error(s)"
-
-def main : IO Unit := pure ()

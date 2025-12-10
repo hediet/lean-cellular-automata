@@ -7,7 +7,6 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.scan_lemmas
 
 variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]
@@ -27,9 +26,7 @@ inductive ExpState
 | Collision
 | Collision_Pos1
 | Dead
-deriving DecidableEq, Repr, Fintype
-
-instance : Inhabited ExpState := ⟨ ExpState.Init ⟩
+deriving DecidableEq, Repr, Fintype, Inhabited
 
 def exp_ca : tCellAutomaton Unit := {
   Q := ExpState,

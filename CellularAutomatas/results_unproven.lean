@@ -7,7 +7,6 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.scan_lemmas
 
 variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]
@@ -67,7 +66,7 @@ section advice_theorems
 
   -- peeking into the future! Speed up theorem for two-stage advices.
   theorem advice_shift_left_rt (extension: Word α) (adv: Advice α Γ) (h: adv.is_two_stage_advice):
-      (Advice.shift_left extension adv).is_two_stage_advice := by
+      (adv.shift_left_advice extension).is_two_stage_advice := by
     sorry
 
 end advice_theorems

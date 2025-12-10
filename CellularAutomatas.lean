@@ -1,7 +1,3 @@
 
-import CellularAutomatas.defs
-import CellularAutomatas.examples
-import CellularAutomatas.results
-import CellularAutomatas.results_unproven
-import CellularAutomatas.proofs.common
-import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
+import CellularAutomatas.all
+import CellularAutomatas.scripts.verify_proofs

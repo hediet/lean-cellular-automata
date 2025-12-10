@@ -18,6 +18,14 @@ import CellularAutomatas.proofs.fsm_lemmas
 
 
 
+  def TwoStageAdvice.cart_transducer (adv: TwoStageAdvice α Γ): CArtTransducer α adv.C.Q :=
+    {
+      toLCellAutomaton := adv.C,
+      f := id
+    }
+
+
+
 
 namespace compress_by_3
   variable [Alphabet α] [Alphabet β]
@@ -35,6 +43,7 @@ namespace compress_by_3
     sorry
 
 end compress_by_3
+
 
 
 namespace speedup_factor_k
@@ -84,6 +93,7 @@ namespace speedup_factor_k
 end speedup_factor_k
 
 
+
 namespace simulation
   structure Params where
     C_inr: CellAutomaton
@@ -131,6 +141,7 @@ namespace simulation
       sorry
 
 end simulation
+
 
 
 
@@ -195,33 +206,34 @@ namespace backwards_fsm
 end backwards_fsm
 
 
+
 def CArtTransducer.compose [Alphabet α] [Alphabet β] [Alphabet γ] (t1: CArtTransducer β γ) (t2: CArtTransducer α β):
     CArtTransducer α γ :=
   sorry
 
-def TwoStageAdvice2.from_transducers [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β): TwoStageAdvice2 α γ :=
-  TwoStageAdvice2.mk C.toLCellAutomaton (M.map_input C.f)
+def TwoStageAdvice.from_transducers [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β): TwoStageAdvice α γ :=
+  TwoStageAdvice.mk C.toLCellAutomaton (M.map_input C.f)
 
-lemma TwoStageAdvice2.from_transducers_eq [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β):
-    (TwoStageAdvice2.from_transducers M C).advice.f = M.advice.f ∘ C.advice.f := by
+lemma TwoStageAdvice.from_transducers_eq [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β):
+    (TwoStageAdvice.from_transducers M C).advice.f = M.advice.f ∘ C.advice.f := by
   sorry
 
 
-def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a1: TwoStageAdvice2 α Γ1) (a2: TwoStageAdvice2 Γ1 Γ):
-    TwoStageAdvice2 α Γ :=
+def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a1: TwoStageAdvice α Γ1) (a2: TwoStageAdvice Γ1 Γ):
+    TwoStageAdvice α Γ :=
   let e := backwards_fsm.Params.mk a1.M a2.cart_transducer
   let ca_new := (backwards_fsm.C' e).compose a1.cart_transducer
   let fsm_new := a2.M.compose (backwards_fsm.M' e)
-  TwoStageAdvice2.from_transducers fsm_new ca_new
+  TwoStageAdvice.from_transducers fsm_new ca_new
 
 
 
-lemma foo1 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice2 α Γ1) (t2: TwoStageAdvice2 Γ1 Γ):
+lemma foo1 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice α Γ1) (t2: TwoStageAdvice Γ1 Γ):
     (t2.advice.f) ∘ (t1.advice.f) = (t2.M.advice.f) ∘ (t2.cart_transducer.advice.f) ∘ (t1.M.advice.f) ∘ (t1.cart_transducer.advice.f) := by
     sorry
 
 
-lemma foo2 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice2 α Γ1) (t2: TwoStageAdvice2 Γ1 Γ):
+lemma foo2 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice α Γ1) (t2: TwoStageAdvice Γ1 Γ):
     let e := backwards_fsm.Params.mk t1.M t2.cart_transducer
     (t2.M.advice.f) ∘ (t2.cart_transducer.advice.f) ∘ (t1.M.advice.f) ∘ (t1.cart_transducer.advice.f) =
     (t2.M.advice.f) ∘ (backwards_fsm.M' e).advice.f ∘ (backwards_fsm.C' e).advice.f ∘ (t1.cart_transducer.advice.f)  := by
@@ -231,16 +243,16 @@ lemma foo2 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice2 α Γ
 
 variable [Alphabet Γ'] [Alphabet Γ] [Alphabet α]
 
-lemma TwoStageAdvice2.advice_eq2 (t: TwoStageAdvice2 α Γ):
+lemma TwoStageAdvice.advice_eq2 (t: TwoStageAdvice α Γ):
     t.advice.f = (t.M.advice.f) ∘ (t.cart_transducer.advice.f) := by
     sorry
 
 
-lemma TwoStageAdvice2.advice_eq (t: TwoStageAdvice2 α Γ):
+lemma TwoStageAdvice.advice_eq (t: TwoStageAdvice α Γ):
     t.advice.f = (t.M.advice.f) ∘ (t.cart_transducer.advice.f) := by
     sorry
 
-theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice2 α Γ') (a2: TwoStageAdvice2 Γ' Γ):
+theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
     (compose_two_stage a1 a2).advice.f = a2.advice.f ∘ a1.advice.f := by
 
   rw [Eq.comm]
@@ -251,7 +263,7 @@ theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice2 α Γ') (
 
   calc (a2.advice.f ∘ a1.advice.f)
     _ = (a2.M.advice.f ∘ a2.cart_transducer.advice.f) ∘ (a1.M.advice.f ∘ a1.cart_transducer.advice.f) := by
-      simp [TwoStageAdvice2.advice_eq]
+      simp [TwoStageAdvice.advice_eq]
 
     _ = a2.M.advice.f ∘ (a2.cart_transducer.advice.f ∘ a1.M.advice.f) ∘ a1.cart_transducer.advice.f := by
       simp [Function.comp_assoc]
@@ -266,5 +278,5 @@ theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice2 α Γ') (
       simp [ca_new, fsm_new]
       sorry
 
-    _ = (TwoStageAdvice2.from_transducers fsm_new ca_new).advice.f := by sorry
+    _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice.f := by sorry
     _ = (compose_two_stage a1 a2).advice.f := by sorry

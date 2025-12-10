@@ -1,5 +1,4 @@
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.scan_lemmas
 import Mathlib.Data.Fintype.Card
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Set.Lattice
@@ -9,6 +8,8 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
 import Mathlib.Data.List.Range
+import CellularAutomatas.proofs.cart_transducers
+import CellularAutomatas.proofs.finite_state_transducers
 
 open TwoStageAdvice
 open Classical
@@ -29,32 +30,29 @@ def Advice.finite_lookahead (adv: Advice α Γ) :=
 lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
     rel_repr adv.advice p s =
         (adv.M.scanr_q
-            (adv.C.scan_temporal p)
+            (adv.C.advice.f p)
             (adv.M.scanr_reduce
-                ((adv.C.scan_temporal (p ++ s)).drop p.length)
+                ((adv.C.advice.f (p ++ s)).drop p.length)
             )
-        ).map adv.t
+        )
           := by
     dsimp [rel_repr, TwoStageAdvice.advice]
-    rw [← List.map_take]
-    congr 1
-    let W := adv.C.scan_temporal (p ++ s)
+    let W := adv.C.advice.f (p ++ s)
     change (adv.M.scanr W).take p.length = _
     have h_split : W = W.take p.length ++ W.drop p.length := (List.take_append_drop p.length W).symm
     conv in (adv.M.scanr W) => rw [h_split]
-    have h_indep : W.take p.length = adv.C.scan_temporal p := by
+    have h_indep : W.take p.length = adv.C.advice.f p := by
       simp [W]
-      change (adv.C.scan_temporal (p ++ s)).take p.length = _
-      erw [scan_temporal_independence (p := p) (s := s)]
+      change (adv.C.advice.f (p ++ s)).take p.length = _
+      erw [CArtTransducer.scan_temporal_independence]
     rw [h_indep]
-    have h_len_p : (adv.C.scan_temporal p).length = p.length := by
-      rw [LCellAutomaton.scan_temporal]
-      simp only [List.length_map, List.length_range]
+    have h_len_p : (adv.C.advice.f p).length = p.length := by
+      simp [Advice.len]
     conv => lhs; arg 1; rw [← h_len_p]
-    erw [@scanr_append_take _ _ adv.M (adv.C.scan_temporal p) (W.drop p.length)]
+    erw [FiniteStateTransducer.scanr_append_take]
 
 def possible_advice_prefixes (adv: TwoStageAdvice α Γ) (p: Word α) : Finset (List Γ) :=
-  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q (adv.C.scan_temporal p) q).map adv.t)
+  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q (adv.C.advice.f p) q))
 
 -- 1. The Bottleneck Lemma
 lemma two_stage_restriction_cardinality (adv: TwoStageAdvice α Γ) (p: Word α) :
@@ -176,7 +174,7 @@ lemma middle_reachable_card (k : ℕ) :
     omega
 
 -- 4. Conclusion
-theorem middle_not_two_stage_advice : ¬ Advice.is_two_stage_advice (Advice.middle α) := by
+theorem middle_not_two_stage_advice : ¬ (Advice.middle α).is_two_stage_advice := by
   intro h
   rcases h with ⟨adv, h_eq⟩
   let Q := adv.M.Q
