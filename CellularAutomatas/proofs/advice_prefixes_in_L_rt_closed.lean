@@ -7,8 +7,8 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.scan_lemmas
-import CellularAutomatas.proofs.fsm_lemmas
+import CellularAutomatas.proofs.cart_transducers
+import CellularAutomatas.proofs.finite_state_transducers
 
 variable {α: Type} [Alphabet α]
 variable {Γ: Type} [Alphabet Γ]
@@ -16,30 +16,32 @@ variable {Γ: Type} [Alphabet Γ]
 
 def CA_rt_to_TwoStage (C: CA_rt α): TwoStageAdvice α Bool :=
   {
-    C := C.val.toLCellAutomaton
-    M := LastInputFSM C.val.Q
-    t := C.val.F_pos
+    β := Bool
+    C := ⟨ C.val.toLCellAutomaton, C.val.F_pos ⟩
+    M := id_transducer Bool
   }
 
 lemma CA_rt_to_TwoStage_eq (C: CA_rt α):
   (CA_rt_to_TwoStage C).advice.f = (Advice.prefixes_in_L C.val.L).f := by
   funext w
   simp only [CA_rt_to_TwoStage, TwoStageAdvice.advice, Advice.prefixes_in_L]
-  rw [LastInputFSM_scanr_eq]
+  rw [id_transducer_advice_eq]
   apply List.ext_getElem
-  · simp [LCellAutomaton.scan_temporal]
+  · simp [Advice.len]
   · intro i h1 h2
     simp
-    unfold LCellAutomaton.scan_temporal
+    unfold CArtTransducer.advice
+    simp
+    unfold LCellAutomaton.scan_temporal_rt LCellAutomaton.scan_temporal
     rw [List.getElem_map]
     simp only [List.getElem_range]
 
-    have h_len_scan : ((C.val.toLCellAutomaton).scan_temporal w).length = w.length := by
-      simp [LCellAutomaton.scan_temporal]
+    have h_len_scan : ((C.val.toLCellAutomaton).scan_temporal_rt w).length = w.length := by
+      simp [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal]
 
     have h_i_lt_w : i < w.length := by
-      rw [← h_len_scan]
-      rw [List.length_map] at h1
+      unfold CArtTransducer.advice LCellAutomaton.scan_temporal_rt LCellAutomaton.scan_temporal at h1
+      simp at h1
       exact h1
 
     let w_pref := w.take (i+1)
@@ -64,27 +66,28 @@ lemma CA_rt_to_TwoStage_eq (C: CA_rt α):
 
     have h_w : w = w_pref ++ w.drop (i+1) := (List.take_append_drop (i + 1) w).symm
 
-    have h_scan_eq : (C.val.toLCellAutomaton.scan_temporal w).take (i+1) = C.val.toLCellAutomaton.scan_temporal w_pref := by
+    have h_scan_eq : (C.val.toLCellAutomaton.scan_temporal_rt w).take (i+1) = C.val.toLCellAutomaton.scan_temporal_rt w_pref := by
       nth_rewrite 1 [h_w]
       rw [← h_pref_len]
-      apply scan_temporal_independence
+      apply LCellAutomaton.scan_temporal_independence
 
-    have h_len_scan_pref : ((C.val.toLCellAutomaton).scan_temporal w_pref).length = i + 1 := by
-      simp [LCellAutomaton.scan_temporal]
+    have h_len_scan_pref : ((C.val.toLCellAutomaton).scan_temporal_rt w_pref).length = i + 1 := by
+      simp [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal]
       exact h_pref_len
 
-    have h_idx_valid : i < ((C.val.toLCellAutomaton.scan_temporal w).take (i+1)).length := by
+    have h_idx_valid : i < ((C.val.toLCellAutomaton.scan_temporal_rt w).take (i+1)).length := by
       rw [List.length_take]
       rw [h_len_scan]
       rw [min_eq_left]
       · omega
       · omega
 
-    have h_get : ((C.val.toLCellAutomaton).scan_temporal w)[i] = ((C.val.toLCellAutomaton).scan_temporal w_pref)[i] := by
-      trans ((C.val.toLCellAutomaton.scan_temporal w).take (i+1))[i]'h_idx_valid
+    have h_get : ((C.val.toLCellAutomaton).scan_temporal_rt w)[i] = ((C.val.toLCellAutomaton).scan_temporal_rt w_pref)[i] := by
+      trans ((C.val.toLCellAutomaton.scan_temporal_rt w).take (i+1))[i]'h_idx_valid
       · rw [List.getElem_take]
       · simp [h_scan_eq]
 
+    unfold LCellAutomaton.scan_temporal_rt at h_get
     unfold LCellAutomaton.scan_temporal at h_get
     rw [List.getElem_map, List.getElem_map] at h_get
     simp at h_get

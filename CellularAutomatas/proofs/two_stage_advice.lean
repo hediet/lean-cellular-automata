@@ -21,7 +21,7 @@ axiom advice_two_stage_closed_under_composition [Alphabet Γ'] (a1: TwoStageAdvi
 
 lemma ℒ_oca_def (adv: Advice α Γ) (L: Language α):
         L ∈ ℒ (CA_rt (α × Γ) + adv) ↔ ∃ C ∈ CA_rt (α × Γ), L = { w | (w ⊗ (adv.f w)) ∈ C.L } := by
-    simp [ℒ, OCellAutomaton.with_advice, OCellAutomaton.L, Advice.annotate]
+    simp [ℒ, tCellAutomatonWithAdvice.with_advice, tCellAutomatonWithAdvice.L, Advice.annotate]
 
 lemma ℒ_tCellAutomaton_def (L: Language α):
         L ∈ ℒ (CA_rt α) ↔ ∃ C ∈ CA_rt α, C.L = L := by

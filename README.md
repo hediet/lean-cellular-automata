@@ -10,7 +10,7 @@ The project defines various types of cellular automata and their properties, inc
 *   **LCellAutomaton**: Cellular automata that can map words to configurations.
 *   **FCellAutomaton**: Finite cellular automata that can recognize languages (accept/reject states).
 *   **tCellAutomaton**: Time-constrained cellular automata.
-*   **OCellAutomaton**: Cellular automata with advice.
+*   **tCellAutomatonWithAdvice**: Cellular automata with advice.
 
 ## Structure
 
