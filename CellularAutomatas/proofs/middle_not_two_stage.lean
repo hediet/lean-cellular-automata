@@ -30,10 +30,10 @@ def Advice.finite_lookahead (adv: Advice α Γ) :=
 lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
     rel_repr adv.advice p s =
         (adv.M.scanr_q
-            (adv.C.advice.f p)
             (adv.M.scanr_reduce
                 ((adv.C.advice.f (p ++ s)).drop p.length)
             )
+            (adv.C.advice.f p)
         )
           := by
     dsimp [rel_repr, TwoStageAdvice.advice]
@@ -46,13 +46,12 @@ lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
       change (adv.C.advice.f (p ++ s)).take p.length = _
       erw [CArtTransducer.scan_temporal_independence]
     rw [h_indep]
-    have h_len_p : (adv.C.advice.f p).length = p.length := by
-      simp [Advice.len]
+    have h_len_p : (adv.C.advice.f p).length = p.length := by simp
     conv => lhs; arg 1; rw [← h_len_p]
     erw [FiniteStateTransducer.scanr_append_take]
 
 def possible_advice_prefixes (adv: TwoStageAdvice α Γ) (p: Word α) : Finset (List Γ) :=
-  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q (adv.C.advice.f p) q))
+  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q q (adv.C.advice.f p)))
 
 -- 1. The Bottleneck Lemma
 lemma two_stage_restriction_cardinality (adv: TwoStageAdvice α Γ) (p: Word α) :
