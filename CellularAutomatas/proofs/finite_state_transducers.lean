@@ -5,20 +5,6 @@ import Mathlib.Tactic.Linarith
 
 
 
-def FiniteStateTransducer.map_output [Alphabet α] [Alphabet β] [Alphabet γ]
-    (M: FiniteStateTransducer α β) (g: β → γ): FiniteStateTransducer α γ := {
-  Q := M.Q
-  δ := M.δ
-  q0 := M.q0
-  f := g ∘ M.f
-}
-
-@[simp]
-lemma FiniteStateTransducer.map_output_spec [Alphabet α] [Alphabet β] [Alphabet γ] {M: FiniteStateTransducer α β} {g: β → γ}:
-    (M.map_output g).scanr = (List.map g) ∘ M.scanr := by
-      sorry
-
-
 namespace FiniteStateTransducer
   section
 
@@ -244,17 +230,6 @@ namespace FiniteStateTransducer
   end M_projQ
 
 
-  section M_map
-
-    def M_map [Alphabet α] [Alphabet β] (f: α → β): FiniteStateTransducer α β := (M_id α).map_output f
-
-    @[simp]
-    lemma M_map_scanr [Alphabet α] [Alphabet β] (f: α → β): (M_map f).scanr = List.map f := by
-      simp [M_map, FiniteStateTransducer.map_output_spec, M_id_scanr_eq]
-
-  end M_map
-
-
   section M_prod
 
 
@@ -303,17 +278,95 @@ namespace FiniteStateTransducer
 
   infixr:90 " ⊚ "  => comp
 
+  lemma comp_scanr_reduce_q [Alphabet α] [Alphabet β] [Alphabet γ]
+      {M2: FiniteStateTransducer β γ} {M1: FiniteStateTransducer α β}
+      (q1: M1.Q) (q2: M2.Q) (w: Word α):
+      (M2 ⊚ M1).scanr_reduce_q (q1, q2) w = (M1.scanr_reduce_q q1 w, M2.scanr_reduce_q q2 (M1.scanr_q q1 w)) := by
+    induction w with
+    | nil => simp [scanr_reduce_q, scanr_q]
+    | cons a w ih =>
+      simp only [scanr_reduce_q]
+      rw [ih]
+      simp only [comp]
+      have h_scanr_q : M1.scanr_q q1 (a::w) = M1.f (M1.δ (M1.scanr_reduce_q q1 w) a) :: M1.scanr_q q1 w := by
+            simp [scanr_q, scanr_step]
+            rw [scanr_foldr_state]
+      rw [h_scanr_q]
+      simp [scanr_reduce_q]
+
+  lemma comp_scanr_q [Alphabet α] [Alphabet β] [Alphabet γ]
+      {M2: FiniteStateTransducer β γ} {M1: FiniteStateTransducer α β}
+      (q1: M1.Q) (q2: M2.Q) (w: Word α):
+      (M2 ⊚ M1).scanr_q (q1, q2) w = M2.scanr_q q2 (M1.scanr_q q1 w) := by
+    induction w with
+    | nil => simp [scanr_q]
+    | cons a w ih =>
+      have h_scanr_q_M1 : M1.scanr_q q1 (a::w) = M1.f (M1.δ (M1.scanr_reduce_q q1 w) a) :: M1.scanr_q q1 w := by
+            simp [scanr_q, scanr_step]
+            rw [scanr_foldr_state]
+      rw [h_scanr_q_M1]
+
+      have h_scanr_q_M2 : M2.scanr_q q2 (M1.f (M1.δ (M1.scanr_reduce_q q1 w) a) :: M1.scanr_q q1 w) =
+            M2.f (M2.δ (M2.scanr_reduce_q q2 (M1.scanr_q q1 w)) (M1.f (M1.δ (M1.scanr_reduce_q q1 w) a))) :: M2.scanr_q q2 (M1.scanr_q q1 w) := by
+            simp [scanr_q, scanr_step]
+            rw [scanr_foldr_state]
+      rw [h_scanr_q_M2]
+
+      have h_scanr_q_comp : (M2 ⊚ M1).scanr_q (q1, q2) (a::w) =
+            (M2 ⊚ M1).f ((M2 ⊚ M1).δ ((M2 ⊚ M1).scanr_reduce_q (q1, q2) w) a) :: (M2 ⊚ M1).scanr_q (q1, q2) w := by
+            simp [scanr_q, scanr_step]
+            rw [scanr_foldr_state]
+      rw [h_scanr_q_comp]
+
+      rw [ih]
+      rw [comp_scanr_reduce_q]
+      simp [comp]
+
   @[simp]
   theorem compose_spec2 [Alphabet α] [Alphabet β] [Alphabet γ]
     (M2: FiniteStateTransducer β γ) (M1: FiniteStateTransducer α β):
       (M2 ⊚ M1).scanr = M2.scanr ∘ M1.scanr := by
-    sorry
+    funext w
+    simp [scanr]
+    apply comp_scanr_q
+
 
   theorem compose_spec [Alphabet α] [Alphabet β] [Alphabet γ]
     (M1: FiniteStateTransducer β γ) (M2: FiniteStateTransducer α β):
       (M1 ⊚ M2).advice.f = M1.advice.f ∘ M2.advice.f := by
-    sorry
+    funext w
+    simp [compose_spec2, FiniteStateTransducer.advice]
 
+
+
+  section M_map
+
+    def M_map [Alphabet α] [Alphabet β] (f: α → β): FiniteStateTransducer α β := {
+      Q := α
+      δ := fun _ a => a
+      q0 := default
+      f := f
+    }
+
+    @[simp]
+    lemma M_map_scanr [Alphabet α] [Alphabet β] (f: α → β): (M_map f).scanr = List.map f := by
+      funext w
+      simp [scanr, scanr_q, M_map]
+      induction w with
+      | nil => rfl
+      | cons a w ih =>
+        simp [scanr_step]
+        rw [ih]
+
+  end M_map
+
+
+  def map_output [Alphabet α] [Alphabet β] [Alphabet γ]
+      (M: FiniteStateTransducer α β) (g: β → γ): FiniteStateTransducer α γ := M_map g ⊚ M
+
+  @[simp]
+  lemma map_output_spec [Alphabet α] [Alphabet β] [Alphabet γ] {M: FiniteStateTransducer α β} {g: β → γ}:
+      (M.map_output g).scanr = (List.map g) ∘ M.scanr := by simp [FiniteStateTransducer.map_output]
 
 
 end FiniteStateTransducer
