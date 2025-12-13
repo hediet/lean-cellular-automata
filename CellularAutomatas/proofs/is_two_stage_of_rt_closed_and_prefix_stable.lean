@@ -32,6 +32,13 @@ Let L ∈ Ls1.
 -/
 
 
+@[simp]
+lemma adv_empty (adv : Advice α Γ) : adv.f [] = [] := by
+  have h_len : (adv.f []).length = 0 := by simp [adv.len]
+  rw [List.length_eq_zero_iff.mp h_len]
+
+
+
 lemma tCellAutomatonWithAdvice.elem_L_iff {O: tCellAutomatonWithAdvice α}:
   w ∈ O.L ↔ (O.adv.annotate w) ∈ O.C.L := by rfl
 
@@ -241,6 +248,7 @@ lemma scan_temporal_get_last {C: tCellAutomaton α} (w : Word α):
 
 def O (adv : Advice α Γ) (c : Γ) : tCellAutomatonWithAdvice α := ⟨Γ, adv, AdvCALc c⟩
 
+
 lemma O_L_eq_L_c (adv : Advice α Γ) (c : Γ) : (O adv c).L = L_c adv c := by
   ext w
   simp [tCellAutomatonWithAdvice.L, L_c]
@@ -259,12 +267,6 @@ lemma O_L_eq_L_c (adv : Advice α Γ) (c : Γ) : (O adv c).L = L_c adv c := by
     have h_ann_nil : w_ann = [] := by simp [w_ann, Advice.annotate, zip_words]
     rw [h_ann_nil]
     simp
-    have h_f_nil : adv.f [] = [] := by
-      have := adv.len []
-      simp at this
-      exact this
-    rw [h_f_nil]
-    simp
   | succ n =>
     have h_ann_len_pos : w_ann.length > 0 := by rw [h_len, h_w]; simp
     have h_idx : w_ann.length - 1 < w_ann.length := by omega
@@ -279,7 +281,6 @@ lemma O_L_eq_L_c (adv : Advice α Γ) (c : Γ) : (O adv c).L = L_c adv c := by
 
     have h_snd : (w_ann[w_ann.length - 1]).2 = (adv.f w)[(adv.f w).length - 1] := by
       simp [w_ann, Advice.annotate, zip_words]
-      simp [adv.len]
 
     rw [h_snd]
 
@@ -343,7 +344,7 @@ namespace PrefixStableProof
   noncomputable def ts_adv : TwoStageAdvice α Γ := {
     C := ⟨ M_prod adv h1, t_map adv h1 ⟩
     β := Γ
-    M := id_transducer Γ
+    M := FiniteStateTransducer.M_id Γ
   }
 
   lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
@@ -371,7 +372,7 @@ namespace PrefixStableProof
     simp
 
     by_cases h_i : i < w.length
-    case neg => simp [h_i, Advice.len]
+    case neg => simp [h_i]
 
     unfold t_map
     simp

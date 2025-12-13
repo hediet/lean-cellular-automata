@@ -60,6 +60,11 @@ section Word -- MARK: Word
       i.toNat,
       by simp only [range, ge_iff_le, Set.mem_setOf_eq] at h; omega
     ⟩
+
+    def get'? (i: ℤ): Option α :=
+      if h: i ∈ w.range
+      then some (w.get' i h)
+      else none
   end Word
 
 
@@ -243,6 +248,9 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
     f: Word α → Word Γ
     len: ∀ w: Word α, (f w).length = w.length
 
+  @[simp]
+  lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv.f w).length = w.length := by
+    simp [adv.len]
 
   def zip_words {α β} (w: List α) (a: List β) := List.zipWith (·,·) w a
 
@@ -313,15 +321,19 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
     attribute [instance] FiniteStateTransducer.alphabetQ
 
     section
-      variable {M: FiniteStateTransducer α β}
+      variable (M: FiniteStateTransducer α β)
+
+      def δ?: M.Q → Option α → M.Q
+        | q, none => q
+        | q, some a => M.δ q a
 
       def scanr_step a
       | (q, w) => (M.δ q a, M.f (M.δ q a) :: w)
 
-      def scanr_q (w: Word α) (q: M.Q): Word β :=
-        (w.foldr (scanr_step) (q, [])).snd
+      def scanr_q (q: M.Q) (w: Word α): Word β :=
+        (w.foldr (M.scanr_step) (q, [])).snd
 
-      def scanr w := M.scanr_q w M.q0
+      def scanr w := M.scanr_q M.q0 w
 
       def scanr_reduce_q (q: M.Q): Word α → M.Q
       | []   => q
@@ -338,7 +350,7 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
 
       @[simp, grind =]
       lemma scanr_q_len (q: M.Q) (w: List α):
-        (M.scanr_q w q).length = w.length := by
+        (M.scanr_q q w).length = w.length := by
         unfold scanr_q
         induction w with
         | nil => simp []
@@ -349,13 +361,6 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
       lemma scanr_len (w: List α): (M.scanr w).length = w.length := by
         simp [scanr, scanr_q_len]
     end
-
-    def compose (M1: FiniteStateTransducer β γ) (M2: FiniteStateTransducer α β): FiniteStateTransducer α γ := {
-      Q := M2.Q × M1.Q
-      δ := fun (q1, q2) a => (M2.δ q1 a, M1.δ q2 (M2.f (M2.δ q1 a)))
-      q0 := (M2.q0, M1.q0)
-      f := fun (_q1, q2) => M1.f q2
-    }
 
   end FiniteStateTransducer
 
@@ -374,7 +379,7 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
     f: Q → Γ
 
 
-  def CArtTransducer.advice [Alphabet α] [Alphabet Γ] {adv: CArtTransducer α Γ}: Advice α Γ :=
+  def CArtTransducer.advice [Alphabet α] [Alphabet Γ] (adv: CArtTransducer α Γ): Advice α Γ :=
     ⟨
       fun w => (adv.scan_temporal_rt w).map adv.f,
       by grind [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal]
