@@ -85,8 +85,7 @@ namespace backwards_fsm
     simp [M_join, List.zip_eq_zipWith, Word.fst, Word.snd]
 
 
-  def M' := (M_join (M_projQ e.M)).map_output e.C.f
-
+  def M' := M_map e.C.f ⊚ (M_join (M_projQ e.M))
 
 
 
@@ -304,7 +303,6 @@ variable [Alphabet Γ'] [Alphabet Γ] [Alphabet α]
 lemma TwoStageAdvice.advice_eq (t: TwoStageAdvice α Γ):
     t.advice.f = (t.M.advice.f) ∘ (t.C.advice.f) := by
     simp [TwoStageAdvice.advice]
-
 
 theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
     (compose_two_stage a1 a2).advice.f = a2.advice.f ∘ a1.advice.f := by
