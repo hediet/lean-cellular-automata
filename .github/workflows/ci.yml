@@ -30,4 +30,4 @@ jobs:
         run: lake exe cache get
 
       - name: Verify proofs
-        run: lake build verify_proofs
+        run: lake build
