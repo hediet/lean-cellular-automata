@@ -11,152 +11,46 @@ import Mathlib.Data.Option.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
-import CellularAutomatas.proofs.scan_lemmas
-import CellularAutomatas.proofs.fsm_lemmas
+import CellularAutomatas.proofs.cart_transducers
+import CellularAutomatas.proofs.finite_state_transducers
+import CellularAutomatas.proofs.lcellautomaton
+import Mathlib.Tactic
 
 
+open FiniteStateTransducer (M_map M_prod M_projQ M_id)
+
+section
+
+  variable {α β: Type} (w: Word (α × β))
+
+  def Word.fst: Word α := w.map Prod.fst
+  def Word.snd: Word β := w.map Prod.snd
+
+  @[simp] lemma Word.fst_len: (w.fst).length = w.length := by simp [Word.fst]
+  @[simp] lemma Word.snd_len: (w.snd).length = w.length := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst (t: Fin w.length): (w.fst)[t] = w[t].1 := by simp [Word.fst]
+  @[simp] lemma Word.get_snd (t: Fin w.length): (w.snd)[t] = w[t].2 := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst_ (t: ℕ) (h: t < (w.fst).length): (w.fst)[t]'h = ((w[t]'(by simp_all)).1) := by simp [Word.fst]
+  @[simp] lemma Word.get_snd_ (t: ℕ) (h: t < (w.snd).length): (w.snd)[t]'h = ((w[t]'(by simp_all)).2) := by simp [Word.snd]
+end
 
 
-
-  def TwoStageAdvice.cart_transducer (adv: TwoStageAdvice α Γ): CArtTransducer α adv.C.Q :=
-    {
-      toLCellAutomaton := adv.C,
-      f := id
-    }
-
-
-
-
-namespace compress_by_3
-  variable [Alphabet α] [Alphabet β]
-
-  theorem compression1 (C: LCellAutomaton α):
-      ∃ (C': LCellAutomaton α) (f: C'.Q → Option (C.Q × C.Q × C.Q)),
-      ∀ w (t: ℕ) (p: ℤ),
-        f (C'.comp w t p) =
-          if p >= 0 ∧ t = 2 * p + 3
-          then
-            let i := (3 * p).natAbs;
-            some (C.comp w (i) 0, C.comp w (i + 1) 0, C.comp w (i + 2) 0)
-          else none
-          := by
-    sorry
-
-end compress_by_3
-
-
-
-namespace speedup_factor_k
-  variable [Alphabet α] [Alphabet β]
-
-  variable {Q: Type}
-  variable (k: ℕ) [NeZero k]
-
-  def compress (c: Config Q): Config (Fin k → Q) :=
-    fun p => fun j => c (p * k + j)
-
-  def decompress (c: Config (Fin k → Q)): Config Q :=
-    fun p => c (p / k) (Fin.intCast p)
-
-  lemma compress_decompress (c: Config Q):
-      decompress k (compress k c) = c := by
-        sorry
-
-  variable (C: CellAutomaton)
-
-  def Q' := Fin k → C.Q
-
-  def local_config (a b c: Q' k C): Config C.Q :=
-      fun p => if p <= -k then a (Fin.intCast 0) else
-        if p < 0 then a (Fin.intCast (p + k))
-        else if p < k then b (Fin.intCast p)
-        else c (Fin.intCast (p - k))
-
-  def to_local_config (c: Config (C.Q)): Q' k C := fun j => c j
-
-  def C': CellAutomaton := {
-    Q := Fin k → C.Q
-    δ := fun a b c =>
-      to_local_config k C (C.nextt (local_config k C (a) (b) (c)) k)
-  }
-
-
-
-  lemma compression_k_step (c: Config C.Q):
-      (C' k C).next (compress k c) = compress k (C.nextt c k) :=
-        sorry
-
-  theorem spec (c: Config C.Q):
-      ∀ t, (C' k C).nextt (compress k c) t = compress k (C.nextt c (k * t)) :=
-        sorry
-
-end speedup_factor_k
-
-
-
-namespace simulation
-  structure Params where
-    C_inr: CellAutomaton
-    C_ctl: CellAutomaton
-    f: C_ctl.Q → Option C_inr.Q
-
-  variable (e: Params)
-
-  structure Q1 where
-    state: e.C_ctl.Q
-    counter: Fin 3
-
-  def C': CellAutomaton := {
-    Q := Option (Q1 e × e.C_inr.Q)
-    δ := fun a b c =>
-      match (a, b, c) with
-      | (some qa, some qb, some qc) =>
-        if qb.counter = 2
-        then sorry
-        else some {
-          state := qb.state
-          counter := Fin.succ 0
-        }
-      | _ => none
-    decQ := sorry
-    finQ := sorry
-  }
-
-  variable (c_ctl: Config e.C_ctl.Q)
-  variable (c_inr: Config e.C_inr.Q)
-  variable (h_CM: ∀ (t: ℕ) (p: ℤ),
-    e.f (e.C_ctl.nextt c_ctl t p) =
-      if t = 3 + 2 * p.natAbs then some (c_inr p)
-      else none
-  )
-
-  def to_C'Q: e.C_ctl.Q → (C' e).Q := sorry
-  def to_CinrQ: (C' e).Q → e.C_inr.Q := sorry
-
-  theorem spec: ∀ (t: ℕ) (p: ℤ),
-    let c' := (to_C'Q e) ∘ c_ctl
-    let proj := to_CinrQ e;
-    let C' := C' e
-    proj (C'.nextt c' (3 + 3 * t) 0) = e.C_inr.nextt c_inr t 0 := by
-      sorry
-
-end simulation
-
-
-
-
-
-
+@[simp] lemma LCellAutomaton.scan_temporal_rt_len {C: LCellAutomaton α} {w: Word α}:
+    (C.scan_temporal_rt w).length = w.length := by
+  simp [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal, List.length_map]
 
 namespace backwards_fsm
-  variable [Alphabet α] [Alphabet β] [Alphabet γ]
+
+
 
   structure Params where
     {α: Type}
-    [inst1: Alphabet α]
     {β: Type}
-    [inst2: Alphabet β]
     {γ: Type}
+    [inst1: Alphabet α]
+    [inst2: Alphabet β]
     [inst3: Alphabet γ]
     M: FiniteStateTransducer α β
     C: CArtTransducer β γ
@@ -166,117 +60,277 @@ namespace backwards_fsm
   instance (e : Params) : Alphabet e.γ := e.inst3
   variable (e: Params)
 
-  instance [Alphabet α] [Alphabet β] : Alphabet (α × β) := inferInstance
-  instance [Alphabet α] [Alphabet β] : Alphabet (α → β) := sorry
 
   def C': CArtTransducer e.α (e.α × (e.M.Q → e.C.Q)) := {
-    Q := e.α × (e.M.Q → e.C.Q)
-    decQ := sorry
-    finQ := sorry
-    δ := sorry
-    border := sorry
-    embed := sorry
-    f := id
+    Q := Option e.α × (e.M.Q → e.C.Q)
+    δ := fun (al, fl) (ac, fc) (ar, fr) =>
+      (ar, fun q =>
+        let q_right := e.M.δ? q ac
+        let q_center := e.M.δ? q_right al
+        e.C.δ (fl q_center) (fc q_right) (fr q)
+      )
+    border := (none, fun _ => e.C.border)
+    embed := fun a => (some a, fun q => e.C.embed (e.M.f q))
+    f := fun (a, f) => (a.getD default, f)
   }
 
-  def M' : FiniteStateTransducer (e.α × (e.M.Q → e.C.Q)) e.γ := {
-    Q := (e.M.Q × e.C.Q)
-    δ := fun (m_q, _) (a, f) => (e.M.δ m_q a, f (e.M.δ m_q a)),
-    q0 := (e.M.q0, e.C.border),
-    f := fun (_, c_q) => e.C.f c_q,
-  }
+  def M_join [Alphabet γ] [Alphabet α] [Alphabet β] (M: FiniteStateTransducer α β): FiniteStateTransducer (α × (β → γ)) γ :=
+    (M_map (fun (a, b) => a b)) ⊚ (M_prod
+      (M_map Prod.snd)
+      (M ⊚ M_map Prod.fst)
+    )
 
-  theorem spec: (M' e).advice.f ∘ (C' e).advice.f = e.C.advice.f ∘ e.M.advice.f :=
-    by
-    sorry
+  lemma M_join_spec (γ) [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer α β) (w: Word (α × (β → γ))):
+    (M_join M).scanr w = List.zipWith (· ·) w.snd (M.scanr w.fst) := by
+    simp [M_join, List.zip_eq_zipWith, Word.fst, Word.snd]
 
-  theorem spec2
-    {α: Type}
-    [inst1: Alphabet α]
-    {β: Type}
-    [inst2: Alphabet β]
-    {γ: Type}
-    [inst3: Alphabet γ]
+
+  def M' := (M_join (M_projQ e.M)).map_output e.C.f
+
+
+
+
+  lemma scanr_get'_eq2 {M: FiniteStateTransducer α β} (w: Word α) (i: ℤ) (h: i ∈ w.range):
+    (M.scanr w).get' i (by simp [h]) = M.f (M.scanr_reduce w⟦(i).toNat..*⟧) := by
+    rw [Word.get']
+    have x := M.scanr_get'_eq2 w ⟨ i.toNat, by simp_all [Word.range] ⟩
+    simp at x
+    simp [←x]
+
+
+
+  lemma inv (w: Word e.α) (t: ℕ) (p: ℤ):
+      let c' := (C' e).comp w t p
+      let q := e.M.scanr_reduce w⟦(p+t).toNat..*⟧
+      c'.2 q = (e.C.comp (e.M.scanr w) t p)
+      ∧ c'.1 = w.get'? (p + t) := by
+    induction t generalizing p with
+    | zero =>
+      rw [LCellAutomaton.comp_zero]
+      rw [LCellAutomaton.comp_zero]
+
+
+      set c' := (C' e).embed_word w p with h_c'
+      set c := e.C.embed_word (e.M.scanr w) p with h_c
+      set q := e.M.scanr_reduce w⟦(p + (0: ℕ)).toNat..*⟧ with h_q
+
+      constructor
+
+      case zero.right =>
+        unfold Word.get'?
+        rw [h_c']
+        simp [C', LCellAutomaton.embed_word]
+        grind
+
+      rw [h_c']
+      rw [h_c]
+      simp [C', LCellAutomaton.embed_word]
+
+      by_cases h: p ∈ w.range
+      case neg => simp [h]
+      case pos =>
+        simp [h]
+        rw [scanr_get'_eq2]
+        grind
+        simp [h]
+
+
+
+    | succ t ih =>
+
+      set c' := (C' e).comp w (t + 1) p with h_c'
+      set q := e.M.scanr_reduce w⟦(p + ↑(t+1)).toNat..*⟧ with h_q
+
+      rw [LCellAutomaton.comp_succ_eq] at h_c'
+      set c'_t := ((C' e).comp w t) with h_c'_t
+
+      unfold CellAutomaton.next at h_c'
+
+      set ql := (c'_t (p - 1)) with h_ql
+      set qc := (c'_t p) with h_qc
+      set qr := (c'_t (p + 1)) with h_qr
+
+      have x: c'.2 q =
+          let q_right := e.M.δ? q qc.1
+          let q_center := e.M.δ? q_right ql.1
+          e.C.δ (ql.2 q_center) (qc.2 q_right) (qr.2 q)
+        := by simp [h_ql, h_qc, h_qr, h_c', C']
+
+
+      simp [C'] at h_c'
+      rw [h_c']
+      simp
+
+      set q1 := q
+      set q2 := e.M.δ? q1 qc.1
+      set q3 := e.M.δ? q2 ql.1
+      set q4 := e.M.δ? q2 ql.1
+
+
+      have ih_p1 := ih (p + 1)
+
+      have h1 : qr.2 q1 = e.C.comp (e.M.scanr w) t (p + 1) ∧ qr.1 = (w.get'? (p + ↑t + 1)) := by
+        have q_eq : e.M.scanr_reduce w⟦(p + 1 + ↑t).toNat..*⟧ = q := by
+          have : (p + 1 + ↑t).toNat = (p + (↑t + 1)).toNat := by omega
+          simp [this, q]
+        have ih_p1 := ih (p + 1)
+        rw [q_eq] at ih_p1
+        simp at ih_p1
+        simp [h_qr, ih_p1]
+        grind
+
+      have h2_1 : qc.1 = (w.get'? (p + ↑t)) := by
+        have ih_0 := ih p
+        simp [ih_0, qc]
+
+      have q2_eq : q2 = e.M.scanr_reduce w⟦(p + ↑t).toNat..*⟧ := by
+        simp [q2, h_q]
+        conv =>
+          rhs
+          rw [FiniteStateTransducer.scanr_reduce'?]
+        simp [h2_1]
+        grind
+
+      have h2 : (qc.2 q2) = e.C.comp (e.M.scanr w) t p := by
+        have ih_0 := ih p
+        simp [ih_0, q2_eq, qc]
+
+
+      have h3_1 : ql.1 = (w.get'? (p + ↑t - 1)) := by
+        have ih_m1 := ih (p - 1)
+        grind
+
+      have h3 : (ql.2 q3) = e.C.comp (e.M.scanr w) t (p - 1) := by
+        have ih_m1 := ih (p - 1)
+
+        have q3_eq : q3 = e.M.scanr_reduce w⟦(p - 1 + ↑t).toNat..*⟧ := by
+          simp [q3, q2_eq]
+          conv =>
+            rhs
+            rw [FiniteStateTransducer.scanr_reduce'?]
+          grind
+        simp [h_ql, ih_m1, q3_eq]
+
+      constructor
+      simp [h1.1, h2, h3, q3, LCellAutomaton.comp_succ_eq, CellAutomaton.next]
+      grind
+
+  @[simp]
+  lemma Word.get'_eq (w: Word α) (i: ℕ) (h: i < w.length) (val: α): (w.get'? ↑i).getD val = w[i] := by
+    simp [Word.get'?]
+    by_cases h: ↑↑i ∈ w.range
+    simp [h, Word.get']
+    simp_all [Word.range]
+
+
+  lemma spec_: (M' e).advice.f ∘ (C' e).advice.f = e.C.advice.f ∘ e.M.advice.f := by
+      funext w
+
+      unfold FiniteStateTransducer.advice
+      simp [CArtTransducer.advice, M']
+      congr
+      rw [M_join_spec]
+      set c' := (C' e).scan_temporal_rt w with eq_c'
+
+      have : Word.fst (List.map (C' e).f c') = w := by
+        apply List.ext_getElem
+        · simp [c']
+        intro i h1 h2
+        have inv := (inv e w i 0).2
+        simp
+        simp [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal] at eq_c'
+        simp [eq_c']
+        conv =>
+          pattern (C' e).f
+          simp [C']
+        simp [inv]
+        rw [Word.get'_eq]
+
+      rw [this]
+
+      have : Word.snd (List.map (C' e).f c') = c'.snd := by
+        unfold C'
+        simp [Word.snd]
+
+      rw [this]
+
+      apply List.ext_getElem
+      · simp [eq_c']
+        rw [LCellAutomaton.scan_temporal_rt_len]
+
+
+      intro i h1 h2
+
+      simp
+
+      have x := (inv e w i 0).1
+      simp at x
+
+      simp [eq_c']
+
+      unfold LCellAutomaton.scan_temporal_rt LCellAutomaton.scan_temporal
+      simp [x]
+
+
+  theorem spec {α β γ: Type} [Alphabet α] [Alphabet β] [Alphabet γ]
     {M: FiniteStateTransducer α β}
     {C: CArtTransducer β γ}:
-      C.advice.f ∘ M.advice.f = let e: Params := ⟨M, C⟩; (M' e).advice.f ∘ (C' e).advice.f :=
-    by
-    sorry
+      C.advice.f ∘ M.advice.f = (M' ⟨M, C⟩).advice.f ∘ (C' ⟨M, C⟩).advice.f :=
+    by grind only [!spec_]
 
 end backwards_fsm
 
 
 
-def CArtTransducer.compose [Alphabet α] [Alphabet β] [Alphabet γ] (t1: CArtTransducer β γ) (t2: CArtTransducer α β):
-    CArtTransducer α γ :=
-  sorry
+def TwoStageAdvice.from_transducers {β: Type} [Alphabet α] [Alphabet β] [Alphabet γ]
+    (M: FiniteStateTransducer β γ) (C: CArtTransducer α β): TwoStageAdvice α γ :=
+  { C := C, β := β, M := M }
 
-def TwoStageAdvice.from_transducers [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β): TwoStageAdvice α γ :=
-  TwoStageAdvice.mk C.toLCellAutomaton (M.map_input C.f)
-
-lemma TwoStageAdvice.from_transducers_eq [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β):
-    (TwoStageAdvice.from_transducers M C).advice.f = M.advice.f ∘ C.advice.f := by
-  sorry
+lemma TwoStageAdvice.from_transducers_eq {β: Type} [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β):
+    (TwoStageAdvice.from_transducers M C).advice.f = M.advice.f ∘ C.advice.f := by rfl
 
 
 def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a1: TwoStageAdvice α Γ1) (a2: TwoStageAdvice Γ1 Γ):
     TwoStageAdvice α Γ :=
-  let e := backwards_fsm.Params.mk a1.M a2.cart_transducer
-  let ca_new := (backwards_fsm.C' e).compose a1.cart_transducer
-  let fsm_new := a2.M.compose (backwards_fsm.M' e)
+  let e := backwards_fsm.Params.mk a1.M a2.C
+  let ca_new := (backwards_fsm.C' e).compose a1.C
+  let fsm_new := a2.M ⊚ backwards_fsm.M' e
   TwoStageAdvice.from_transducers fsm_new ca_new
-
-
-
-lemma foo1 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice α Γ1) (t2: TwoStageAdvice Γ1 Γ):
-    (t2.advice.f) ∘ (t1.advice.f) = (t2.M.advice.f) ∘ (t2.cart_transducer.advice.f) ∘ (t1.M.advice.f) ∘ (t1.cart_transducer.advice.f) := by
-    sorry
-
-
-lemma foo2 [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (t1: TwoStageAdvice α Γ1) (t2: TwoStageAdvice Γ1 Γ):
-    let e := backwards_fsm.Params.mk t1.M t2.cart_transducer
-    (t2.M.advice.f) ∘ (t2.cart_transducer.advice.f) ∘ (t1.M.advice.f) ∘ (t1.cart_transducer.advice.f) =
-    (t2.M.advice.f) ∘ (backwards_fsm.M' e).advice.f ∘ (backwards_fsm.C' e).advice.f ∘ (t1.cart_transducer.advice.f)  := by
-    sorry
 
 
 
 variable [Alphabet Γ'] [Alphabet Γ] [Alphabet α]
 
-lemma TwoStageAdvice.advice_eq2 (t: TwoStageAdvice α Γ):
-    t.advice.f = (t.M.advice.f) ∘ (t.cart_transducer.advice.f) := by
-    sorry
-
-
 lemma TwoStageAdvice.advice_eq (t: TwoStageAdvice α Γ):
-    t.advice.f = (t.M.advice.f) ∘ (t.cart_transducer.advice.f) := by
-    sorry
+    t.advice.f = (t.M.advice.f) ∘ (t.C.advice.f) := by
+    simp [TwoStageAdvice.advice]
+
 
 theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
     (compose_two_stage a1 a2).advice.f = a2.advice.f ∘ a1.advice.f := by
 
   rw [Eq.comm]
 
-  let e := backwards_fsm.Params.mk a1.M a2.cart_transducer
-  let ca_new := (backwards_fsm.C' e).compose a1.cart_transducer
-  let fsm_new := a2.M.compose (backwards_fsm.M' e)
+  let e := backwards_fsm.Params.mk a1.M a2.C
+  let ca_new := (backwards_fsm.C' e).compose a1.C
+  let fsm_new := a2.M ⊚ backwards_fsm.M' e
 
   calc (a2.advice.f ∘ a1.advice.f)
-    _ = (a2.M.advice.f ∘ a2.cart_transducer.advice.f) ∘ (a1.M.advice.f ∘ a1.cart_transducer.advice.f) := by
+    _ = (a2.M.advice.f ∘ a2.C.advice.f) ∘ (a1.M.advice.f ∘ a1.C.advice.f) := by
       simp [TwoStageAdvice.advice_eq]
 
-    _ = a2.M.advice.f ∘ (a2.cart_transducer.advice.f ∘ a1.M.advice.f) ∘ a1.cart_transducer.advice.f := by
+    _ = a2.M.advice.f ∘ (a2.C.advice.f ∘ a1.M.advice.f) ∘ a1.C.advice.f := by
       simp [Function.comp_assoc]
 
-    _ = a2.M.advice.f ∘ ((backwards_fsm.M' e).advice.f ∘ (backwards_fsm.C' e).advice.f) ∘ a1.cart_transducer.advice.f := by
-      simp [backwards_fsm.spec2, e]
+    _ = a2.M.advice.f ∘ ((backwards_fsm.M' e).advice.f ∘ (backwards_fsm.C' e).advice.f) ∘ a1.C.advice.f := by
+      simp [backwards_fsm.spec, e]
 
-    _ = (a2.M.advice.f ∘ (backwards_fsm.M' e).advice.f) ∘ ((backwards_fsm.C' e).advice.f ∘ a1.cart_transducer.advice.f) := by
+    _ = (a2.M.advice.f ∘ (backwards_fsm.M' e).advice.f) ∘ ((backwards_fsm.C' e).advice.f ∘ a1.C.advice.f) := by
       simp [Function.comp_assoc]
 
     _ = fsm_new.advice.f ∘ ca_new.advice.f := by
-      simp [ca_new, fsm_new]
-      sorry
+      rw [CArtTransducer.compose_spec]
+      rw [FiniteStateTransducer.compose_spec]
 
-    _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice.f := by sorry
-    _ = (compose_two_stage a1 a2).advice.f := by sorry
+    _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice.f := by simp [TwoStageAdvice.from_transducers_eq]
+    _ = (compose_two_stage a1 a2).advice.f := by rfl

@@ -18,14 +18,14 @@ def CA_rt_to_TwoStage (C: CA_rt α): TwoStageAdvice α Bool :=
   {
     β := Bool
     C := ⟨ C.val.toLCellAutomaton, C.val.F_pos ⟩
-    M := id_transducer Bool
+    M := FiniteStateTransducer.M_id Bool
   }
 
 lemma CA_rt_to_TwoStage_eq (C: CA_rt α):
   (CA_rt_to_TwoStage C).advice.f = (Advice.prefixes_in_L C.val.L).f := by
   funext w
   simp only [CA_rt_to_TwoStage, TwoStageAdvice.advice, Advice.prefixes_in_L]
-  rw [id_transducer_advice_eq]
+  rw [FiniteStateTransducer.M_id_advice_eq]
   apply List.ext_getElem
   · simp [Advice.len]
   · intro i h1 h2
