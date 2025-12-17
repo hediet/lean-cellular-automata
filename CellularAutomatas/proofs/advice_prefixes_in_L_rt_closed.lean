@@ -10,6 +10,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
 
+namespace CellularAutomatas
 variable {α: Type} [Alphabet α]
 variable {Γ: Type} [Alphabet Γ]
 

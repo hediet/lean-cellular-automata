@@ -14,6 +14,7 @@ import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 import CellularAutomatas.proofs.scan_lemmas
 import CellularAutomatas.proofs.fsm_lemmas
 
+namespace CellularAutomatas
 variable [Alphabet α] [Alphabet Γ]
 
 axiom advice_two_stage_closed_under_composition [Alphabet Γ'] (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):

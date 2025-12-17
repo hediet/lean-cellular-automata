@@ -16,6 +16,7 @@ import CellularAutomatas.proofs.finite_state_transducers
 import CellularAutomatas.proofs.lcellautomaton
 import Mathlib.Tactic
 
+namespace CellularAutomatas
 
 open FiniteStateTransducer (M_map M_prod M_projQ M_id)
 

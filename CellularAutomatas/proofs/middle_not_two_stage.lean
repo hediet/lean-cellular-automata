@@ -11,6 +11,7 @@ import Mathlib.Data.List.Range
 import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
 
+namespace CellularAutomatas
 open TwoStageAdvice
 open Classical
 

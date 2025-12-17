@@ -9,6 +9,7 @@ import Lean
 import CellularAutomatas.all
 import CellularAutomatas.scripts.VerifyConfig
 
+namespace CellularAutomatas
 open Lean Elab Command
 
 partial def collectAxiomsFromEnv (env : Environment) (constName : Name) : NameSet :=

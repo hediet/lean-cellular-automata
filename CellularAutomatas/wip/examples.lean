@@ -10,6 +10,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import CellularAutomatas.defs
 
+namespace CellularAutomatas
 
 
 section myexample

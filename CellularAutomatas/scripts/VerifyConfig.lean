@@ -4,6 +4,7 @@
 -/
 import Lean
 
+namespace CellularAutomatas
 open Lean
 
 /-- Allowed axioms configuration per module -/
