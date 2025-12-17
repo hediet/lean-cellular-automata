@@ -1,6 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.find_some
 
+namespace CellularAutomatas
 @[simp]
 lemma nextt0 (C: CellAutomaton) (c: Config C.Q): C.nextt c 0 = c := by simp [CellAutomaton.nextt, apply_iterated]
 

@@ -1,7 +1,6 @@
 import CellularAutomatas.defs
-import CellularAutomatas.common
-import CellularAutomatas.find_some
-import CellularAutomatas.ca
+import CellularAutomatas.proofs.common
+import CellularAutomatas.proofs.lcellautomaton
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Find
@@ -10,14 +9,12 @@ import Mathlib.Computability.Language
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 
-variable [Alphabet]
+namespace CellularAutomatas
 
-private def φ {C: LCellAutomaton} (b: C.Q) (c: C.Q) := (b, fun a => C.δ a b c)
 
-private def Sp (C: LCellAutomaton): LCellAutomaton := by
-  have x := C.inv_fin_q
-  have y := C.inv_decidable_q
+private def φ {C: LCellAutomaton α} (b: C.Q) (c: C.Q) := (b, fun a => C.δ a b c)
 
+private def Sp (C: LCellAutomaton α): LCellAutomaton α := by
   exact {
     Q := C.Q × (C.Q → C.Q)
     δ := fun a b c => φ (C.δ a.fst b.fst c.fst) (c.snd b.fst),
@@ -25,11 +22,13 @@ private def Sp (C: LCellAutomaton): LCellAutomaton := by
     embed := fun a => φ (C.embed a) C.border,
   }
 
-private lemma sp_border_passive {C: LCellAutomaton} (h: C.passive C.border):
-  (Sp C).passive (Sp C).border := by
-  simp [CellAutomaton.passive, CellAutomaton.passive_set, Sp, φ, CellAutomaton.δ_of_passive h]
+variable {C: LCellAutomaton α}
 
-private lemma fst_prop {w} {C: LCellAutomaton} (t: ℕ) (i: ℤ):
+private lemma sp_border_quiescent (h: C.quiescent C.border):
+  (Sp C).quiescent (Sp C).border := by
+  simp [CellAutomaton.quiescent, CellAutomaton.quiescent_set, Sp, φ, CellAutomaton.δ_of_quiescent h]
+
+private lemma fst_prop {w} (t: ℕ) (i: ℤ):
     ((Sp C).comp w t i).fst = C.comp w t i := by
   induction t generalizing i with
   | zero =>
@@ -41,7 +40,7 @@ private lemma fst_prop {w} {C: LCellAutomaton} (t: ℕ) (i: ℤ):
     conv in (Sp C).δ => simp [Sp, φ]
     simp [ih, CellAutomaton.next]
 
-private lemma snd_prop (C: LCellAutomaton) (w) (t: ℕ) (i: ℤ) (h: t + i + 1 ≥ w.length):
+private lemma snd_prop (w) (t: ℕ) (i: ℤ) (h: t + i + 1 ≥ w.length):
   ((Sp C).comp w t i).snd (C.comp w t (i - 1)) = C.comp w (t + 1) i := by
 
   induction t generalizing i with
@@ -79,16 +78,16 @@ private lemma snd_prop (C: LCellAutomaton) (w) (t: ℕ) (i: ℤ) (h: t + i + 1 �
     rw [←LCellAutomaton.comp_succ_eq]
 
 
-
-theorem one_step_speed_up_dead (C: tCellAutomaton.{u}) (h1: ∀ n, C.t n ≥ n) (h2: C.dead C.border):
-  ∃ C': tCellAutomaton.{u},
+/-
+theorem one_step_speed_up_dead (C: tCellAutomaton α) (h1: ∀ n, C.t n ≥ n) (h2: C.dead C.border):
+  ∃ C': tCellAutomaton α,
     C'.L = C.L
     ∧ C'.t = Nat.pred ∘ C.t := by
 
   set LC' := Sp C.toLCellAutomaton
   set t' := Nat.pred ∘ C.t
-  set F_pos' := { s: LC'.Q | s.snd (C.border) ∈ C.F_pos }
-  set C' := tCellAutomaton.mk LC' t' F_pos'
+  set F_pos' := fun (s: LC'.Q) => C.F_pos (s.snd (C.border))
+  set C' := tCellAutomaton.mk LC' t' (fun n => 0) F_pos'
 
   use C'
   constructor
@@ -102,21 +101,21 @@ theorem one_step_speed_up_dead (C: tCellAutomaton.{u}) (h1: ∀ n, C.t n ≥ n) 
     have : w = [] := by simp_all only [ge_iff_le, List.length_eq_zero_iff, n]
     rw [this]
 
-    have border_passive := (CellAutomaton.passive_of_dead h2)
+    have border_quiescent := (CellAutomaton.quiescent_of_dead h2)
 
-    have C'_border_passive: C'.passive C'.border := by
-       have := sp_border_passive border_passive
-       simp [C', LC', this]
+    have C'_border_quiescent: C'.quiescent C'.border := by
+      have := sp_border_quiescent border_quiescent
+      simp [C', LC', this]
 
-    simp [tCellAutomaton.accepts_empty_iff_of_passive border_passive,
-      tCellAutomaton.accepts_empty_iff_of_passive C'_border_passive]
-    simp [F_pos', C', LC', Sp, φ, CellAutomaton.δ_of_passive border_passive]
+    simp [tCellAutomaton.accepts_empty_iff_of_quiescent border_quiescent,
+      tCellAutomaton.accepts_empty_iff_of_quiescent C'_border_quiescent]
+    simp [F_pos', C', LC', Sp, φ, CellAutomaton.δ_of_quiescent border_quiescent]
 
 
   case h.left.h.succ n' =>
 
-  suffices : ((C'.comp w (t' n) 0).snd C.border ∈ C.F_pos) ↔ C.comp w (C.t n) 0 ∈ C.F_pos
-  · have r : (C'.comp w (t' n) 0).snd C.border ∈ C.F_pos ↔ (C'.comp w (t' n) 0) ∈ C'.F_pos := by simp [C', F_pos']
+  suffices h : ((C'.comp w (t' n) 0).snd C.border ∈ C.F_pos) ↔ C.comp w (C.t n) 0 ∈ C.F_pos by
+    have r : (C'.comp w (t' n) 0).snd C.border ∈ C.F_pos ↔ (C'.comp w (t' n) 0) ∈ C'.F_pos := by simp [C', F_pos']
     rw [r] at this
     simp [n] at this
     simp [tCellAutomaton.L]
@@ -143,8 +142,8 @@ theorem one_step_speed_up_dead (C: tCellAutomaton.{u}) (h1: ∀ n, C.t n ≥ n) 
   have : w.length = n := by simp [n]
   rw [this]
 
-  suffices : ↑(C.t n - 1) + 0 + (1: ℤ) = C.t n;
-  · rw [this]
+  suffices ↑(C.t n - 1) + 0 + (1: ℤ) = C.t n by
+    rw [this]
     simp [h1]
 
   have : C.t n ≥ 1 := by
@@ -153,6 +152,7 @@ theorem one_step_speed_up_dead (C: tCellAutomaton.{u}) (h1: ∀ n, C.t n ≥ n) 
     omega
 
   omega
+
 
 
 theorem one_step_speed_up (C: tCellAutomaton.{u}) (h1: ∃ c, ∀ n, C.t n ≤ c * (n + 1)) (h2: ∀ n, C.t n ≥ n):
@@ -227,3 +227,4 @@ theorem const_speed_up: ℒ ({ C ∈ tCellAutomatons.{u} | ∃ k, ∀ n, C.t n =
       intro n
       simp [hL1.2 n]
     · simp_all
+-/

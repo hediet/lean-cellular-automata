@@ -16,6 +16,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
 
+namespace CellularAutomatas
 
 --def extend_word_to k: Word α → Word (Option α)
 /-

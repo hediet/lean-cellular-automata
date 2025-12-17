@@ -11,7 +11,9 @@ import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 
-namespace results
+open CellularAutomatas
+
+namespace CellularAutomatas.results
 
 variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]

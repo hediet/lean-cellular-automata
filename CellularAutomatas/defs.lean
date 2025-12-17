@@ -8,6 +8,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 
+namespace CellularAutomatas
 
 section Utilities -- MARK: Utilities
 

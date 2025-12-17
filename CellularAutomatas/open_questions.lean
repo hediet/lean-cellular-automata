@@ -8,6 +8,7 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 
+namespace CellularAutomatas
 variable {α: Type} [Alphabet α]
 variable {Γ: Type} [Alphabet Γ]
 

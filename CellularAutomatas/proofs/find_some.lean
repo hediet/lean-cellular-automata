@@ -1,5 +1,6 @@
 import CellularAutomatas.defs
 
+namespace CellularAutomatas
 @[simp]
 lemma apply_iterated_zero {α: Type u} {m: α} {f: α -> α}: apply_iterated f m 0 = m := by
   simp [apply_iterated]
