@@ -1,4 +1,27 @@
 {
-    "editor.indentSize": 2,
-    "editor.detectIndentation": false
+	"editor.indentSize": 2,
+	"editor.detectIndentation": false,
+	"coloredBackground.pools": {
+		"myPool": ["#001eff0b", "#ffdd0012", "#00ffee0c"]
+	},
+	"coloredBackground.rules": [
+		{
+			"path": ".*\\.lean",
+			"startLine": "structure (.*) where",
+			"endLine": "end \\1",
+			"poolId": "myPool"
+		},
+		{
+			"path": ".*\\.lean2",
+			"startLine": "namespace (.*)",
+			"endLine": "end \\1",
+			"poolId": "myPool"
+		},
+		{
+			"path": ".*\\.lean",
+			"startLine": "section (.*)",
+			"endLine": "end \\1",
+			"poolId": "myPool"
+		}
+	]
 }
