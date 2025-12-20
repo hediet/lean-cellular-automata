@@ -302,6 +302,7 @@ namespace SpeedupKx
         rw [intCastEq]
         rw [Int.emod_def]
         grind only
+
   end
 
   variable (e: SpeedupKx)
@@ -330,15 +331,84 @@ namespace SpeedupKx
         sorry
 
   theorem spec {c: Config e.α}:
-      ∀ t, e.C.comp (compress e.k c) t = compress e.k (e.C_orig.comp c (e.k * t)) :=
+      ∀ t, e.C.comp ⦋(compress e.k c)⦌ t = compress e.k (e.C_orig.comp c (e.k * t)) :=
         sorry
 
-  theorem spec1 {c: Config e.α} {t1: ℕ} {t2: Fin e.k}:
-      e.C.trace (compress e.k c) t1 t2 = e.C_orig.trace c (e.k * t1 + t2) :=
-        sorry
+  theorem spec1 {c: Config e.α} {t1: ℕ}:
+      e.C.trace (compress e.k c) t1 0 = e.C_orig.trace c (e.k * t1) := by
+    unfold trace
+    rw [e.spec]
+    unfold compress
+    simp
 
 end SpeedupKx
 
+structure TraceKx where
+  k: ℕ
+  α: Type
+  β: Type
+  [_inst_α: Alphabet α]
+  [_inst_β: Alphabet β]
+  [inst: NeZero k]
+  C_orig: CellAutomaton α β
+
+namespace TraceKx
+
+  variable (e: TraceKx)
+
+  -- cell at (t + k,p) has state of orig at (t + {0,1,...,k-1}, p)
+  def C: CellAutomaton e.α (Fin e.k → e.β？) := sorry
+
+  theorem spec (c: Config e.α) (t1: ℕ) (p: ℤ):
+      e.C.comp c (t1 + e.k) p =
+        fun (t2: Fin e.k) => some (e.C_orig.comp c (t1 + t2) p)
+      := by
+    sorry
+end TraceKx
+
+structure SpeedupAndTraceKx where
+  k: ℕ
+  α: Type
+  β: Type
+  [_inst_α: Alphabet α]
+  [_inst_β: Alphabet β]
+  [inst: NeZero k]
+  C_orig: CellAutomaton α β
+
+attribute [instance] SpeedupAndTraceKx.inst
+attribute [instance] SpeedupAndTraceKx._inst_α
+attribute [instance] SpeedupAndTraceKx._inst_β
+
+namespace SpeedupAndTraceKx
+
+  variable (e: SpeedupAndTraceKx)
+
+  def T: TraceKx := {
+    k := e.k
+    α := e.α
+    β := e.β
+    C_orig := e.C_orig
+  }
+  example : (CellAutomaton e.α (Fin e.k → e.β？)) := e.T.C
+
+  def SP: SpeedupKx := {
+    k := e.k
+    α := e.α
+    β := Fin e.k → e.β？
+    C_orig := e.T.C
+  }
+  example : (CellAutomaton (Fin e.k → e.α) (Fin e.k → (Fin e.k → e.β？))) := e.SP.C
+
+  def C: CellAutomaton (Fin e.k → e.α) (Fin e.k → e.β) :=
+    e.SP.C.map_project (fun f => fun i => (f 0 i).getD default)
+
+  theorem spec1 {c: Config e.α} {t1: ℕ} {t2: Fin e.k}:
+      e.C.trace (SpeedupKx.compress e.k c) (t1 + 1) t2 = e.C_orig.trace c (e.k * t1 + t2) := by
+        unfold trace
+        sorry
+
+
+end SpeedupAndTraceKx
 
 
 structure SimFromΛ where
@@ -519,7 +589,7 @@ namespace Composition
   }
   example : (CellAutomaton e.α？ e.β？³？) := e.C1_Λ.C
 
-  abbrev C2_3x: SpeedupKx := {
+  abbrev C2_3x: SpeedupAndTraceKx := {
     k := 3
     α := e.β？
     β := e.γ
@@ -543,7 +613,7 @@ namespace Composition
 
   abbrev C_exact: SpeedupKSteps := {
     C_orig := e.C_decomp.C
-    k := 3
+    k := 6
   }
 
   def C : (CellAutomaton e.α？ e.γ) := e.C_exact.C
@@ -574,17 +644,22 @@ namespace Composition
     calc (e.C.trace_rt w)[t]
       = (e.C.trace w) t := by simp [trace_rt]
       _ = e.C_exact.C.trace ⟬w⟭ t := by rfl
-      _ = e.C_decomp.C.trace ⟬w⟭ (t + 3) := by rw [SpeedupKSteps.spec]
-      _ = e.C_decomp.C.trace ⟬w⟭ (3 * t₁ + t₂ + 3) := by rw [ht]
-      _ = (e.C_sim.C.trace ⟬w⟭ (3 * t₁ + 3)).get (sorry) t₂ := by
+      _ = e.C_decomp.C.trace ⟬w⟭ (t + 6) := by rw [SpeedupKSteps.spec]
+      _ = e.C_decomp.C.trace ⟬w⟭ (t + 3 + 3) := by simp
+      _ = e.C_decomp.C.trace ⟬w⟭ (3 * t₁ + t₂ + 3 + 3) := by rw [ht]
+      _ = e.C_decomp.C.trace ⟬w⟭ (3 * (t₁ + 1) + t₂ + 3) := by ring_nf
+      _ = (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get (sorry) t₂ := by
         rw [DecompressTriple.spec2]
         change ∀ (t : ℕ), ((e.C_sim.C.trace ⟬w⟭ (t + 3))).isSome == ((t - 3) % 3 == 0)
 
         sorry
 
-      _ = (some (e.C2_3x.C.trace c_inr t₁)).get (sorry) t₂ := by rw [e.C_sim.spec _ _ x]
-      _ = e.C2_3x.C.trace c_inr t₁ t₂ := by rfl
-      _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by rw [SpeedupKx.spec1]
+      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (sorry) t₂ := by rw [e.C_sim.spec _ _ x]
+      _ = e.C2_3x.C.trace c_inr (t₁ + 1) t₂ := by rfl
+      _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by
+
+        rw [SpeedupAndTraceKx.spec1]
+
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ t := by rw [ht]
       _ = (e.C2.trace_rt (e.C1.trace_rt w))[t] := by simp [trace_rt]
 
