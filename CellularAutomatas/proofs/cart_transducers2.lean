@@ -405,6 +405,7 @@ namespace SpeedupAndTraceKx
   theorem spec1 {c: Config e.α} {t1: ℕ} {t2: Fin e.k}:
       e.C.trace (SpeedupKx.compress e.k c) (t1 + 1) t2 = e.C_orig.trace c (e.k * t1 + t2) := by
         unfold trace
+        -- should be trivial
         sorry
 
 
@@ -500,9 +501,9 @@ namespace DecompressTriple
 
 
   theorem spec2 (c: Config e.α) (h: e.h_cond c k) (t1: ℕ) (t2: Fin 3):
-        e.C.trace c (3 * t1 + t2 + k) =
-          (e.C_orig.trace c (3 * t1 + k)).get (sorry) t2
+        e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (sorry) t2
       := by
+    -- should be simple to prove from spec
     sorry
 
 end DecompressTriple
@@ -527,10 +528,10 @@ namespace SpeedupKSteps
 
   def C: CellAutomaton e.α？ e.β := sorry
 
-  lemma spec1 (w: Word e.α): e.C.trace w w.length = e.C_orig.trace w (w.length + e.k) := sorry
+  lemma inv (w: Word e.α): e.C.trace w w.length = e.C_orig.trace w (w.length + e.k) := sorry
 
   theorem spec (w: Word e.α): e.C.trace w i = e.C_orig.trace w (i + e.k) := sorry
-    -- e.C.trace w i = e.C.trace w[0..i] w[0..i].length
+    -- Use inv with "e.C.trace w i = e.C.trace w[0..i] w[0..i].length"
 
 end SpeedupKSteps
 
@@ -547,11 +548,15 @@ structure AddBorder where
 namespace AddBorder
   variable (e: AddBorder)
 
+  def b := e.C_orig.embed none
+
   def C: CellAutomaton e.α？ e.β？ := {
-    Q := e.C_orig.Q
-    δ := e.C_orig.δ
-    embed := e.C_orig.embed
-    project := sorry
+    Q := e.C_orig.Q？
+    δ := fun
+    | _, _, none => none
+    | a, b, c => some (e.C_orig.δ (a.getD e.b) (b.getD e.b) (c.getD e.b))
+    embed a := Option.map e.C_orig.embed (some a)
+    project := Option.map e.C_orig.project
   }
 
   theorem spec (w: Word e.α): e.C.trace w = config_to_trace (e.C_orig.trace_rt w) := by
