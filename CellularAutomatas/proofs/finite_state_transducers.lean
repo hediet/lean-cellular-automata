@@ -6,6 +6,65 @@ import Mathlib.Tactic.Linarith
 namespace CellularAutomatas
 
 
+
+
+section
+
+  variable {α β: Type} (w: Word (α × β))
+
+  def Word.fst: Word α := w.map Prod.fst
+  def Word.snd: Word β := w.map Prod.snd
+
+  @[simp] lemma Word.fst_len: (w.fst).length = w.length := by simp [Word.fst]
+  @[simp] lemma Word.snd_len: (w.snd).length = w.length := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst (t: Fin w.length): (w.fst)[t] = w[t].1 := by simp [Word.fst]
+  @[simp] lemma Word.get_snd (t: Fin w.length): (w.snd)[t] = w[t].2 := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst_ (t: ℕ) (h: t < (w.fst).length): (w.fst)[t]'h = ((w[t]'(by simp_all)).1) := by simp [Word.fst]
+  @[simp] lemma Word.get_snd_ (t: ℕ) (h: t < (w.snd).length): (w.snd)[t]'h = ((w[t]'(by simp_all)).2) := by simp [Word.snd]
+
+  @[simp] lemma Word.fst_empty: @Word.fst α β [] = [] := by simp [Word.fst]
+  @[simp] lemma Word.snd_empty: @Word.snd α β [] = [] := by simp [Word.snd]
+
+  @[simp] lemma Word.cons_fst (a: α × β) (w: Word (α × β)): Word.fst (a :: w) = a.1 :: (Word.fst w) := by simp [Word.fst]
+  @[simp] lemma Word.cons_snd (a: α × β) (w: Word (α × β)): Word.snd (a :: w) = a.2 :: (Word.snd w) := by simp [Word.snd]
+
+  @[simp] lemma Word.zip_fst (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).fst = w1 := by
+    induction w1 generalizing w2 with
+    | nil =>
+      cases w2
+      · rfl
+      · contradiction
+    | cons a w1 ih =>
+      cases w2 with
+      | nil => contradiction
+      | cons b w2 =>
+        simp [zip_words, Word.cons_fst]
+        simp at h
+        specialize ih w2 h
+        simp [zip_words] at ih
+        exact ih
+
+  @[simp] lemma Word.zip_snd (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).snd = w2 := by
+    induction w1 generalizing w2 with
+    | nil =>
+      cases w2
+      · rfl
+      · contradiction
+    | cons a w1 ih =>
+      cases w2 with
+      | nil => contradiction
+      | cons b w2 =>
+        simp [zip_words, Word.cons_snd]
+        simp at h
+        specialize ih w2 h
+        simp [zip_words] at ih
+        exact ih
+
+end
+
+
 namespace FiniteStateTransducer
   section
 
@@ -231,31 +290,33 @@ namespace FiniteStateTransducer
   end M_projQ
 
 
+
   section M_prod
 
 
-    def M_prod [Alphabet α] (M1: FiniteStateTransducer α β1) (M2: FiniteStateTransducer α β2):
-        FiniteStateTransducer α (β1 × β2) :=
+    def M_prod [Alphabet α1] [Alphabet α2] (M1: FiniteStateTransducer α1 β1) (M2: FiniteStateTransducer α2 β2):
+        FiniteStateTransducer (α1 × α2) (β1 × β2) :=
       {
         Q := M1.Q × M2.Q
-        δ := fun (m_q, c_q) a => (M1.δ m_q a, M2.δ c_q a)
+        δ := fun (m_q, c_q) (a1, a2) => (M1.δ m_q a1, M2.δ c_q a2)
         q0 := (M1.q0, M2.q0)
         f := fun (m_q, c_q) => (M1.f m_q, M2.f c_q)
       }
 
-    private lemma m_prod_scanr_reduce_q [Alphabet α] {M1: FiniteStateTransducer α β1} {M2: FiniteStateTransducer α β2}
-        (q1: M1.Q) (q2: M2.Q) (w: Word α):
-        (M_prod M1 M2).scanr_reduce_q (q1, q2) w = (M1.scanr_reduce_q q1 w, M2.scanr_reduce_q q2 w) := by
+    private lemma m_prod_scanr_reduce_q [Alphabet α1] [Alphabet α2] {M1: FiniteStateTransducer α1 β1} {M2: FiniteStateTransducer α2 β2}
+        (q1: M1.Q) (q2: M2.Q) (w: Word (α1 × α2)):
+        (M_prod M1 M2).scanr_reduce_q (q1, q2) w = (M1.scanr_reduce_q q1 w.fst, M2.scanr_reduce_q q2 w.snd) := by
       induction w with
       | nil => simp [scanr_reduce_q]
       | cons a w ih =>
-        simp only [scanr_reduce_q]
+        rw [scanr_reduce_q]
         rw [ih]
-        simp [M_prod]
+        simp [M_prod, scanr_reduce_q]
+
 
     @[simp]
-    lemma M_prod_spec [Alphabet α] {M1: FiniteStateTransducer α β1} {M2: FiniteStateTransducer α β2}:
-        (M_prod M1 M2).scanr = fun w => List.zip (M1.scanr w) (M2.scanr w) := by
+    lemma M_prod_spec [Alphabet α1] [Alphabet α2] {M1: FiniteStateTransducer α1 β1} {M2: FiniteStateTransducer α2 β2}:
+        (M_prod M1 M2).scanr = fun w => List.zip (M1.scanr w.fst) (M2.scanr w.snd) := by
       funext M2X
       induction M2X with
       | nil => simp [scanr, scanr_q]
@@ -264,8 +325,12 @@ namespace FiniteStateTransducer
         rw [ih]
         simp only [scanr_reduce]
         rw [show (M_prod M1 M2).q0 = (M1.q0, M2.q0) from rfl]
-        rw [m_prod_scanr_reduce_q]
+        simp [m_prod_scanr_reduce_q]
+        simp [scanr_cons]
         simp [M_prod]
+        simp [scanr_reduce]
+
+    infixr:90 " ⨂ "  => M_prod
 
   end M_prod
 
@@ -279,7 +344,7 @@ namespace FiniteStateTransducer
 
   infixr:90 " ⊚ "  => comp
 
-  lemma comp_scanr_reduce_q [Alphabet α] [Alphabet β] [Alphabet γ]
+  lemma comp_scanr_reduce_q
       {M2: FiniteStateTransducer β γ} {M1: FiniteStateTransducer α β}
       (q1: M1.Q) (q2: M2.Q) (w: Word α):
       (M2 ⊚ M1).scanr_reduce_q (q1, q2) w = (M1.scanr_reduce_q q1 w, M2.scanr_reduce_q q2 (M1.scanr_q q1 w)) := by
@@ -295,7 +360,7 @@ namespace FiniteStateTransducer
       rw [h_scanr_q]
       simp [scanr_reduce_q]
 
-  lemma comp_scanr_q [Alphabet α] [Alphabet β] [Alphabet γ]
+  lemma comp_scanr_q
       {M2: FiniteStateTransducer β γ} {M1: FiniteStateTransducer α β}
       (q1: M1.Q) (q2: M2.Q) (w: Word α):
       (M2 ⊚ M1).scanr_q (q1, q2) w = M2.scanr_q q2 (M1.scanr_q q1 w) := by
@@ -324,7 +389,7 @@ namespace FiniteStateTransducer
       simp [comp]
 
   @[simp]
-  theorem compose_spec2 [Alphabet α] [Alphabet β] [Alphabet γ]
+  theorem compose_spec2
     (M2: FiniteStateTransducer β γ) (M1: FiniteStateTransducer α β):
       (M2 ⊚ M1).scanr = M2.scanr ∘ M1.scanr := by
     funext w
@@ -340,9 +405,11 @@ namespace FiniteStateTransducer
 
 
 
+
+
   section M_map
 
-    def M_map [Alphabet α] [Alphabet β] (f: α → β): FiniteStateTransducer α β := {
+    def M_map [Alphabet α] (f: α → β): FiniteStateTransducer α β := {
       Q := α
       δ := fun _ a => a
       q0 := default
@@ -350,7 +417,7 @@ namespace FiniteStateTransducer
     }
 
     @[simp]
-    lemma M_map_scanr [Alphabet α] [Alphabet β] (f: α → β): (M_map f).scanr = List.map f := by
+    lemma M_map_scanr [Alphabet α] (f: α → β): (M_map f).scanr = List.map f := by
       funext w
       simp [scanr, scanr_q, M_map]
       induction w with
@@ -369,5 +436,19 @@ namespace FiniteStateTransducer
   lemma map_output_spec [Alphabet α] [Alphabet β] [Alphabet γ] {M: FiniteStateTransducer α β} {g: β → γ}:
       (M.map_output g).scanr = (List.map g) ∘ M.scanr := by simp [FiniteStateTransducer.map_output]
 
+
+  def M_prod2 [Alphabet α] (M1: FiniteStateTransducer α β1) (M2: FiniteStateTransducer α β2):
+      FiniteStateTransducer α (β1 × β2) := (M_prod M1 M2) ⊚ (M_map fun a => (a, a))
+
+  @[simp]
+  lemma zip_with_eq: List.map (fun a => (a, a)) w = w ⨂ w := by simp [zip_words]
+
+  @[simp]
+  lemma M_prod2_spec [Alphabet α] {M1: FiniteStateTransducer α β1} {M2: FiniteStateTransducer α β2}:
+      (M_prod2 M1 M2).scanr = fun w => List.zip (M1.scanr w) (M2.scanr w) := by
+      funext w
+      simp [M_prod2]
+
+  infixr:90 " ⨂₂ "  => M_prod2
 
 end FiniteStateTransducer

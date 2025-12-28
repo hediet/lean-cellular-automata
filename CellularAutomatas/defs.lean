@@ -1,55 +1,49 @@
-import Mathlib.Data.Set.Basic
+import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Find
+import Mathlib.Data.Int.Cast.Basic
+import Mathlib.Data.Fintype.Option
+import Mathlib.Tactic.Ring
+import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Pi
-import Mathlib.Computability.Language
-import Mathlib.Data.Set.Lattice
-import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
+import Mathlib.Tactic.Linarith
+import Mathlib.Data.Set.Basic
+import Mathlib.Data.Set.Lattice
+import Mathlib.Computability.Language
 
 namespace CellularAutomatas
 
-section Utilities -- MARK: Utilities
+notation:max t "？" => Option t
+infix:50 " ⨉ " => Prod
 
-  noncomputable def min_nat (set: Set ℕ) :=
-    let _dec := Classical.dec;
-    if h: ∃ n, n ∈ set
-    then some (Nat.find h)
-    else none
-
-  def apply_iterated (f: α → α) (a: α) (k: ℕ) := Nat.iterate f k a
-
-end Utilities
-
-
-
-section Word -- MARK: Word
+section Alphabet
 
   class Alphabet (α: Type) where
-    [dec: DecidableEq α]
-    [fin: Fintype α]
-    [inh: Inhabited α]
+      [dec: DecidableEq α]
+      [fin: Fintype α]
+      [inh: Inhabited α]
 
   attribute [instance] Alphabet.dec Alphabet.fin Alphabet.inh
 
   instance (α: Type) [DecidableEq α] [Fintype α] [Inhabited α]: Alphabet α := {}
-
   instance AlphabetUnit : Alphabet Unit := {}
   instance AlphabetBool : Alphabet Bool := {}
   instance ProductAlphabet {α β: Type} [Alphabet α] [Alphabet β] : Alphabet (α × β) := {}
   instance FunctionAlphabet {α β: Type} [Alphabet α] [Alphabet β] : Alphabet (α → β) := {}
 
-  infix:50 " ⨉ " => Prod
+end Alphabet
 
+section Word
 
-  abbrev Word (α: Type u) := List α
+  abbrev Word (α: Type*) := List α
+
+  notation:max w "⟦" a ".." b "⟧" => List.extract w a b
+  notation:max w "⟦" a "..*⟧" => List.drop a w
 
   namespace Word
-    notation:max w "⟦" a ".." b "⟧" => List.extract w a b
-    notation:max w "⟦" a "..*⟧" => List.drop a w
-
-    variable {α: Type u} (w: Word α)
+    variable {α: Type} (w: Word α)
 
     def range: Set ℤ := { i: ℤ | i ≥ 0 ∧ i < w.length }
 
@@ -68,136 +62,184 @@ section Word -- MARK: Word
       else none
   end Word
 
-
 end Word
 
+section CellAutomaton
 
-
-section LanguageDefinitions -- MARK: LanguageDefinitions
-
-  class DefinesLanguage (CA) (α: outParam (Type)) where
-    L: CA -> Language α
-
-
-  variable {CA: Type*} [Alphabet α]
-
-  def ℒ [d: DefinesLanguage CA α] (s: (Set CA)): Set (Language α) :=
-      fun L => ∃ ca: CA, ca ∈ s ∧ L = DefinesLanguage.L ca
-
-
-end LanguageDefinitions
-
-
-
-section CellAutomaton -- MARK: CellAutomaton
-
-  structure CellAutomaton where
+  structure CellAutomaton (α β: Type) where
     Q: Type
     [alphabetQ: Alphabet Q]
     δ: Q → Q → Q → Q
+    embed: α → Q
+    project: Q → β
 
   attribute [instance] CellAutomaton.alphabetQ
 
-
-  def Config (Q: Type*) := ℤ → Q
-
-  variable (C: CellAutomaton)
+  def Config (α: Type) := ℤ → α
+  def Trace (α: Type) := ℕ → α
 
   namespace CellAutomaton
 
-    def next (c: Config C.Q): Config C.Q :=
+    def embed_config {α β: Type} {C: CellAutomaton α β} (c: Config α) : Config C.Q :=
+      fun p => C.embed (c p)
+
+    notation "⦋" w "⦌"  => embed_config w
+
+    instance {C: CellAutomaton α β} : Coe (Config α) (Config C.Q) := ⟨embed_config⟩
+
+
+    def project_config {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Config β :=
+      fun p => C.project (c p)
+
+
+    def next {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Config C.Q :=
       fun p => C.δ (c (p - 1)) (c p) (c (p + 1))
 
-    def nextt: Config C.Q → ℕ → Config C.Q := apply_iterated C.next
+    def nextt {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Trace (Config C.Q) :=
+      fun t => Nat.iterate (C.next) t c
 
 
-    /-- A set is quiescent if every element stays the same when it is just surrounded by other elements from the set. -/
-    def quiescent_set (Q: Set C.Q) := ∀ (a b c: Q), C.δ a b c = b
+    @[simp]
+    lemma nextt_zero {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): C.nextt c 0 = c := rfl
 
-    /-- A state is quiescent if it stays the same when it is just surrounded by itself. -/
-    def quiescent (q: C.Q) := C.quiescent_set { q }
+    @[simp]
+    lemma nextt_succ {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ): C.nextt c (t + 1) = C.next (C.nextt c t) := by
+      simp [nextt, Function.iterate_succ_apply']
 
-    /-- A set state is closed if no matter what, cells having such a state remain in that set. -/
-    def delta_closed_set (Q: Set C.Q) := ∀ a (b: Q) c, C.δ a b c ∈ Q
-    /-- A state is dead if no matter what, it doesn't change. -/
-    def dead (q: C.Q) := C.delta_closed_set {q}
 
-    def left_independent := ∀ (q1 q2 q3 q1'), C.δ q1 q2 q3 = C.δ q1' q2 q3
-    def right_independent := ∀ (q1 q2 q3 q3'), C.δ q1 q2 q3 = C.δ q1 q2 q3'
+    section
+      variable {α β: Type} (C: CellAutomaton α β)
 
-    /-- A state is initial if it cannot be created -/
-    def initial (q: C.Q) := ∀ a b c, C.δ a b c = q → b = q
+      def comp (c: Config C.Q): Trace (Config β) :=
+        C.project_config ∘ C.nextt c
+
+      def trace (c: Config α): Trace β :=
+        (C.comp c · 0)
+
+    end
+
+    def map_project {α β γ: Type} (C: CellAutomaton α β) (f: β → γ): CellAutomaton α γ :=
+      {
+        Q := C.Q
+        δ := C.δ
+        embed := C.embed
+        project := f ∘ C.project
+      }
+
+    @[simp]
+    lemma map_project_nextt {α β γ: Type} (C: CellAutomaton α β) (f: β → γ) (c: Config C.Q) (t: ℕ):
+      (C.map_project f).nextt c t = C.nextt c t := by rfl
+
+    section states
+
+      variable (C: CellAutomaton α β)
+
+      /-- A set is quiescent if every element stays the same when it is just surrounded by other elements from the set. -/
+      def quiescent_set (Q: Set C.Q) := ∀ (a b c: Q), C.δ a b c = b
+
+      /-- A state is quiescent if it stays the same when it is just surrounded by itself. -/
+      def quiescent (q: C.Q) := C.quiescent_set { q }
+
+      /-- A set state is closed if no matter what, cells having such a state remain in that set. -/
+      def delta_closed_set (Q: Set C.Q) := ∀ a (b: Q) c, C.δ a b c ∈ Q
+      /-- A state is dead if no matter what, it doesn't change. -/
+      def dead (q: C.Q) := C.delta_closed_set {q}
+
+      def left_independent := ∀ (q1 q2 q3 q1'), C.δ q1 q2 q3 = C.δ q1' q2 q3
+      def right_independent := ∀ (q1 q2 q3 q3'), C.δ q1 q2 q3 = C.δ q1 q2 q3'
+
+      /-- A state is initial if it cannot be created -/
+      def initial (q: C.Q) := ∀ a b c, C.δ a b c = q → b = q
+
+    end states
 
   end CellAutomaton
-
-
-  def δδ { C: CellAutomaton } (q: C.Q) := C.δ q q q
-
-  def δδt { C: CellAutomaton } (q: C.Q) := apply_iterated δδ q
 
 end CellAutomaton
 
 
+section DefinesLanguage
 
-section LCellAutomaton -- MARK: LCellAutomaton
+  class DefinesLanguage (CA) (α: outParam (Type)) where
+    L: CA -> Language α
 
-  /--
-  A cellular automaton that can map words to a configuration.
-  This is the basis for cellular automata that can recognize languages.
-  -/
-  structure LCellAutomaton (α: Type) extends CellAutomaton where
-    embed: α → Q
-    border: Q
+  variable {T: Type*} [Alphabet α]
 
-  namespace LCellAutomaton
+  def ℒ [d: DefinesLanguage T α] (s: (Set T)): Set (Language α) :=
+      fun L => ∃ ca: T, ca ∈ s ∧ L = DefinesLanguage.L ca
 
-    variable [Alphabet α] (C: LCellAutomaton α)
+end DefinesLanguage
 
-    def embed_word (w: Word α): Config C.Q :=
-      fun p =>
-        if h: p ∈ w.range
-        then C.embed (w.get' p h)
-        else C.border
+section LCellAutomaton
 
-    /-- To compute the nth configuration of a word, we compute the nth follow configuration of the word's embedding. -/
-    def comp (w: Word α) := C.nextt (C.embed_word w)
+  abbrev LCellAutomaton (α: Type) := CellAutomaton α？ Bool
 
+  def CellAutomaton.border (C: LCellAutomaton α): C.Q := C.embed none
+  def CellAutomaton.inner (C: LCellAutomaton α) (a: α): C.Q := C.embed (some a)
 
-    def scan_temporal (t: ℕ) (p: ℤ) (w: Word α): Word C.Q :=
-      List.map (C.comp w · p) (List.range t)
+  def word_to_config {α : Type} (w : Word α) : Config α？ :=
+    fun p => if h : p ≥ 0 ∧ p < w.length then some w[p.toNat] else none
 
-    def scan_temporal_rt (w: Word α): Word C.Q :=
-      C.scan_temporal w.length 0 w
+  notation "⟬" w "⟭" => word_to_config w
 
-    /-- A state is an internal state if embedding an input does not produce it. -/
-    def internal_state (q: C.Q) := ∀ a: α, C.embed a ≠ q
+  instance : Coe (Word α) (Config α？) := ⟨word_to_config⟩
 
 
-  end LCellAutomaton
+  def embed_word {α β: Type} {C: CellAutomaton α？ β} (w: Word α): Config C.Q :=
+    word_to_config w
+
+  notation "⦋" w "⦌" => embed_word w
+
+  instance {C: CellAutomaton α？ β} : Coe (Word α) (Config C.Q) := ⟨embed_word⟩
+
+
+  def CellAutomaton.trace_rt {α β: Type} (C: CellAutomaton α？ β) (w: Word α): Word β :=
+    (List.range w.length).map (C.trace ⟬w⟭)
+
+
+  @[simp]
+  lemma embed_word_word_to_config_eq {α β: Type} {C: CellAutomaton α？ β} (w: Word α):
+      C.embed_config (word_to_config w) = ⦋w⦌ := rfl
+
+  @[simp]
+  lemma trace_rt_len {α β: Type} (C: CellAutomaton α？ β) (w: Word α):
+      (C.trace_rt w).length = w.length := by
+    simp [CellAutomaton.trace_rt]
 
 end LCellAutomaton
 
-
-
-section tCellAutomaton -- MARK: tCellAutomaton
+section tCellAutomaton
 
   structure tCellAutomaton (α: Type) extends LCellAutomaton α where
     t: ℕ → ℕ
-    p: ℕ → ℕ
-    F_pos: Q → Bool
+    p: ℕ → ℤ
 
-  def tCellAutomaton.L (C: tCellAutomaton α): Language α := fun w =>
-    (C.comp w (C.t w.length)) 0 |> C.F_pos
+  def tCellAutomata (α: Type): Set (tCellAutomaton α) := Set.univ
 
-  def tCellAutomatons (α: Type): Set (tCellAutomaton α) := Set.univ
+  def tCellAutomaton.accepts {C: tCellAutomaton α} (w: Word α): Bool :=
+    C.comp w (C.t w.length) (C.p w.length)
 
-  instance : DefinesLanguage (tCellAutomaton α) α where
-    L ca := ca.L
+  def tCellAutomaton.L {α: Type} (C: tCellAutomaton α): Language α := { w | C.accepts w }
+
+  instance [Alphabet α] : DefinesLanguage (tCellAutomaton α) α where
+    L C := C.L
 
 
-  def tCellAutomaton.similar [Alphabet α] (C1 C2: tCellAutomaton α): Prop := C1.L = C2.L ∧ C1.t = C2.t ∧ C1.p = C2.p
 
-  section
+  instance (C: tCellAutomaton α) (w: Word α) : Decidable (w ∈ C.L) := by
+    change Decidable (C.comp w (C.t w.length) (C.p w.length) = true)
+    infer_instance
+
+
+  instance (C: tCellAutomaton α) : DecidablePred C.L := by
+    intro w
+    change Decidable (w ∈ C.L)
+    infer_instance
+
+
+end tCellAutomaton
+
+section CAClasses
 
     variable (α: Type)
 
@@ -205,12 +247,12 @@ section tCellAutomaton -- MARK: tCellAutomaton
     def t_2n (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = 2 * n }
     def t_lt (S: Set (tCellAutomaton α)) := { C ∈ S | ∃ c: ℕ, ∀ n, C.t n = c * n }
 
-    def CA   := { C ∈ tCellAutomatons α | C.p = fun _ => 0 }
+    def CA   := { C ∈ tCellAutomata α | C.p = fun _ => 0 }
     def CA_rt := CA α |> t_rt α
     def CA_2n := CA α |> t_2n α
     def CA_lt := CA α |> t_lt α
 
-    def CAr  := { C ∈ tCellAutomatons α | C.p = fun n => n }
+    def CAr  := { C ∈ tCellAutomata α | C.p = fun (n: ℕ) => (n: ℤ) }
 
     def OCA  := { C ∈ CA α | C.left_independent }
     def OCA_rt := OCA α |> t_rt α
@@ -222,52 +264,32 @@ section tCellAutomaton -- MARK: tCellAutomaton
     def OCAr_2n := OCAr α |> t_2n α
     def OCAr_lt := OCAr α |> t_lt α
 
-  end
+end CAClasses
 
-end tCellAutomaton
-
-
-
-instance (C: tCellAutomaton α) (w: Word α) : Decidable (w ∈ C.L) := by
-  unfold tCellAutomaton.L
-  unfold Membership.mem
-  unfold Language.instMembershipList
-  simp [Set.Mem]
-  infer_instance
-
-
-instance (C: tCellAutomaton α) : DecidablePred C.L :=
-  fun w => by
-    unfold tCellAutomaton.L
-    infer_instance
-
-
-
-section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
+section Advice
 
   structure Advice (α: Type) (Γ: Type) where
     f: Word α → Word Γ
-    len: ∀ w: Word α, (f w).length = w.length
+    len: ∀ w: Word α, (f w).length = w.length := by simp
 
   @[simp]
   lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv.f w).length = w.length := by
     simp [adv.len]
 
-  def zip_words {α β} (w: List α) (a: List β) := List.zipWith (·,·) w a
+  def zip_words {α β} (w: List α) (a: List β): Word (α × β) := List.zipWith (·,·) w a
 
-  infixl:65 " ⊗ " => zip_words
+  infixl:65 " ⨂ " => zip_words
 
   @[app_unexpander zip_words]
   def unexpand_zip_words : Lean.PrettyPrinter.Unexpander
-  | `($_ $w $a) => `($w ⊗ $a)
+  | `($_ $w $a) => `($w ⨂ $a)
   | _ => throw ()
-
 
   namespace Advice
     section
       variable {Γ: Type} {adv: Advice α Γ}
 
-      def annotate (w: Word α): Word (α × Γ) := w ⊗ (adv.f w)
+      def annotate (w: Word α): Word (α × Γ) := w ⨂ (adv.f w)
 
       def prefix_stable: Prop :=
         ∀ w: Word α, ∀ i: ℕ,
@@ -279,7 +301,6 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
 
   end Advice
 
-
   structure tCellAutomatonWithAdvice (α: Type) where
     Γ: Type
     [alphabetΓ: Alphabet Γ]
@@ -288,8 +309,7 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
 
   attribute [instance] tCellAutomatonWithAdvice.alphabetΓ
 
-  def tCellAutomatonWithAdvice.L (C: tCellAutomatonWithAdvice α): Language α := { w | C.C.L (C.adv.annotate w) }
-
+  def tCellAutomatonWithAdvice.L (C: tCellAutomatonWithAdvice α): Language α := { w | C.C.accepts (C.adv.annotate w) }
 
   def tCellAutomatonWithAdvice.with_advice {Γ: Type} [Alphabet Γ] (S: Set (tCellAutomaton (α × Γ))) (adv: Advice α Γ)
       : Set (tCellAutomatonWithAdvice α) :=
@@ -302,14 +322,12 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
     L ca := tCellAutomatonWithAdvice.L ca
 
 
-
-
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-      ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
+    ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
 
+end Advice
 
-
-
+section FiniteStateTransducer
 
   structure FiniteStateTransducer (α: Type) (β: Type) where
       Q: Type
@@ -365,31 +383,27 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
 
   end FiniteStateTransducer
 
-
   def FiniteStateTransducer.advice [Alphabet α] [Alphabet β] (M: FiniteStateTransducer α β): Advice α β :=
     ⟨
       fun w => M.scanr w,
       by grind [FiniteStateTransducer.scanr_len]
     ⟩
 
+end FiniteStateTransducer
 
+section CArtTransducer
 
+  abbrev CArtTransducer (α β: Type) := CellAutomaton α？ β
 
-
-  structure CArtTransducer (α: Type) (Γ: Type) [Alphabet α] [Alphabet Γ] extends LCellAutomaton α where
-    f: Q → Γ
-
-
-  def CArtTransducer.advice [Alphabet α] [Alphabet Γ] (adv: CArtTransducer α Γ): Advice α Γ :=
+  def CArtTransducer.advice [Alphabet α] [Alphabet β] (C: CArtTransducer α β): Advice α β :=
     ⟨
-      fun w => (adv.scan_temporal_rt w).map adv.f,
-      by grind [LCellAutomaton.scan_temporal_rt, LCellAutomaton.scan_temporal]
+      C.trace_rt,
+      by simp [CellAutomaton.trace_rt]
     ⟩
 
+end CArtTransducer
 
-
-
-
+section TwoStageAdvice
 
   structure TwoStageAdvice (α: Type) (Γ: Type) [Alphabet α] [Alphabet Γ]  where
     β: Type
@@ -400,61 +414,39 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
   attribute [instance] TwoStageAdvice.alphabetβ
 
   namespace TwoStageAdvice
-    variable {α: Type} {Γ: Type} [Alphabet α] [Alphabet Γ] {adv: TwoStageAdvice α Γ}
+    variable {α: Type} {Γ: Type} [Alphabet α] [Alphabet Γ] (adv: TwoStageAdvice α Γ)
 
-    def advice: Advice α Γ :=
-      ⟨
-        adv.M.advice.f ∘ adv.C.advice.f,
-        by grind [Advice.len]
-      ⟩
+    def advice: Advice α Γ := { f := adv.M.scanr ∘ adv.C.trace_rt }
 
   end TwoStageAdvice
 
-
-
   def Advice.is_two_stage_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ): Prop :=
-    ∃ ts_adv: TwoStageAdvice α Γ, adv = ts_adv.advice
+    ∃ ts_adv: TwoStageAdvice α Γ, ts_adv.advice = adv
 
+end TwoStageAdvice
 
-
-
+section AdviceHelpers
 
   def Advice.prefixes_in_L (L: Language α) [h: DecidablePred L]: Advice α Bool :=
-    ⟨
-      fun w => (List.range w.length).map (fun i => decide (L (w⟦0..i+1⟧))),
-      by simp
-    ⟩
+    { f := fun w => (List.range w.length).map (fun i => decide (L (w⟦0..i+1⟧))) }
 
 
   def Advice.exp: Advice α Bool :=
-    ⟨
-      fun w => (List.range w.length).map fun i => i == 2 ^ (Nat.log2 i),
-      by simp
-    ⟩
+    { f := fun w => (List.range w.length).map fun i => i == 2 ^ (Nat.log2 i) }
 
 
 
   def Advice.from_len_marker (f: ℕ → Option ℕ): Advice α Bool :=
-    ⟨
-      fun w =>
+    { f := fun w =>
         let idx := f w.length
-        (List.range w.length).map fun i => some (i + 1) == idx,
-      by simp
-    ⟩
+        (List.range w.length).map fun i => some (i + 1) == idx
+    }
 
 
 
   def middle_idx (n: ℕ) := n / 2
 
   def Advice.middle (α): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
-
-  #guard (List.range 10).map (fun n => (n, middle_idx n)) =
-    [(0,0), (1,0), (2,1), (3,1), (4,2), (5,2), (6,3), (7,3), (8,4), (9,4)]
-
-  #guard (@Advice.middle Unit).f (List.replicate 10 ()) =
-    [false, false, false, false, true, false, false, false, false, false]
-
-
 
   -- runs the biggest value 2^k such that 2^(k+1) <= n, if such exists
   def exp_middle_idx (n: ℕ) :=
@@ -465,18 +457,9 @@ section tCellAutomatonWithAdvice -- MARK: tCellAutomatonWithAdvice
   -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
   def Advice.exp_middle (α): Advice α Bool := Advice.from_len_marker exp_middle_idx
 
-  #guard (List.range 10).map (fun n => (n, exp_middle_idx n)) =
-    [(0, none), (1, none), (2, some 1), (3, some 1), (4, some 2), (5, some 2), (6, some 2), (7, some 2), (8, some 4), (9, some 4)]
-
-  #guard (@Advice.exp_middle Unit).f (List.replicate 10 ()) =
-    [false, false, false, true, false, false, false, false, false, false]
-
-
-
   def Advice.shift_left_advice {adv: Advice α Γ} (extension: Word α): Advice α Γ :=
-    ⟨
-      fun w => (adv.f (w.append extension)).drop extension.length,
-      by simp [adv.len]
-    ⟩
+    { f := fun w => (adv.f (w.append extension)).drop extension.length }
 
-end tCellAutomatonWithAdvice
+end AdviceHelpers
+
+end CellularAutomatas
