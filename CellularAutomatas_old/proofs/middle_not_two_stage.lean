@@ -8,11 +8,8 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
 import Mathlib.Data.List.Range
-import Mathlib.Data.Finset.Range
-import Mathlib.Data.Finset.Interval
+import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.basic
-import Mathlib.Order.Interval.Finset.Nat
 
 namespace CellularAutomatas
 open TwoStageAdvice
@@ -47,6 +44,8 @@ lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
     conv in (adv.M.scanr W) => rw [h_split]
     have h_indep : W.take p.length = adv.C.advice.f p := by
       simp [W]
+      change (adv.C.advice.f (p ++ s)).take p.length = _
+      erw [CArtTransducer.scan_temporal_independence]
     rw [h_indep]
     have h_len_p : (adv.C.advice.f p).length = p.length := by simp
     conv => lhs; arg 1; rw [← h_len_p]
@@ -200,7 +199,8 @@ theorem middle_not_two_stage_advice : ¬ (Advice.middle α).is_two_stage_advice 
     have h_gen_sub : { l | ∃ s, l = rel_repr (Advice.middle α) p s } ⊆ possible_advice_prefixes adv p := by
       intro l hl
       rcases hl with ⟨s, rfl⟩
-      simp [←h_eq, two_stage_advice_in_possible]
+      rw [h_eq]
+      apply two_stage_advice_in_possible
 
     have h_S_sub_possible : S ⊆ possible_advice_prefixes adv p := by
       apply Set.Subset.trans h_S_subset h_gen_sub

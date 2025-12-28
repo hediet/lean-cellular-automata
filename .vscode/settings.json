@@ -23,5 +23,8 @@
 			"endLine": "end \\1",
 			"poolId": "myPool"
 		}
-	]
+	],
+  "lean4.input.customTranslations": {
+    "q": "？"
+  }
 }
