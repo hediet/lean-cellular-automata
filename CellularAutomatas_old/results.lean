@@ -8,7 +8,7 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
-import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 
 open CellularAutomatas

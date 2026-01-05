@@ -3,7 +3,7 @@ import CellularAutomatas.results
 import CellularAutomatas.results_unproven
 import CellularAutomatas.proofs.common
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
-import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.advice_two_stage_closed_under_composition
 import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.cart_transducers

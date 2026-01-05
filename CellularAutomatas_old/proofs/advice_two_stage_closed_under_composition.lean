@@ -9,7 +9,7 @@ import Mathlib.Data.Fintype.Prod
 import Mathlib.Data.Fintype.Option
 import Mathlib.Data.Option.Basic
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers

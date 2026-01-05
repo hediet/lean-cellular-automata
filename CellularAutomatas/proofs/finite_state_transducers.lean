@@ -2,67 +2,11 @@ import CellularAutomatas.defs
 import Mathlib.Data.List.Basic
 import Mathlib.Data.List.TakeDrop
 import Mathlib.Tactic.Linarith
+import CellularAutomatas.proofs.basic
 
 namespace CellularAutomatas
 
 
-
-
-section
-
-  variable {α β: Type} (w: Word (α × β))
-
-  def Word.fst: Word α := w.map Prod.fst
-  def Word.snd: Word β := w.map Prod.snd
-
-  @[simp] lemma Word.fst_len: (w.fst).length = w.length := by simp [Word.fst]
-  @[simp] lemma Word.snd_len: (w.snd).length = w.length := by simp [Word.snd]
-
-  @[simp] lemma Word.get_fst (t: Fin w.length): (w.fst)[t] = w[t].1 := by simp [Word.fst]
-  @[simp] lemma Word.get_snd (t: Fin w.length): (w.snd)[t] = w[t].2 := by simp [Word.snd]
-
-  @[simp] lemma Word.get_fst_ (t: ℕ) (h: t < (w.fst).length): (w.fst)[t]'h = ((w[t]'(by simp_all)).1) := by simp [Word.fst]
-  @[simp] lemma Word.get_snd_ (t: ℕ) (h: t < (w.snd).length): (w.snd)[t]'h = ((w[t]'(by simp_all)).2) := by simp [Word.snd]
-
-  @[simp] lemma Word.fst_empty: @Word.fst α β [] = [] := by simp [Word.fst]
-  @[simp] lemma Word.snd_empty: @Word.snd α β [] = [] := by simp [Word.snd]
-
-  @[simp] lemma Word.cons_fst (a: α × β) (w: Word (α × β)): Word.fst (a :: w) = a.1 :: (Word.fst w) := by simp [Word.fst]
-  @[simp] lemma Word.cons_snd (a: α × β) (w: Word (α × β)): Word.snd (a :: w) = a.2 :: (Word.snd w) := by simp [Word.snd]
-
-  @[simp] lemma Word.zip_fst (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).fst = w1 := by
-    induction w1 generalizing w2 with
-    | nil =>
-      cases w2
-      · rfl
-      · contradiction
-    | cons a w1 ih =>
-      cases w2 with
-      | nil => contradiction
-      | cons b w2 =>
-        simp [zip_words, Word.cons_fst]
-        simp at h
-        specialize ih w2 h
-        simp [zip_words] at ih
-        exact ih
-
-  @[simp] lemma Word.zip_snd (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).snd = w2 := by
-    induction w1 generalizing w2 with
-    | nil =>
-      cases w2
-      · rfl
-      · contradiction
-    | cons a w1 ih =>
-      cases w2 with
-      | nil => contradiction
-      | cons b w2 =>
-        simp [zip_words, Word.cons_snd]
-        simp at h
-        specialize ih w2 h
-        simp [zip_words] at ih
-        exact ih
-
-end
 
 
 namespace FiniteStateTransducer
@@ -226,6 +170,27 @@ namespace FiniteStateTransducer
           simp [List.drop_eq_nil_of_le h1]
           simp [List.drop_eq_nil_of_le h2]
           simp [FiniteStateTransducer.δ?]
+
+
+    @[simp]
+    lemma scanr_neq_empty {α} {M: FiniteStateTransducer α β} (w: Word α) (h: w ≠ []): (M.scanr w) ≠ [] := by
+      simp_all [List.ne_nil_iff_length_pos]
+
+    lemma getLast?_of_scanr {M: FiniteStateTransducer α β} (w: Word α) (h: w ≠ []):
+        (M.scanr w).getLast (by simp [h]) = M.f (M.δ? M.q0 (w.getLast h)) := by
+      induction w with
+      | nil => contradiction
+      | cons a w ih =>
+        by_cases h' : w = []
+        · subst h'
+          simp [scanr, scanr_q, scanr_step, FiniteStateTransducer.δ?]
+        · have hw : w ≠ [] := h'
+          simp only [scanr_cons]
+          erw [List.getLast_cons]
+          rotate_left
+          · simp [scanr_neq_empty _ hw]
+          rw [ih hw]
+          erw [List.getLast_cons]
 
   end
 

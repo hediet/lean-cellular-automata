@@ -130,6 +130,18 @@ section CellAutomaton
     lemma map_project_nextt {α β γ: Type} (C: CellAutomaton α β) (f: β → γ) (c: Config C.Q) (t: ℕ):
       (C.map_project f).nextt c t = C.nextt c t := by rfl
 
+    def map_embed {α β γ: Type} (C: CellAutomaton β γ) (f: α → β): CellAutomaton α γ :=
+      {
+        Q := C.Q
+        δ := C.δ
+        embed := C.embed ∘ f
+        project := C.project
+      }
+
+    @[simp]
+    lemma map_embed_nextt {α β γ: Type} (C: CellAutomaton β γ) (f: α → β) (c: Config C.Q) (t: ℕ):
+      (C.map_embed f).nextt c t = C.nextt c t := by rfl
+
     section states
 
       variable (C: CellAutomaton α β)
@@ -276,7 +288,8 @@ section Advice
   lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv.f w).length = w.length := by
     simp [adv.len]
 
-  def zip_words {α β} (w: List α) (a: List β): Word (α × β) := List.zipWith (·,·) w a
+  def zip_words {α β} (w: List α) (a: List β): Word (α × β) :=
+    List.zipWith (·,·) w a
 
   infixl:65 " ⨂ " => zip_words
 
@@ -285,9 +298,10 @@ section Advice
   | `($_ $w $a) => `($w ⨂ $a)
   | _ => throw ()
 
+
   namespace Advice
     section
-      variable {Γ: Type} {adv: Advice α Γ}
+      variable {Γ: Type} (adv: Advice α Γ)
 
       def annotate (w: Word α): Word (α × Γ) := w ⨂ (adv.f w)
 
@@ -311,16 +325,14 @@ section Advice
 
   def tCellAutomatonWithAdvice.L (C: tCellAutomatonWithAdvice α): Language α := { w | C.C.accepts (C.adv.annotate w) }
 
-  def tCellAutomatonWithAdvice.with_advice {Γ: Type} [Alphabet Γ] (S: Set (tCellAutomaton (α × Γ))) (adv: Advice α Γ)
-      : Set (tCellAutomatonWithAdvice α) :=
-    { tCellAutomatonWithAdvice.mk Γ adv C | C ∈ S }
+  instance {Γ: Type} [Alphabet Γ] : HAdd (tCellAutomaton (α × Γ)) (Advice α Γ) (tCellAutomatonWithAdvice α) where
+    hAdd C adv := tCellAutomatonWithAdvice.mk Γ adv C
 
   instance {Γ: Type} [Alphabet Γ] : HAdd (Set (tCellAutomaton (α × Γ))) (Advice α Γ) (Set (tCellAutomatonWithAdvice α)) where
-    hAdd S adv := tCellAutomatonWithAdvice.with_advice S adv
+    hAdd S adv := { C + adv | C ∈ S }
 
   instance [Alphabet α] : DefinesLanguage (tCellAutomatonWithAdvice α) α where
     L ca := tCellAutomatonWithAdvice.L ca
-
 
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
@@ -427,7 +439,7 @@ end TwoStageAdvice
 
 section AdviceHelpers
 
-  def Advice.prefixes_in_L (L: Language α) [h: DecidablePred L]: Advice α Bool :=
+  def Advice.prefix_mem (L: Language α) [h: DecidablePred L]: Advice α Bool :=
     { f := fun w => (List.range w.length).map (fun i => decide (L (w⟦0..i+1⟧))) }
 
 
