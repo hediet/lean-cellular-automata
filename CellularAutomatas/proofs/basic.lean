@@ -9,6 +9,16 @@ import Mathlib.Tactic.Ring
 namespace CellularAutomatas
 
 
+lemma prop_of_elem_prop_set {α} (x: α) (P: α → Prop): x ∈ { x | P x } ↔ P x := by
+  constructor
+  · intro h
+    exact h
+  · intro h
+    exact h
+
+
+
+
 private lemma list_map_congr {α β} {f g : α → β} {l : List α} (h : ∀ x ∈ l, f x = g x) : l.map f = l.map g := by
   induction l with
   | nil => rfl
@@ -91,6 +101,12 @@ theorem CArtTransducer.scan_temporal_independence [Alphabet α] [Alphabet Γ] (C
 
 open CellAutomaton
 
+
+@[simp]
+lemma comp_of_map_project {α β γ: Type} {C: CellAutomaton α β} (f: β → γ) (c: Config α):
+      (C.map_project f).comp c t i = f (C.comp c t i) := by
+  rfl
+
 @[simp]
 lemma trace_of_map_project {α β γ: Type} {C: CellAutomaton α？ β} (f: β → γ) (w: Word α):
       (C.map_project f).trace w = f ∘ (C.trace w) := by
@@ -138,9 +154,29 @@ lemma CA_rt_p (C: CA_rt α) (n: Nat) :
   unfold CA_rt CA t_rt at C
   grind
 
+
+
+def toRtCa {α} [Alphabet α] (C: CellAutomaton α？ Bool): CA_rt α :=
+  ⟨{
+    toCellAutomaton := C
+    t n := n - 1
+    p _ := 0
+  }, by simp [CA_rt, t_rt, CA, tCellAutomata]⟩
+
+@[simp]
+lemma toRtCa_spec {α} [Alphabet α] (C: CellAutomaton α？ Bool) (w: Word α):
+    (toRtCa C).val.trace_rt w = C.trace_rt w := by
+  rfl
+
+
+
 lemma CA_rt_L_iff {C: CA_rt α}:
   w ∈ C.val.L ↔ (C.val.comp w (w.length - 1)) 0 = true := by
   simp [tCellAutomaton.elem_L_iff, CA_rt_t, CA_rt_p]
+
+lemma CA_rt_L_iff2 {C: tCellAutomaton α} (h: C ∈ CA_rt α):
+  w ∈ C.L ↔ (C.comp w (w.length - 1)) 0 = true := by
+  rw [CA_rt_L_iff (C := ⟨_, h⟩)]
 
 lemma trace_L {C: CA_rt α} {w: Word α}: C.val.trace w (w.length - 1) = true ↔ w ∈ C.val.L := by
   simp [CellAutomaton.trace, CA_rt_L_iff]
@@ -158,6 +194,16 @@ lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.
     (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
   sorry
 
+lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
+    (C.val.trace_rt w)[i] = decide (w.take (i+1) ∈ C.val.L) := by
+  sorry
+
+
+lemma elemL_iff_trace_rt [Alphabet α] {C: tCellAutomaton α} (h: C ∈ CA_rt α) {w: Word α}:
+    w ∈ C.L ↔ if w = [] then [] ∈ C.L else (C.trace_rt w).getLast? = some true := by
+
+    --(C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
+  sorry
 
 
 
@@ -219,11 +265,6 @@ end id
 
 
 
-
-
-
-
-
 def ProdCA {α P γ: Type} [Alphabet P] (f: P → CellAutomaton α γ): CellAutomaton α (P → γ) := {
   Q := ∀ b: P, (f b).Q
   δ := fun qL qC qR a => (f a).δ (qL a) (qC a) (qR a)
@@ -236,8 +277,9 @@ namespace ProdCA
   variable {α P γ: Type} [Alphabet P]
   variable {f: P → CellAutomaton α γ}
 
-  lemma comp [Alphabet γ] (f: P → CellAutomaton (Option α) γ)
-      (w: Word α) (t: ℕ) (i: ℤ):
+  @[simp, grind =]
+  lemma comp [Alphabet γ] {f: P → CellAutomaton α γ}
+      (w: Config α) (t: ℕ) (i: ℤ):
       (ProdCA f).comp w t i = fun b => (f b).comp w t i := by
     unfold CellAutomaton.comp CellAutomaton.project_config
     unfold CellAutomaton.nextt
@@ -274,13 +316,19 @@ namespace ProdCA
     grind
 
   @[simp]
+  lemma zipMany_get {γ: P -> Type v} [∀ b, Inhabited (γ b)] (w_b: (b: P) → Word (γ b)) (i: ℕ) (h: i < (ProdCA.zipMany w_b).length):
+      (ProdCA.zipMany w_b)[i] = fun b => (w_b b).getD i default := by
+    simp [zipMany]
+
+
+  @[simp]
   lemma trace_rt [Alphabet γ] (f: P → CellAutomaton (Option α) γ) (w: Word α):
       (ProdCA f).trace_rt w = zipMany (fun b => (f b).trace_rt w) := by
     unfold CellAutomaton.trace_rt CellAutomaton.trace
     simp [zipMany]
+    unfold embed_word
     intro t ht
     funext b
-    rw [comp]
     grind
 
 end ProdCA
@@ -297,7 +345,14 @@ def ca_zip {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
   ).map_project (fun v => ((v 0).fst, (v 1).snd))
 
 
-infixr:90 "⨂"  => ca_zip
+infixr:90 " ⨂ "  => ca_zip
+
+@[simp]
+lemma ca_zip_comp {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
+    {C1: CellAutomaton α β1} {C2: CellAutomaton α β2} {c: Config α} {t: ℕ} {i: ℤ}:
+    (C1 ⨂ C2).comp c t i = ((C1.comp c t i), (C2.comp c t i)) := by
+  unfold ca_zip
+  simp
 
 
 
@@ -316,6 +371,7 @@ lemma ca_zip_trace_rt {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
 
 
 
+/-
 
 def word_dvd_k_ext (k: ℕ) (w_len: ℕ) := (w_len - (w_len % w_len)) % w_len
 
@@ -328,8 +384,20 @@ theorem L_in_RT_iff_L_dvd_k_in_RT [Alphabet α] (k: ℕ) (L: Language α):
     L ∈ ℒ (CA_rt α) ↔ (L_dvd_k k L) ∈ ℒ (CA_rt (Option α)) := by
   sorry
 
+-/
 
 
+
+@[simp]
+lemma map_project_comp {α β γ: Type} (C: CellAutomaton α β) (f: β → γ) (c: Config α) (t: ℕ):
+  (C.map_project f).comp c t p = f (C.comp c t p) := by rfl
+
+@[simp]
+lemma map_project_trace_rt {α β γ: Type} (C: CellAutomaton α？ β) (f: β → γ) (w: Word α):
+    (C.map_project f).trace_rt w = (C.trace_rt w).map f := by
+  apply List.ext_getElem
+  · simp
+  · simp
 
 
 
@@ -348,8 +416,7 @@ lemma LCellAutomaton.embed_word_eq (C: LCellAutomaton α) {w: Word α} {p: ℤ} 
 
 
 lemma LCellAutomaton.nextt_succ_eq (C: LCellAutomaton α) (c: Config C.Q): C.nextt c (t + 1) = C.next (C.nextt c t) := by
-  simp [CellAutomaton.nextt]
-  sorry
+  simp
 
 
 /-
@@ -365,23 +432,42 @@ lemma LCellAutomaton.comp_succ_eq (C: LCellAutomaton α): C.comp w (t + 1) = C.n
 variable [Alphabet α] [Alphabet Γ]
 
 lemma ℒ_CA_rt_iff {α} [Alphabet α] {L: Language α}: L ∈ ℒ (CA_rt α) ↔ ∃ C ∈ CA_rt α, C.L = L := by
-  simp [tCellAutomata, CA_rt, t_rt]
   unfold ℒ
-  unfold DefinesLanguage.L instDefinesLanguageTCellAutomatonOfAlphabet
-  simp
-  sorry
+  constructor
+  · rintro ⟨C, hC, rfl⟩
+    use C, hC
+    rfl
+  · rintro ⟨C, hC, rfl⟩
+    use C, hC
+    rfl
 
 
 lemma ℒ_oca_def (adv: Advice α Γ) (L: Language α):
       L ∈ ℒ (CA_rt (α × Γ) + adv) ↔ ∃ C ∈ CA_rt (α × Γ), L = { w | (w ⨂ (adv.f w)) ∈ C.L } := by
-  --simp [ℒ, tCellAutomatonWithAdvice.with_advice, tCellAutomatonWithAdvice.L, Advice.annotate]
+  unfold ℒ
+  constructor
+  · rintro ⟨ca, h_ca, rfl⟩
+    simp [HAdd.hAdd] at h_ca
+    rcases h_ca with ⟨C, hC, rfl⟩
+    use C, hC
+    rfl
+  · rintro ⟨C, hC, rfl⟩
+    use tCellAutomatonWithAdvice.mk Γ adv C
+    constructor
+    · simp [HAdd.hAdd, hC]
+    · rfl
+
+
+
+
+lemma CA_rt_subseteq_CA_rt_with_advice (adv: Advice α Γ):
+    (ℒ (CA_rt α)) ⊆ ((ℒ (CA_rt (α × Γ) + adv)): Set (Language α)) := by
   sorry
 
-lemma ℒ_tCellAutomaton_def (L: Language α):
-        L ∈ ℒ (CA_rt α) ↔ ∃ C ∈ CA_rt α, C.L = L := by
-  --simp [ℒ]
-  sorry
 
+lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
+    ℒ (CA_rt (α ⨉ Γ) + adv) = ℒ (CA_rt α) ↔ ∀ L ∈ ℒ (CA_rt (α ⨉ Γ) + adv), L ∈ ℒ (CA_rt α) := by
+  sorry
 
 
 
@@ -409,10 +495,11 @@ lemma ℒ_tCellAutomaton_def (L: Language α):
   lemma project_config_at {α β: Type} [Alphabet α] [Alphabet β] {C: CellAutomaton α？ β} (p: ℤ) {c: Config C.Q}:
     C.project_config c p = C.project (c p) := by rfl
 
-  lemma comp_eq_project_nextt {α β: Type} {C: CellAutomaton α？ β} (w: Word α) (t: ℕ):
+  lemma comp_word_eq_project_nextt {α β: Type} {C: CellAutomaton α？ β} (w: Word α) (t: ℕ):
       C.comp w t = C.project_config (C.nextt w t) := by rfl
 
-
+  lemma comp_config_eq_project_nextt {α β: Type} {C: CellAutomaton α β} (c: Config α) (t: ℕ):
+      C.comp c t = C.project_config (C.nextt c t) := by rfl
 
 
 
@@ -425,3 +512,91 @@ lemma Word.get'_eq {α} (w: Word α) (i: ℕ) (h: i < w.length) (val: α): (w.ge
   by_cases h: ↑↑i ∈ w.range
   simp [h, Word.get']
   simp_all [Word.range]
+
+
+
+@[simp]
+lemma adv_empty {α} {Γ} (adv : Advice α Γ) : adv.f [] = [] := by
+  have h_len : (adv.f []).length = 0 := by simp [adv.len]
+  simp [←List.length_eq_zero_iff]
+
+@[simp]
+lemma adv_empty_2 {α} {Γ} (adv : Advice α Γ) (w: Word α): adv.f w = [] ↔ w = [] := by
+  simp [←List.length_eq_zero_iff]
+
+@[simp]
+lemma zip_length {α β} (w1: Word α) (w2: Word β):
+    (w1 ⨂ w2).length = Nat.min w1.length w2.length := by
+  simp [zip_words]
+
+
+@[simp]
+lemma adv_cannot_empty_2 {α} {Γ} (adv : Advice α Γ) (w: Word α): adv.annotate w = [] ↔ w = [] := by
+  unfold Advice.annotate
+  simp [←List.length_eq_zero_iff]
+
+
+lemma advice_eq_iff {α} {Γ} {adv1 adv2: Advice α Γ} (h: adv1.f = adv2.f): adv1 = adv2 := by
+  cases adv1
+  cases adv2
+  simp at h
+  subst h
+  rfl
+
+
+
+section
+
+  variable {α β: Type} (w: Word (α × β))
+
+  def Word.fst: Word α := w.map Prod.fst
+  def Word.snd: Word β := w.map Prod.snd
+
+  @[simp] lemma Word.fst_len: (w.fst).length = w.length := by simp [Word.fst]
+  @[simp] lemma Word.snd_len: (w.snd).length = w.length := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst (t: Fin w.length): (w.fst)[t] = w[t].1 := by simp [Word.fst]
+  @[simp] lemma Word.get_snd (t: Fin w.length): (w.snd)[t] = w[t].2 := by simp [Word.snd]
+
+  @[simp] lemma Word.get_fst_ (t: ℕ) (h: t < (w.fst).length): (w.fst)[t]'h = ((w[t]'(by simp_all)).1) := by simp [Word.fst]
+  @[simp] lemma Word.get_snd_ (t: ℕ) (h: t < (w.snd).length): (w.snd)[t]'h = ((w[t]'(by simp_all)).2) := by simp [Word.snd]
+
+  @[simp] lemma Word.fst_empty: @Word.fst α β [] = [] := by simp [Word.fst]
+  @[simp] lemma Word.snd_empty: @Word.snd α β [] = [] := by simp [Word.snd]
+
+  @[simp] lemma Word.cons_fst (a: α × β) (w: Word (α × β)): Word.fst (a :: w) = a.1 :: (Word.fst w) := by simp [Word.fst]
+  @[simp] lemma Word.cons_snd (a: α × β) (w: Word (α × β)): Word.snd (a :: w) = a.2 :: (Word.snd w) := by simp [Word.snd]
+
+  @[simp] lemma Word.zip_fst (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).fst = w1 := by
+    induction w1 generalizing w2 with
+    | nil =>
+      cases w2
+      · rfl
+      · contradiction
+    | cons a w1 ih =>
+      cases w2 with
+      | nil => contradiction
+      | cons b w2 =>
+        simp [zip_words, Word.cons_fst]
+        simp at h
+        specialize ih w2 h
+        simp [zip_words] at ih
+        exact ih
+
+  @[simp] lemma Word.zip_snd (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).snd = w2 := by
+    induction w1 generalizing w2 with
+    | nil =>
+      cases w2
+      · rfl
+      · contradiction
+    | cons a w1 ih =>
+      cases w2 with
+      | nil => contradiction
+      | cons b w2 =>
+        simp [zip_words, Word.cons_snd]
+        simp at h
+        specialize ih w2 h
+        simp [zip_words] at ih
+        exact ih
+
+end

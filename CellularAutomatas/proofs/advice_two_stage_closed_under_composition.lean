@@ -197,7 +197,7 @@ namespace backwards_fsm
         intro t ht1 ht2
         simp [eq_c']
 
-        simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_eq_project_nextt]
+        simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
 
         have x := (inv e w t 0).2
         conv in (CellAutomaton.project (C' e)) =>
@@ -207,7 +207,7 @@ namespace backwards_fsm
 
       simp [h_w]
       simp [eq_c']
-      simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_eq_project_nextt]
+      simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
 
       congr
 
@@ -255,6 +255,7 @@ lemma TwoStageAdvice.advice_eq (t: TwoStageAdvice α Γ):
     t.advice.f = (t.M.advice.f) ∘ (t.C.advice.f) := by
     simp [TwoStageAdvice.advice, FiniteStateTransducer.advice, CArtTransducer.advice]
 
+@[simp]
 theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
     (compose_two_stage a2 a1).advice.f = a2.advice.f ∘ a1.advice.f := by
 
@@ -285,4 +286,4 @@ theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a
     _ = (compose_two_stage a2 a1).advice.f := by rfl
 
 
-infixr:90 "⊚"  => compose_two_stage
+infixr:90 " ⊚ "  => compose_two_stage

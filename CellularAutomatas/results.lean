@@ -8,7 +8,7 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
-import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 
 open CellularAutomatas
@@ -22,10 +22,10 @@ theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
   exact middle_not_two_stage_advice
 
-theorem result_advice_prefixes_in_L_is_two_stage_advice:
-    ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefixes_in_L C.L) := by
+theorem result_advice_prefix_mem_is_two_stage_advice:
+    ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
   intro C h
-  exact advice_prefixes_in_L_is_two_stage_advice ⟨ C, h ⟩
+  exact advice_prefix_mem_is_two_stage_advice ⟨ C, h ⟩
 
 theorem result_is_two_stage_of_rt_closed_and_prefix_stable:
     ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.prefix_stable → adv.is_two_stage_advice := by

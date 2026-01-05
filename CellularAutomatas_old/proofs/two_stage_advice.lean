@@ -9,7 +9,7 @@ import Mathlib.Data.Fintype.Prod
 import Mathlib.Data.Fintype.Option
 import Mathlib.Data.Option.Basic
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.advice_prefixes_in_L_rt_closed
+import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 import CellularAutomatas.proofs.scan_lemmas
 import CellularAutomatas.proofs.fsm_lemmas
@@ -89,38 +89,7 @@ lemma zip_advice_second (w: Word α) (v: Word Γ) (h: w.length = v.length):
         simp at h
         exact h
 
-lemma CA_rt_subseteq_CA_rt_with_advice (adv: Advice α Γ):
-        (ℒ (CA_rt α)) ⊆ ((ℒ (CA_rt (α × Γ) + adv)): Set (Language α)) := by
 
-    intro L hL
-    rw [ℒ_tCellAutomaton_def] at hL
-
-    obtain ⟨C, hC⟩ := hL
-
-    rw [ℒ_oca_def]
-
-    let x: ((α × Γ) → α) := Prod.fst
-    let C' := tCellAutomaton.map_alphabet C x
-    use C'
-
-    constructor
-
-    show C' ∈ CA_rt (α × Γ)
-    {
-        simp_all [CA_rt, t_rt, CA, tCellAutomatons, C', tCellAutomaton.map_alphabet]
-    }
-
-    show L = {w | w ⊗ adv.f w ∈ C'.L}
-    {
-        rw [tCellAutomaton.map_alphabet_language]
-        unfold x
-        show L = {w | List.map Prod.fst (w ⊗ adv.f w) ∈ C.L}
-        ext w
-        simp
-        rw [zip_advice_first]
-        · rw [hC.2]
-        · simp [adv.len]
-    }
 lemma rt_closed_iff (adv: Advice α Γ):
     adv.rt_closed
     ↔ ∀ C ∈ CA_rt (α × Γ), ∃ C' ∈ CA_rt α, C'.L = { w | (w ⊗ (adv.f w)) ∈ C.L }

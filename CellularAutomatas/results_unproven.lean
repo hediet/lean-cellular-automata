@@ -47,8 +47,8 @@ section advice_theorems
 
 
 
-  theorem advice_prefixes_in_L_rt_closed (C: CA_rt α):
-      (Advice.prefixes_in_L C.val.L).rt_closed := by
+  theorem advice_prefix_mem_rt_closed (C: CA_rt α):
+      (Advice.prefix_mem C.val.L).rt_closed := by
     sorry
 
   theorem advice_exp_middle_rt_closed: (Advice.exp_middle α).rt_closed := by
@@ -56,7 +56,7 @@ section advice_theorems
 
   -- For some c ∈ Γ, consider L_c = { w | adv(w)_|w| = c }. Since adv is rt_closed, we have L_c ∈ L(RT)!
   -- w[0..i+1] ∈ L_c <-> adv(w)_i = c (because adv is prefix-stable).
-  -- Because advice_prefixes_in_L is rt_closed, we have adv = advice_prefixes_in_L(L_c1) + advice_prefixes_in_L(L_c2) + ...
+  -- Because advice_prefix_mem is rt_closed, we have adv = advice_prefix_mem(L_c1) + advice_prefix_mem(L_c2) + ...
 
   theorem prefix_stable_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable) :
       adv.is_two_stage_advice := by
