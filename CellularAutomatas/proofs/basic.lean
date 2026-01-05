@@ -190,13 +190,16 @@ lemma trace_rt_L {C: CA_rt α} {w: Word α} (h: w ≠ []):
   simp [List.getLast_eq_getElem, CellAutomaton.trace_rt, trace_L]
 
 
-lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
-    (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
-  sorry
+
 
 lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
     (C.val.trace_rt w)[i] = decide (w.take (i+1) ∈ C.val.L) := by
+
   sorry
+
+lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
+    (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
+  simp [trace_rt_getElem_i_iff2]
 
 
 lemma elemL_iff_trace_rt [Alphabet α] {C: tCellAutomaton α} (h: C ∈ CA_rt α) {w: Word α}:
