@@ -194,8 +194,32 @@ lemma trace_rt_L {C: CA_rt α} {w: Word α} (h: w ≠ []):
 
 lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
     (C.val.trace_rt w)[i] = decide (w.take (i+1) ∈ C.val.L) := by
-
-  sorry
+  -- The key insight is that trace_rt w at index i equals trace_rt of w.take(i+1) at index i
+  -- which by trace_rt_L equals membership in L
+  have h_len : i < w.length := by simp [trace_rt_length] at h; exact h
+  have h_take_len : (w.take (i+1)).length = i + 1 := by
+    rw [List.take_length_min]
+    omega
+  -- Show the trace at index i on w equals trace at index i on w.take(i+1)
+  have h_eq : (C.val.trace_rt w)[i] = (C.val.trace_rt (w.take (i+1)))[i] := by
+    have := LCellAutomaton.scan_temporal_independence C.val.toCellAutomaton (w.take (i+1)) (w.drop (i+1))
+    simp only [List.take_append_drop] at this
+    have h_take_rt_len : (C.val.trace_rt (w.take (i + 1))).length = i + 1 := by
+      simp [trace_rt_length, h_take_len]
+    rw [← this]
+    congr 1
+    · exact h_take_rt_len
+    · simp [h_take_len]
+  rw [h_eq]
+  -- Now we need to show that trace_rt of (w.take (i+1)) at index i equals decide of membership
+  have h_nonempty : w.take (i+1) ≠ [] := by
+    rw [← List.length_eq_zero_iff]
+    omega
+  have h_last : (C.val.trace_rt (w.take (i+1))).getLast (by simp [h_nonempty]) = (C.val.trace_rt (w.take (i+1)))[i] := by
+    simp [List.getLast_eq_getElem, trace_rt_length, h_take_len]
+  rw [← h_last]
+  rw [trace_rt_L h_nonempty]
+  simp
 
 lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
     (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
@@ -204,9 +228,20 @@ lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.
 
 lemma elemL_iff_trace_rt [Alphabet α] {C: tCellAutomaton α} (h: C ∈ CA_rt α) {w: Word α}:
     w ∈ C.L ↔ if w = [] then [] ∈ C.L else (C.trace_rt w).getLast? = some true := by
-
-    --(C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
-  sorry
+  by_cases hw : w = []
+  · simp [hw]
+  · simp [hw]
+    have h_nonempty : C.trace_rt w ≠ [] := by simp [hw]
+    rw [List.getLast?_eq_getLast_of_ne_nil (by exact h_nonempty)]
+    constructor
+    · intro hL
+      have := trace_rt_L (C := ⟨C, h⟩) hw
+      simp only [this] at hL
+      exact hL
+    · intro hLast
+      have := trace_rt_L (C := ⟨C, h⟩) hw
+      simp only [this]
+      exact hLast
 
 
 
@@ -465,12 +500,78 @@ lemma ℒ_oca_def (adv: Advice α Γ) (L: Language α):
 
 lemma CA_rt_subseteq_CA_rt_with_advice (adv: Advice α Γ):
     (ℒ (CA_rt α)) ⊆ ((ℒ (CA_rt (α × Γ) + adv)): Set (Language α)) := by
-  sorry
+  intro L hL
+  rw [ℒ_CA_rt_iff] at hL
+  obtain ⟨C, hC, rfl⟩ := hL
+  rw [ℒ_oca_def]
+  -- Construct a CA that ignores the Γ component by projecting to α first
+  let C' : tCellAutomaton (α × Γ) := {
+    toCellAutomaton := C.toCellAutomaton.map_embed (Option.map Prod.fst)
+    t := C.t
+    p := C.p
+  }
+  use C'
+  constructor
+  · -- Show C' ∈ CA_rt (α × Γ)
+    unfold CA_rt t_rt CA at hC ⊢
+    simp only [Set.mem_sep_iff, Set.mem_setOf_eq] at hC ⊢
+    exact ⟨⟨trivial, hC.1.2⟩, hC.2⟩
+  · -- Show C.L = { w | (w ⨂ (adv.f w)) ∈ C'.L }
+    ext w
+    simp only [Set.mem_setOf_eq]
+    -- The key is that w ⨂ adv.f w projected to fst gives back w
+    have h_len : (adv.f w).length = w.length := adv.len w
+    -- Now we need to show that C.L w ↔ C'.L (w ⨂ adv.f w)
+    -- This requires showing the computations match
+    unfold tCellAutomaton.L tCellAutomaton.accepts at *
+    -- The computation of C' on (w ⨂ adv.f w) should equal C on w
+    -- because C' projects to fst, and (w ⨂ adv.f w).fst = w
+    have h_word_config : ∀ p : ℤ, (word_to_config (w ⨂ adv.f w) p).map Prod.fst = word_to_config w p := by
+      intro p
+      simp only [word_to_config]
+      by_cases h1 : p ≥ 0 ∧ p < (w ⨂ adv.f w).length
+      · have h2 : p ≥ 0 ∧ p < w.length := by simp [h_len] at h1 ⊢; exact h1
+        simp only [h1, h2, ↓reduceDIte, Option.map_some']
+        simp [zip_words]
+        have h_idx : p.toNat < w.length := by omega
+        have h_idx' : p.toNat < (adv.f w).length := by simp [h_len]; omega
+        simp [List.zipWith_getElem?_self, List.getElem?_eq_getElem, h_idx, h_idx']
+      · have h2 : ¬(p ≥ 0 ∧ p < w.length) := by simp [h_len] at h1 ⊢; exact h1
+        simp [h1, h2]
+    -- The nextt computation preserves this relationship
+    have h_nextt : ∀ t p, (C'.toCellAutomaton.nextt ⦋w ⨂ adv.f w⦌ t) p =
+                         (C.toCellAutomaton.nextt ⦋w⦌ t) p := by
+      intro t p
+      induction t generalizing p with
+      | zero =>
+        simp only [CellAutomaton.nextt_zero]
+        simp only [embed_word, CellAutomaton.embed_config, C', CellAutomaton.map_embed]
+        exact (h_word_config p).symm
+      | succ t ih =>
+        simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
+        simp only [C', CellAutomaton.map_embed]
+        rw [ih (p - 1), ih p, ih (p + 1)]
+    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+    congr 1
+    funext p
+    congr 1
+    have h_zip_len : (w ⨂ adv.f w).length = w.length := by simp [h_len]
+    rw [h_zip_len]
+    exact h_nextt _ _
 
 
 lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
     ℒ (CA_rt (α ⨉ Γ) + adv) = ℒ (CA_rt α) ↔ ∀ L ∈ ℒ (CA_rt (α ⨉ Γ) + adv), L ∈ ℒ (CA_rt α) := by
-  sorry
+  constructor
+  · intro h L hL
+    rw [h] at hL
+    exact hL
+  · intro h
+    ext L
+    constructor
+    · exact h L
+    · intro hL
+      exact CA_rt_subseteq_CA_rt_with_advice adv hL
 
 
 
