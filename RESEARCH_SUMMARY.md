@@ -130,25 +130,126 @@ This involves:
 
 ## 4. Comparison to State of the Art
 
-### 4.1 Historical Context: CA Language Recognition
+### 4.1 Detailed Paper Summaries
 
-The study of cellular automata as language recognizers has a rich history spanning over 50 years:
+The following provides detailed summaries of key papers in the field, based on literature review:
 
-**Foundational Work (1960s-1970s)**:
-- **Cole (1969)**: Pioneered real-time recognition by 1D cellular automata, establishing early complexity hierarchies.
-- **Alvy Ray Smith (1971-1972)**: Seminal papers on "Real-Time Language Recognition by One-Dimensional Cellular Automata" established foundational results connecting CA to formal language theory.
-- **Fischer (1965)**: Generation of sequences (including primes) in real-time, advancing understanding of CA computational limits.
+---
 
-**Complexity Hierarchies and OCA (1980s-2000s)**:
-- **Ibarra et al.**: Established strict separation results between real-time and linear-time acceptance for one-way cellular automata (OCA). Proved closure properties under reversal and concatenation for specific time classes.
-- **Terrier**: Showed that linear-slender context-free languages are recognizable by real-time OCA, connecting descriptive complexity to automata theory.
-- **Mazoyer & Delorme**: Developed signal-based analysis techniques and time-optimal constructions (firing squad synchronization), foundational for understanding information propagation in CA.
+#### **Cole (1969): "Real-Time Computation by n-Dimensional Iterative Arrays of Finite-State Machines"**
 
-**Advice and Non-uniform Models**:
-- **Damm & Holzer**: Examined how advice strings affect automata computational power, creating hierarchies that separate language classes. Their work on "advice-taking automata" provides theoretical grounding for non-uniform CA models.
-- **Karp-Lipton framework**: General complexity-theoretic context where advice (dependent only on input length) augments computational models.
+**Main Results**:
+1. **Equivalent Forms Theorem**: n-dimensional iterative arrays can be represented in equivalent forms using simplified interaction stencils and length-k encodings without loss of generality.
+2. **Recognition Power**: Even 1D arrays can accept non-trivial languages like palindromes and doubled strings (ττ form) in real-time.
+3. **Closure Properties**: Sets of tapes accepted by nD arrays are closed under Boolean operations (union, intersection, complement).
+4. **Formal Model**: Introduced n-dimensional iterative arrays as "real-time tape acceptors" processing input one symbol at a time in parallel.
 
-### 4.2 CA Transduction: Prior Work vs. This Repository
+**Relevance to This Work**: Cole established the foundational model that this repository formalizes. His closure results are analogous to the closure properties proven here for two-stage advice.
+
+---
+
+#### **Alvy Ray Smith (1971-1972): "Real-Time Language Recognition by One-Dimensional Cellular Automata"**
+
+**Main Results**:
+1. **CA as Language Acceptors**: Showed how deterministic 1D cellular automata serve as recognizers for formal languages.
+2. **Comparison with Finite Automata**: Some languages can be recognized by CA in real-time that cannot be recognized by finite automata, but none exceed Turing machine capabilities.
+3. **Characterization**: Provided characterizations of which language types are recognizable in real-time, especially languages at and beyond the regular class.
+4. **Bounds**: Established both lower bounds (languages not recognizable in real-time) and upper bounds on CA recognition power.
+
+**Relevance to This Work**: Smith's paper focused on CA as *acceptors* (single accept/reject output). This repository extends to *transducers* (output at each position) — a more general model not studied by Smith.
+
+---
+
+#### **Fischer (1965): "Generation of Primes by a One-Dimensional Real-Time Iterative Array"**
+
+**Main Results**:
+1. **Prime Generation**: Constructed iterative arrays where state progression implements a sieve-like operation — cells mark composites synchronously, discovering primes without central control.
+2. **Parallelism**: Demonstrated that prime generation (like Eratosthenes sieve) can be implemented by highly parallel architectures.
+3. **Complexity Bounds**: Showed certain number-theoretic tasks can be optimized via real-time distributed processes.
+
+**Relevance to This Work**: Fischer studied CA as *pattern generators*, not transducers. The "trace_rt" concept in this repository captures a similar output-per-step notion but for arbitrary alphabet transformations.
+
+---
+
+#### **Ibarra et al. (1985): "On Real Time One-Way Cellular Arrays"**
+
+**Main Results**:
+1. **Language Recognition**: One-way cellular arrays (OCA) with finite state control recognize regular languages.
+2. **Time Complexity**: Time required for problems like string matching is linearly related to input size.
+3. **Simulation**: OCA can simulate finite automata and some grammar classes with efficiency loss.
+4. **Limitations**: Memory restrictions (each cell only interacts with neighbors) bound computational power relative to general models.
+5. **Strict Hierarchies**: Proved strict separations between real-time and linear-time language acceptance classes.
+
+**Relevance to This Work**: Ibarra established OCA complexity hierarchies that this repository formalizes (OCA_rt, OCA_lt classes). The separation results motivate the "open questions" about RT vs LT.
+
+---
+
+#### **Terrier: "Recognition of Linear-Slender Context-Free Languages by Real Time OCA"**
+
+**Main Results**:
+1. **Linear-Slender CFLs**: Proved that all linear-slender context-free languages (word count grows linearly with length) are recognizable by real-time OCA.
+2. **Connection to Descriptive Complexity**: Linked counting functions and sparse languages with automata-theoretic recognition.
+
+**Relevance to This Work**: Terrier's characterization relates to the prefix-membership advice result — both identify language classes recognizable in real-time.
+
+---
+
+#### **Mazoyer (1987): "A Six-State Minimal Time Solution to the Firing Squad Synchronization Problem"**
+
+**Main Results**:
+1. **Minimal States**: Proved FSSP can be solved optimally (in minimal time 2n-2) using only 6 states — improving on Balzer's 8-state solution.
+2. **Recursive Division**: The proof uses unequal recursive subdivision, where the right segment becomes a scaled image of a shorter initial line.
+3. **Signal Propagation**: Explicit transition rules ensure signals propagate, split, and reflect so all cells fire simultaneously.
+4. **Correctness Proof**: Induction argument proving no cell fires before time 2n-2, and all cells enter firing state exactly then.
+
+**Relevance to This Work**: The FSSP relates to the "middle marker" problem — both require global coordination from local rules. Mazoyer's result shows middle-finding *is* achievable with enough states, while this repository proves it *cannot* be done via two-stage advice (a structural limitation, not a state-count limitation).
+
+---
+
+#### **Damm & Holzer (1991): "Automata That Take Advice"**
+
+**Main Results**:
+1. **Advice Classes**: Defined automata with advice strings (DFA/n, NFA/n) where advice depends only on input length.
+2. **Power Increase**: Advice can allow recognition of non-regular languages by finite automata.
+3. **Hierarchy Results**: 
+   - DFA with constant-length advice does not increase recognition power
+   - DFA with advice of length n recognizes more languages, but still subset of context-free
+   - Polynomial advice corresponds to non-uniform complexity classes (P/poly)
+4. **Separation Theorems**: Proved strict separations between advised and non-advised language classes.
+
+**Relevance to This Work**: Damm-Holzer studied *unstructured* advice strings. This repository introduces *structured* advice (two-stage: CA phase + FST phase) and characterizes exactly which advice functions have this form.
+
+---
+
+#### **Curtis-Hedlund-Lyndon Theorem (1969)**
+
+**Main Result**: A function Φ: X → X on a shift space is a cellular automaton if and only if Φ is:
+- **Continuous** (in the product topology)
+- **Commutes with the shift** (Φ(σ(x)) = σ(Φ(x)))
+
+This characterizes CA as exactly the "sliding block codes" — global rules that are fundamentally local and shift-invariant.
+
+**Relevance to This Work**: The theorem provides the mathematical foundation for CA definitions. The `CellAutomaton` structure in this repository captures the local rule δ: Q → Q → Q → Q that corresponds to a sliding block code.
+
+---
+
+### 4.2 Key Gap Identified in Prior Literature
+
+After reviewing these papers, the following gap emerges:
+
+| Prior Work Focus | What's Missing |
+|-----------------|----------------|
+| CA as **acceptors** (Smith, Cole, Ibarra) | Output at *each* position, not just final accept/reject |
+| CA as **pattern generators** (Fischer) | General alphabet transduction, not specific sequences |
+| **Advice** for automata (Damm-Holzer) | Structured decomposition of advice (CA + FST phases) |
+| **Signal analysis** (Mazoyer) | Type-theoretic formalization, composition theorems |
+| **FSSP and synchronization** | Connection to advice characterization |
+
+**This repository fills the gap**: It formalizes CA *transducers* with structured *two-stage advice*, proves novel characterization theorems, and provides machine-checked proofs in Lean 4.
+
+---
+
+### 4.3 CA Transduction: Prior Work vs. This Repository
 
 **Prior Work on CA as Transducers**:
 
@@ -166,7 +267,7 @@ The study of cellular automata as language recognizers has a rich history spanni
 
 This repository formalizes **real-time CA transducers** that output a symbol at each cell position as time progresses — capturing the "trace" of computation. The novel **two-stage advice** concept decomposes this transduction into a CA phase followed by an FST phase, enabling precise characterization of which advice functions are "tractable."
 
-### 4.3 Formalization: A First
+### 4.4 Formalization: A First
 
 **Prior Formalizations in Theorem Provers**:
 - **Coq**: Some work on finite automata and regular languages, limited CA formalization
@@ -179,7 +280,7 @@ This repository formalizes **real-time CA transducers** that output a symbol at 
 - Establishes **reusable definitions** (`CellAutomaton`, `tCellAutomaton`, `Advice`, `TwoStageAdvice`)
 - Provides **machine-checked proofs** of results that were previously known only informally or not at all
 
-### 4.4 Novel Contributions Beyond Prior Art
+### 4.5 Novel Contributions Beyond Prior Art
 
 | Contribution | Novelty |
 |--------------|---------|
@@ -189,7 +290,7 @@ This repository formalizes **real-time CA transducers** that output a symbol at 
 | **rt-closed + prefix-stable ⟹ two-stage** | New characterization theorem |
 | **Lean 4 formalization** | First mechanized treatment of CA complexity |
 
-### 4.5 Connections to Related Areas
+### 4.6 Connections to Related Areas
 
 **Firing Squad Synchronization Problem (FSSP)**:
 - Classical problem requiring all cells to fire simultaneously
