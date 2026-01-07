@@ -22,6 +22,7 @@ theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
   exact middle_not_two_stage_advice
 
+
 theorem result_advice_prefix_mem_is_two_stage_advice:
     ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
   intro C h
