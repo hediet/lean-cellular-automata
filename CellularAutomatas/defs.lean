@@ -41,6 +41,7 @@ section Word
 
   notation:max w "⟦" a ".." b "⟧" => List.extract w a b
   notation:max w "⟦" a "..*⟧" => List.drop a w
+  notation:max w "⟦*.." a "⟧" => List.take a w
 
   namespace Word
     variable {α: Type} (w: Word α)
@@ -186,8 +187,8 @@ section LCellAutomaton
 
   abbrev LCellAutomaton (α: Type) := CellAutomaton α？ Bool
 
-  def CellAutomaton.border (C: LCellAutomaton α): C.Q := C.embed none
-  def CellAutomaton.inner (C: LCellAutomaton α) (a: α): C.Q := C.embed (some a)
+  def CellAutomaton.border (C: CellAutomaton α？ β): C.Q := C.embed none
+  def CellAutomaton.inner (C: CellAutomaton α？ β) (a: α): C.Q := C.embed (some a)
 
   def word_to_config {α : Type} (w : Word α) : Config α？ :=
     fun p => if h : p ≥ 0 ∧ p < w.length then some w[p.toNat] else none
@@ -196,13 +197,12 @@ section LCellAutomaton
 
   instance : Coe (Word α) (Config α？) := ⟨word_to_config⟩
 
-
-  def embed_word {α β: Type} {C: CellAutomaton α？ β} (w: Word α): Config C.Q :=
+  def CellAutomaton.embed_word {α β: Type} {C: CellAutomaton α？ β} (w: Word α): Config C.Q :=
     word_to_config w
 
-  notation "⦋" w "⦌" => embed_word w
+  notation "⦋" w "⦌" => CellAutomaton.embed_word w
 
-  instance {C: CellAutomaton α？ β} : Coe (Word α) (Config C.Q) := ⟨embed_word⟩
+  instance {C: CellAutomaton α？ β} : Coe (Word α) (Config C.Q) := ⟨CellAutomaton.embed_word⟩
 
 
   def CellAutomaton.trace_rt {α β: Type} (C: CellAutomaton α？ β) (w: Word α): Word β :=

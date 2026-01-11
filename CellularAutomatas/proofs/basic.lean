@@ -58,7 +58,7 @@ lemma LCellAutomaton.scan_temporal_independence_at_0 {β} [Alphabet β] (C: Cell
   apply nextt_congr
   intro j hj
   simp only [zero_sub, zero_add] at hj
-  delta embed_word word_to_config
+  delta CellAutomaton.embed_word word_to_config
   unfold CellAutomaton.embed_config
   by_cases h_if : j ≥ 0 ∧ j < ↑(List.length (p ++ s))
   · have h_if_p : j ≥ 0 ∧ j < ↑(List.length p) := by
@@ -127,6 +127,10 @@ lemma trace_rt_of_map_project {α β γ: Type} {C: CellAutomaton α？ β} (f: �
 @[simp]
 lemma trace_rt_length {α β: Type} {C: CellAutomaton α？ β} {w: Word α}:
   (C.trace_rt w).length = w.length := by simp [trace_rt]
+
+@[simp]
+lemma trace_rt_empty {α β: Type} {C: CellAutomaton α？ β}:
+  (C.trace_rt []) = [] := by simp [trace_rt]
 
 
 
@@ -380,6 +384,13 @@ lemma ca_zip_comp {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
   simp
 
 
+@[simp]
+lemma ca_zip_trac {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
+    {C1: CellAutomaton α β1} {C2: CellAutomaton α β2} {c: Config α} {t: ℕ}:
+    (C1 ⨂ C2).trace c t = ((C1.trace c t), (C2.trace c t)) := by
+  unfold trace
+  simp
+
 
 @[simp]
 lemma ca_zip_trace_rt {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
@@ -440,7 +451,7 @@ lemma LCellAutomaton.embed_word_eq (C: LCellAutomaton α) {w: Word α} {p: ℤ} 
 -/
 
 
-lemma LCellAutomaton.nextt_succ_eq (C: LCellAutomaton α) (c: Config C.Q): C.nextt c (t + 1) = C.next (C.nextt c t) := by
+lemma LCellAutomaton.nextt_succ_eq (C: CellAutomaton α β) (c: Config C.Q): C.nextt c (t + 1) = C.next (C.nextt c t) := by
   simp
 
 
@@ -546,11 +557,9 @@ lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
     lemma embed_word_at_eq {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ):
         @embed_word α β C w p = C.embed (if h: p ∈ w.range then  (some (w.get' p h)) else none) := by rfl
 
-    @[simp]
     lemma embed_word_at_eq1 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: p ∈ w.range):
         @embed_word α β C w p = C.embed (some (w.get' p h)) := by simp [embed_word_at_eq, h]
 
-    @[simp]
     lemma embed_word_at_eq2 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: ¬(p ∈ w.range)):
         @embed_word α β C w p = C.embed none := by simp [embed_word_at_eq, h]
 

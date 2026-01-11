@@ -32,3 +32,19 @@ To build the project, make sure you have Lean 4 and Lake installed.
 ```bash
 lake build
 ```
+
+
+
+
+* adv is CartTraceAdvice iff adv is rt-closed and causal
+
+* CaTraceRevFstAdvice <-> non-deterministic choice of finite rt-closed and causal advice
+
+* adv is CartTraceRevFstAdvice iff exists φ: Word -> Fin n and f: Fin n -> Word -> Word, such that
+  adv w = f (φ w) w
+  and \forall n, f n is rt-closed and causal
+
+f has CaTraceRevFstAdvice iff exists  f w = 
+
+
+* FiniteCACausalAdvice

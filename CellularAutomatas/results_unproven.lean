@@ -71,4 +71,39 @@ section advice_theorems
       (adv.shift_left_advice extension).is_two_stage_advice := by
     sorry
 
+
+
+/-
+  theorem CartTraceAdvice_classification (adv: Advice α Γ) :
+    adv.is_CartTraceAdvice ↔ adv.rt_closed ∧ adv.prefix_stable :=
+    by sorry
+-/
+
+  instance : CoeFun (Advice α Γ) (fun _ => Word α → Word Γ) where
+    coe a := a.f
+
+
+  theorem CartTraceFstAdvice_classification (adv: Advice α Γ) :
+    adv.is_two_stage_advice ↔
+      adv.rt_closed ∧
+      ∃ as: List { a: Advice α Γ // a.rt_closed ∧ a.prefix_stable },
+        ∀ w, adv w ∈ { a.val w | a ∈ as } :=
+    by
+
+    sorry
+
 end advice_theorems
+
+/-
+
+L is a CA LT language.
+a1(w)_i = if i = 2^2j then w_i ∈ L else 0
+
+advice a(w)_i :=
+  if w.length is 2^(2n+1)
+  then a1(w)_i
+  else 0
+
+Then a is probably rt_closed?
+
+-/

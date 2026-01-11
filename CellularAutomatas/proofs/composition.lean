@@ -12,6 +12,7 @@ import Mathlib.Data.Fintype.Prod
 import Mathlib.Data.Fintype.Option
 import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.k_step_speedup
 
 
 namespace CellularAutomatas
@@ -57,18 +58,72 @@ namespace CompressToDiag
   theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
         if p >= 0 ∧ t = 2 * p + 3
-        then some (triple_at (e.C_orig.comp w · 0) (3 * p).natAbs)
+        then some (triple_at (e.C_orig.trace w) (3 * p).natAbs)
         else none
         := by
     sorry
 
 end CompressToDiag
 
+section DiagLeft
 
+  inductive Q_DL
+  | idle
+  | p_s0 | p_s1 | p_s2 | p_fire | hold | v_fire | dead
+  deriving DecidableEq, Inhabited, Fintype
 
+  def diag_left {α β: Type} [_inst_α: Alphabet α] [_inst_β: Alphabet β] : CellAutomaton α？ ((β？)³)？ := {
+    Q := Q_DL
+    δ := fun _ c r =>
+      match c with
+      | .p_s0 => .p_s1
+      | .p_s1 => .p_s2
+      | .p_s2 => .p_fire
+      | .p_fire => .hold
+      | .hold => .dead
+      | .dead => .dead
+      | .v_fire => .hold
+      | .idle => if r == .hold then .v_fire else .idle
+    embed := fun
+      | some _ => .p_s0
+      | none => .idle
+    project := fun
+      | .v_fire => some (fun _ => none)
+      | _ => none
+  }
 
+  /-
+    Execution of diag_left for a single input cell at position 0.
+    The CA propagates a "virtual fire" (V) signal to the left.
 
+    Time   Space (x)
+    (t)    -5 -4 -3 -2 -1  0  1
+    ---------------------------
+     t=0    .  .  .  .  .  0  .
+     t=1    .  .  .  .  .  1  .
+     t=2    .  .  .  .  .  2  .
+     t=3    .  .  .  .  .  F  .
+     t=4    .  .  .  .  .  H  .   <-- Cell 0 in Hold
+     t=5    .  .  .  .  V  x  .   <-- Cell -1 sees Hold, becomes V_fire (Output!)
+     t=6    .  .  .  .  H  x  .   <-- Cell -1 becomes Hold
+     t=7    .  .  .  V  x  x  .   <-- Cell -2 sees Hold, becomes V_fire (Output!)
+     t=8    .  .  .  H  x  x  .
+     t=9    .  .  V  x  x  x  .   <-- Cell -3 sees Hold, becomes V_fire (Output!)
+     t=10   .  .  H  x  x  x  .
+     t=11   .  V  x  x  x  x  .
+     t=12   .  H  x  x  x  x  .
+     t=13   V  x  x  x  x  x  .
+  -/
 
+  lemma diag_left_spec {α β} [_inst_α: Alphabet α] [_inst_β: Alphabet β] (w: Word α) (t: ℕ) (p: ℤ):
+      (@diag_left α β _ _).comp w t p =
+        if w ≠ [] ∧ p < 0 ∧ t = 3 + 2 * p.natAbs
+        then some (fun _ => none)
+        else none
+        := by
+    sorry
+
+end DiagLeft
 
 structure CompressToΛ where
   {α: Type}
@@ -83,7 +138,15 @@ attribute [instance] CompressToΛ._inst_β
 namespace CompressToΛ
   variable (e: CompressToΛ)
 
-  def C: CellAutomaton e.α？ ((e.β？)³)？ := sorry
+  def diag_right : CompressToDiag := {
+    α := e.α
+    β := e.β？
+    C_orig := e.C_orig
+  }
+
+  def C: CellAutomaton e.α？ ((e.β？)³)？ :=
+    (e.diag_right.C ⨂ diag_left).map_project (fun (v1, v2) => Option.or v1 v2)
+
 
   def decode_cfg (w: Word e.α): Config ((e.β？)³) :=
     fun p =>
@@ -91,7 +154,7 @@ namespace CompressToΛ
       then triple_at (e.C_orig.trace w) (3 * p).natAbs
       else (fun _ => none)
 
-  theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
+  theorem spec (w: Word e.α) (hw: w ≠ []) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
         if t = 3 + 2 * p.natAbs
         then some (e.decode_cfg w p)
@@ -586,30 +649,6 @@ end DecompressTriple
 
 
 
-structure SpeedupKSteps where
-  {α: Type}
-  {β: Type}
-  [inst1: Alphabet α]
-  [inst2: Alphabet β]
-  C_orig: CellAutomaton α？ β
-  k: ℕ
-
-attribute [instance] SpeedupKSteps.inst1
-attribute [instance] SpeedupKSteps.inst2
-
-namespace SpeedupKSteps
-
-  variable (e: SpeedupKSteps)
-
-  def C: CellAutomaton e.α？ e.β := sorry
-
-  lemma inv (w: Word e.α): e.C.trace w w.length = e.C_orig.trace w (w.length + e.k) := sorry
-
-  theorem spec (w: Word e.α): e.C.trace w i = e.C_orig.trace w (i + e.k) := sorry
-    -- Use inv with "e.C.trace w i = e.C.trace w[0..i] w[0..i].length"
-
-end SpeedupKSteps
-
 
 
 
@@ -620,25 +659,73 @@ structure AddBorder where
   [_inst_β: Alphabet β]
   C_orig: CellAutomaton α？ β
 
+attribute [instance] AddBorder._inst_α
+attribute [instance] AddBorder._inst_β
+
 namespace AddBorder
   variable (e: AddBorder)
 
   def b := e.C_orig.embed none
 
-  def C: CellAutomaton e.α？ e.β？ := {
-    Q := e.C_orig.Q？
-    δ := fun a b c =>
-      match b, c with
-      | some vb, some vc => some (e.C_orig.δ (a.getD e.b) vb vc)
-      | _, _ => none
+  def C_mark_border: CellAutomaton e.α？ Bool := {
+    Q := Bool
+    δ := fun _a _b c => c
     embed := fun
-      | some a => some (e.C_orig.embed (some a))
-      | none => none
-    project := Option.map e.C_orig.project
+      | some _a => false
+      | none => true
+    project := id
   }
 
+  theorem spec_mark_border (w: Word e.α) (t: ℕ) (p: ℤ):
+      e.C_mark_border.comp w t p = (p + t < 0 || p + t ≥ w.length) := by
+    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [Function.comp_apply]
+    have next_val : ∀ (c: Config e.C_mark_border.Q) (p: ℤ), e.C_mark_border.next c p = c (p+1) := by
+      intro c p
+      unfold CellAutomaton.next
+      simp [C_mark_border]
+    have h_nextt: ∀ t p, e.C_mark_border.nextt (embed_word w) t p = (embed_word w) (p + t) := by
+      intro t
+      induction t with
+      | zero =>
+        intro p
+        simp
+      | succ t ih =>
+        intro p
+        rw [CellAutomaton.nextt_succ]
+        rw [next_val]
+        rw [ih]
+        apply congrArg
+        grind
+    rw [h_nextt]
+    dsimp [embed_word, word_to_config, CellAutomaton.embed_config]
+    dsimp [C_mark_border]
+    split_ifs with h
+    · simp_all
+    · simp
+      rcases lt_or_ge (p+t) 0 with h_neg | h_pos
+      · left; exact h_neg
+      · right; simp_all
+
+  @[simp]
+  theorem spec_mark_border2 (w: Word e.α) (t: ℕ):
+      e.C_mark_border.trace w t = (t < 0 || t ≥ w.length) := by
+    unfold trace
+    rw [←embed_word]
+    rw [spec_mark_border]
+    simp
+
+  def C := (e.C_orig ⨂ e.C_mark_border).map_project (fun (v1, v2) =>
+    if v2 then none else (some v1)
+  )
+
   theorem spec (w: Word e.α): e.C.trace w = config_to_trace (e.C_orig.trace_rt w) := by
-    sorry
+    funext t
+    unfold C
+    unfold config_to_trace
+    unfold trace_rt
+    simp [word_to_config]
+    grind
 
 end AddBorder
 
@@ -702,49 +789,81 @@ namespace Composition
   def C : (CellAutomaton e.α？ e.γ) := e.C_exact.C
 
 
-
   theorem spec: e.C.trace_rt = e.C2.trace_rt ∘ e.C1.trace_rt := by
-    funext w
-    apply List.ext_getElem (by simp)
-    intro t h1 h2
+    rw [eq_of_prefix_stable _ _ (by simp) (by simp)]
 
-    obtain ⟨t₁, t₂, ht⟩: ∃ t1: ℕ, ∃ t2: Fin 3, t = 3 * t1 + t2 := by
-      use t / 3
-      use ⟨t % 3, Nat.mod_lt _ (by decide)⟩
-      simp [Nat.div_add_mod]
+    intro w
+    constructor
+    · simp
+
+    by_cases hw: w = []
+    case pos => simp [hw]
 
     let c_inr: Config e.β？³ := SpeedupKx.compress 3 (word_to_config (e.C1.trace_rt w))
     have x: e.C_sim.c_ctl_computes_c_inr ⟬w⟭ c_inr := by
       unfold SimFromΛ.c_ctl_computes_c_inr
       intro t p
       simp
-      rw [CompressToΛ.spec]
+      rw [CompressToΛ.spec _ _ hw]
       congr
       unfold CompressToΛ.decode_cfg
+      dsimp [C1_Λ]
+      rw [AddBorder.spec]
+      dsimp [C1']
+      dsimp [c_inr]
 
-      sorry
+      have {α} (w: Word α) : (if p ≥ 0 then triple_at (config_to_trace ⟬w⟭) (3 * p).natAbs else fun x => none) =
+          SpeedupKx.compress 3 ⟬w⟭ p := by
 
-    calc (e.C.trace_rt w)[t]
+        unfold SpeedupKx.compress
+        funext j
+        by_cases hp: p >= 0
+        case neg =>
+          simp [hp]
+          unfold word_to_config
+          simp_all
+          omega
+        case pos =>
+          simp [hp]
+          unfold word_to_config triple_at config_to_trace
+          grind
+
+      simp [this]
+
+    suffices (e.C.trace_rt w)[w.length - 1]'(by simp [List.length_pos_of_ne_nil hw])
+      = (e.C2.trace_rt (e.C1.trace_rt w))[w.length - 1]'(by simp [List.length_pos_of_ne_nil hw]) by
+      simp [List.getLast?_eq_getElem?]
+      grind
+
+    set t := w.length - 1 with t_h
+    have t_len : t < w.length := by simp [t_h, List.length_pos_of_ne_nil hw]
+
+    obtain ⟨t₁, t₂, ht⟩: ∃ t1: ℕ, ∃ t2: Fin 3, t = 3 * t1 + t2 := by
+      use t / 3
+      use ⟨t % 3, Nat.mod_lt _ (by decide)⟩
+      simp [Nat.div_add_mod]
+
+    calc (e.C.trace_rt w)[t]'(by simp_all)
       = (e.C.trace w) t := by simp [trace_rt]
       _ = e.C_exact.C.trace ⟬w⟭ t := by rfl
-      _ = e.C_decomp.C.trace ⟬w⟭ (t + 6) := by rw [SpeedupKSteps.spec]
+      _ = e.C_decomp.C.trace ⟬w⟭ (t + 6) := by rw [SpeedupKSteps.spec (h_len := by simp_all)]
       _ = e.C_decomp.C.trace ⟬w⟭ (t + 3 + 3) := by simp
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * t₁ + t₂ + 3 + 3) := by rw [ht]
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * (t₁ + 1) + t₂ + 3) := by ring_nf
-      _ = (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get (sorry) t₂ := by
+      _ = (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get (by sorry) t₂ := by
         rw [DecompressTriple.spec2]
         change ∀ (t : ℕ), ((e.C_sim.C.trace ⟬w⟭ (t + 3))).isSome == ((t - 3) % 3 == 0)
 
         sorry
 
-      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (sorry) t₂ := by rw [e.C_sim.spec _ _ x]
+      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by sorry) t₂ := by rw [e.C_sim.spec _ _ x]
       _ = e.C2_3x.C.trace c_inr (t₁ + 1) t₂ := by rfl
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by
 
         rw [SpeedupAndTraceKx.spec1]
 
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ t := by rw [ht]
-      _ = (e.C2.trace_rt (e.C1.trace_rt w))[t] := by simp [trace_rt]
+      _ = (e.C2.trace_rt (e.C1.trace_rt w))[t]'(by simp_all) := by simp [trace_rt]
 
 
 end Composition
