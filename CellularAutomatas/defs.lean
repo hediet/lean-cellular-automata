@@ -153,16 +153,18 @@ section CellAutomaton
       /-- A state is quiescent if it stays the same when it is just surrounded by itself. -/
       def quiescent (q: C.Q) := C.quiescent_set { q }
 
-      /-- A set state is closed if no matter what, cells having such a state remain in that set. -/
-      def delta_closed_set (Q: Set C.Q) := ∀ a (b: Q) c, C.δ a b c ∈ Q
       /-- A state is dead if no matter what, it doesn't change. -/
-      def dead (q: C.Q) := C.delta_closed_set {q}
+      def dead (q: C.Q) := ∀ (a b c: C.Q), b = q → C.δ a b c = q
 
       def left_independent := ∀ (q1 q2 q3 q1'), C.δ q1 q2 q3 = C.δ q1' q2 q3
       def right_independent := ∀ (q1 q2 q3 q3'), C.δ q1 q2 q3 = C.δ q1 q2 q3'
 
       /-- A state is initial if it cannot be created -/
       def initial (q: C.Q) := ∀ a b c, C.δ a b c = q → b = q
+
+      def right_initial (q: C.Q) := ∀ a b c, (C.δ a b c = q) → (b = q ∨ c = q)
+
+      def right_dead (q: C.Q) := ∀ a b c, (b = q ∨ c = q) → (C.δ a b c = q)
 
     end states
 
