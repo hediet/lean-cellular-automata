@@ -784,17 +784,16 @@ namespace Composition
   abbrev C_exact: SpeedupKSteps := {
     C_orig := e.C_decomp.C
     k := 6
+    c := 7
   }
 
   def C : (CellAutomaton e.α？ e.γ) := e.C_exact.C
 
 
   theorem spec: e.C.trace_rt = e.C2.trace_rt ∘ e.C1.trace_rt := by
-    rw [eq_of_prefix_stable _ _ (by simp) (by simp)]
+    rw [eq_of_is_causal _ _ (by simp) (by simp)]
 
     intro w
-    constructor
-    · simp
 
     by_cases hw: w = []
     case pos => simp [hw]
@@ -846,7 +845,9 @@ namespace Composition
     calc (e.C.trace_rt w)[t]'(by simp_all)
       = (e.C.trace w) t := by simp [trace_rt]
       _ = e.C_exact.C.trace ⟬w⟭ t := by rfl
-      _ = e.C_decomp.C.trace ⟬w⟭ (t + 6) := by rw [SpeedupKSteps.spec (h_len := by simp_all)]
+      _ = e.C_decomp.C.trace ⟬w⟭ (t + 6) := by
+        rw [SpeedupKSteps.spec (h_len := by simp_all) (h_bound := by simp; omega)]
+
       _ = e.C_decomp.C.trace ⟬w⟭ (t + 3 + 3) := by simp
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * t₁ + t₂ + 3 + 3) := by rw [ht]
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * (t₁ + 1) + t₂ + 3) := by ring_nf
