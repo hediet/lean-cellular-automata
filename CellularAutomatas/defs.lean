@@ -159,12 +159,15 @@ section CellAutomaton
       def left_independent := ∀ (q1 q2 q3 q1'), C.δ q1 q2 q3 = C.δ q1' q2 q3
       def right_independent := ∀ (q1 q2 q3 q3'), C.δ q1 q2 q3 = C.δ q1 q2 q3'
 
-      /-- A state is initial if it cannot be created -/
+      /-- A state is initial if no other state can transition to it -/
       def initial (q: C.Q) := ∀ a b c, C.δ a b c = q → b = q
 
       def right_initial (q: C.Q) := ∀ a b c, (C.δ a b c = q) → (b = q ∨ c = q)
 
-      def right_dead (q: C.Q) := ∀ a b c, (b = q ∨ c = q) → (C.δ a b c = q)
+      def left_spreading (q: C.Q) := ∀ a b c, c = q → (C.δ a b c = q)
+      def inj_embed (q: α) := ∀ (q': α), C.embed q = C.embed q' → q = q'
+      def left_dead (q: C.Q) := ∀ a b c, a = q ∧ b = q → C.δ a b c = q
+
 
     end states
 
