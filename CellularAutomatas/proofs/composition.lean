@@ -55,9 +55,9 @@ namespace CompressToDiag
 
   -- State for right diagonal propagation with embedded C_orig
   structure Q_DR where
-    -- Embedded C_orig states for 3-step history
+    -- Embedded C_orig states for 4-step history (indices 0-3)
     history: Fin 4 → e.C_orig.Q
-    -- Propagation phase
+    -- Propagation phase (0-7)
     phase: Fin 8  -- 0-2: initial, 3: fire, 4-5: prop_wait, 6: prop_ready, 7: dead
   deriving Inhabited
 
@@ -78,12 +78,15 @@ namespace CompressToDiag
   -- Phase constants for clarity
   def phase_fire : Fin 8 := ⟨3, by omega⟩
   def phase_prop_ready : Fin 8 := ⟨6, by omega⟩
+  
+  -- History index for current state
+  def hist_current_idx : Fin 4 := Fin.last 3
 
   def C: CellAutomaton e.α？ (Option (e.β³)) := {
     Q := Q_DR e
     δ := fun l c r =>
       -- Evolve the embedded C_orig states
-      let new_hist_val := e.C_orig.δ (l.history (Fin.last 3)) (c.history (Fin.last 3)) (r.history (Fin.last 3))
+      let new_hist_val := e.C_orig.δ (l.history hist_current_idx) (c.history hist_current_idx) (r.history hist_current_idx)
       let new_hist := Fin.snoc (Fin.tail c.history) new_hist_val
       -- Progress the phase
       let new_phase :=
@@ -98,7 +101,8 @@ namespace CompressToDiag
       ⟨fun _ => s, 0⟩
     project := fun q =>
       if q.phase.val = phase_fire.val then
-        -- Output triple from history when in fire state
+        -- Output triple from first 3 history elements
+        -- castSucc maps Fin 3 (0,1,2) to Fin 4 (0,1,2) safely
         some (fun (i: Fin 3) => e.C_orig.project (q.history i.castSucc))
       else none
   }
