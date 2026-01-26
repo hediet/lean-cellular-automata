@@ -53,39 +53,50 @@ namespace CompressToDiag
 
   variable (e: CompressToDiag)
 
-  -- State for right diagonal propagation
-  -- At position p and time 2*p+3, output a triple
-  inductive Q_DR
-  | idle           -- No signal yet
-  | s0 | s1 | s2   -- Counting 3 initial steps at position 0
-  | fire           -- Output the triple
-  | prop_wait      -- Propagation: waiting to trigger next cell
-  | prop_ready     -- Propagation: ready to fire  
-  | dead           -- Finished
-  deriving DecidableEq, Inhabited, Fintype
+  -- State for right diagonal propagation with embedded C_orig
+  structure Q_DR where
+    -- Embedded C_orig states for 3-step history
+    history: Fin 4 → e.C_orig.Q
+    -- Propagation phase
+    phase: Fin 8  -- 0-2: initial, 3: fire, 4-5: prop_wait, 6: prop_ready, 7: dead
+  deriving Inhabited
+
+  instance : DecidableEq (Q_DR e) := by
+    intro a b
+    apply decidable_of_iff (a.history = b.history ∧ a.phase = b.phase)
+    constructor
+    · intro ⟨h1, h2⟩; cases a; cases b; simp_all
+    · intro h; cases h; simp_all
+
+  instance : Fintype (Q_DR e) :=
+    Fintype.ofEquiv (((Fin 4) → e.C_orig.Q) × Fin 8)
+    { toFun := fun x => ⟨x.1, x.2⟩
+      invFun := fun x => (x.history, x.phase)
+      left_inv := fun _ => rfl
+      right_inv := fun _ => rfl }
 
   def C: CellAutomaton e.α？ (Option (e.β³)) := {
-    Q := Q_DR
+    Q := Q_DR e
     δ := fun l c r =>
-      match c with
-      | .idle =>
-          -- Check if left neighbor is in prop_ready state
-          if l == .prop_ready then .fire
-          else .idle
-      | .s0 => .s1
-      | .s1 => .s2
-      | .s2 => .fire
-      | .fire => .prop_wait
-      | .prop_wait => .prop_ready
-      | .prop_ready => .dead
-      | .dead => .dead
-    embed := fun
-      | some _ => .s0  -- Start counting at input positions
-      | none => .idle
+      -- Evolve the embedded C_orig states
+      let new_hist_val := e.C_orig.δ (l.history (Fin.last 3)) (c.history (Fin.last 3)) (r.history (Fin.last 3))
+      let new_hist := Fin.snoc (Fin.tail c.history) new_hist_val
+      -- Progress the phase
+      let new_phase :=
+        if c.phase.val < 7 then
+          -- Check for trigger from left
+          if c.phase.val = 0 ∧ l.phase.val = 6 then ⟨3, by omega⟩  -- fire if left is prop_ready
+          else ⟨c.phase.val + 1, by omega⟩  -- normal progression
+        else c.phase  -- stay dead
+      ⟨new_hist, new_phase⟩
+    embed := fun a =>
+      let s := e.C_orig.embed a
+      ⟨fun _ => s, 0⟩
     project := fun q =>
-      match q with
-      | .fire => some (fun _ => default)  -- Placeholder triple
-      | _ => none
+      if q.phase.val = 3 then
+        -- Output triple from history when in fire state
+        some (fun (i: Fin 3) => e.C_orig.project (q.history i.castSucc))
+      else none
   }
 
   theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
