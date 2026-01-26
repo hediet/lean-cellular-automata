@@ -595,8 +595,9 @@ namespace SimFromΛ
     | succ t ih =>
       rw [CellAutomaton.nextt_succ, CellAutomaton.nextt_succ]
       simp [CellAutomaton.next, C]
-      -- The δ function always assigns .state to next_q_ctl
-      -- which equals e.C_ctl.δ applied to the .state fields
+      -- Key insight: All branches of δ (lines 558, 566, 568, 570) assign
+      -- `.state := next_q_ctl` where `next_q_ctl := e.C_ctl.δ qa.state qb.state qc.state`.
+      -- After applying IH to neighbors, both sides reduce to the same expression.
       rw [ih (p-1), ih p, ih (p+1)]
       rfl
 
