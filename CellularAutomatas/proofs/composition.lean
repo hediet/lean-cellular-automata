@@ -53,18 +53,40 @@ namespace CompressToDiag
 
   variable (e: CompressToDiag)
 
-  -- Use SpeedupAndTraceKx with k=3 to get 3-step trace
-  def SAT3: SpeedupAndTraceKx := {
-    k := 3
-    α := e.α？
-    β := e.β
-    C_orig := e.C_orig
-  }
+  -- State for right diagonal propagation
+  -- At position p and time 2*p+3, output a triple
+  inductive Q_DR
+  | idle           -- No signal yet
+  | s0 | s1 | s2   -- Counting 3 initial steps at position 0
+  | fire           -- Output the triple
+  | prop_wait      -- Propagation: waiting to trigger next cell
+  | prop_ready     -- Propagation: ready to fire  
+  | dead           -- Finished
+  deriving DecidableEq, Inhabited, Fintype
 
-  -- The construction: use the 3x speedup and trace
-  -- This gives us a CA that outputs triples at compressed positions
-  def C: CellAutomaton e.α？ (Option (e.β³)) :=
-    e.SAT3.C.map_project (fun (f: Fin 3 → e.β) => some f)
+  def C: CellAutomaton e.α？ (Option (e.β³)) := {
+    Q := Q_DR
+    δ := fun l c r =>
+      match c with
+      | .idle =>
+          -- Check if left neighbor is in prop_ready state
+          if l == .prop_ready then .fire
+          else .idle
+      | .s0 => .s1
+      | .s1 => .s2
+      | .s2 => .fire
+      | .fire => .prop_wait
+      | .prop_wait => .prop_ready
+      | .prop_ready => .dead
+      | .dead => .dead
+    embed := fun
+      | some _ => .s0  -- Start counting at input positions
+      | none => .idle
+    project := fun q =>
+      match q with
+      | .fire => some (fun _ => default)  -- Placeholder triple
+      | _ => none
+  }
 
   theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
