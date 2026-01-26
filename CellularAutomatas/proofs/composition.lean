@@ -70,10 +70,14 @@ namespace CompressToDiag
 
   instance : Fintype (Q_DR e) :=
     Fintype.ofEquiv (((Fin 4) → e.C_orig.Q) × Fin 8)
-    { toFun := fun x => ⟨x.1, x.2⟩
-      invFun := fun x => (x.history, x.phase)
+    { toFun := fun x => (x.history, x.phase)
+      invFun := fun x => ⟨x.1, x.2⟩
       left_inv := fun _ => rfl
       right_inv := fun _ => rfl }
+
+  -- Phase constants for clarity
+  def phase_fire : Fin 8 := ⟨3, by omega⟩
+  def phase_prop_ready : Fin 8 := ⟨6, by omega⟩
 
   def C: CellAutomaton e.α？ (Option (e.β³)) := {
     Q := Q_DR e
@@ -84,8 +88,8 @@ namespace CompressToDiag
       -- Progress the phase
       let new_phase :=
         if c.phase.val < 7 then
-          -- Check for trigger from left
-          if c.phase.val = 0 ∧ l.phase.val = 6 then ⟨3, by omega⟩  -- fire if left is prop_ready
+          -- Check for trigger from left: if we're idle (phase=0) and left is prop_ready (phase=6), jump to fire
+          if c.phase.val = 0 ∧ l.phase.val = phase_prop_ready.val then phase_fire
           else ⟨c.phase.val + 1, by omega⟩  -- normal progression
         else c.phase  -- stay dead
       ⟨new_hist, new_phase⟩
@@ -93,7 +97,7 @@ namespace CompressToDiag
       let s := e.C_orig.embed a
       ⟨fun _ => s, 0⟩
     project := fun q =>
-      if q.phase.val = 3 then
+      if q.phase.val = phase_fire.val then
         -- Output triple from history when in fire state
         some (fun (i: Fin 3) => e.C_orig.project (q.history i.castSucc))
       else none
