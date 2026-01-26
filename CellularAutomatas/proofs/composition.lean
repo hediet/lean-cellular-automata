@@ -53,7 +53,34 @@ namespace CompressToDiag
 
   variable (e: CompressToDiag)
 
-  def C: CellAutomaton e.α？ (Option (e.β³)) := sorry
+  -- For now, use a simple approach similar to diag_left
+  -- State encodes: idle, counting stages 0-3, hold, fire, dead
+  inductive Q_DR
+  | idle
+  | stage0 | stage1 | stage2 | stage3
+  | hold | fire | dead
+  deriving DecidableEq, Inhabited, Fintype
+
+  def C: CellAutomaton e.α？ (Option (e.β³)) := {
+    Q := Q_DR
+    δ := fun _ c _ =>
+      match c with
+      | .stage0 => .stage1
+      | .stage1 => .stage2
+      | .stage2 => .stage3
+      | .stage3 => .hold
+      | .hold => .dead
+      | .fire => .hold
+      | .dead => .dead
+      | .idle => .stage0  -- simplified: always start counting
+    embed := fun
+      | some _ => .stage0
+      | none => .idle
+    project := fun q =>
+      match q with
+      | .fire => some (fun _ => default)  -- placeholder triple
+      | _ => none
+  }
 
   theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
