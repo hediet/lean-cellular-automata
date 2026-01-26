@@ -595,7 +595,10 @@ namespace SimFromΛ
     | succ t ih =>
       rw [CellAutomaton.nextt_succ, CellAutomaton.nextt_succ]
       simp [CellAutomaton.next, C]
-      sorry
+      -- The δ function always assigns .state to next_q_ctl
+      -- which equals e.C_ctl.δ applied to the .state fields
+      rw [ih (p-1), ih p, ih (p+1)]
+      rfl
 
   def T (t: ℕ) (p: ℤ) (k: ℕ) := 3 * t + 3 + 2 * p.natAbs + k
 
