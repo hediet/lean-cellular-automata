@@ -53,34 +53,18 @@ namespace CompressToDiag
 
   variable (e: CompressToDiag)
 
-  -- For now, use a simple approach similar to diag_left
-  -- State encodes: idle, counting stages 0-3, hold, fire, dead
-  inductive Q_DR
-  | idle
-  | stage0 | stage1 | stage2 | stage3
-  | hold | fire | dead
-  deriving DecidableEq, Inhabited, Fintype
-
-  def C: CellAutomaton e.α？ (Option (e.β³)) := {
-    Q := Q_DR
-    δ := fun _ c _ =>
-      match c with
-      | .stage0 => .stage1
-      | .stage1 => .stage2
-      | .stage2 => .stage3
-      | .stage3 => .hold
-      | .hold => .dead
-      | .fire => .hold
-      | .dead => .dead
-      | .idle => .stage0  -- simplified: always start counting
-    embed := fun
-      | some _ => .stage0
-      | none => .idle
-    project := fun q =>
-      match q with
-      | .fire => some (fun _ => default)  -- placeholder triple
-      | _ => none
+  -- Use SpeedupAndTraceKx with k=3 to get 3-step trace
+  def SAT3: SpeedupAndTraceKx := {
+    k := 3
+    α := e.α？
+    β := e.β
+    C_orig := e.C_orig
   }
+
+  -- The construction: use the 3x speedup and trace
+  -- This gives us a CA that outputs triples at compressed positions
+  def C: CellAutomaton e.α？ (Option (e.β³)) :=
+    e.SAT3.C.map_project (fun (f: Fin 3 → e.β) => some f)
 
   theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
