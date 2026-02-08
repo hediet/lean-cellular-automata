@@ -121,6 +121,9 @@ section DiagLeft
         then some (fun _ => none)
         else none
         := by
+    unfold CellAutomaton.comp CellAutomaton.project_config diag_left
+    simp only [Function.comp_apply]
+    -- Need to characterize nextt
     sorry
 
 end DiagLeft
@@ -594,8 +597,16 @@ namespace SimFromΛ
       simp [CellAutomaton.embed_config, C]
     | succ t ih =>
       rw [CellAutomaton.nextt_succ, CellAutomaton.nextt_succ]
-      simp [CellAutomaton.next, C]
-      sorry
+      unfold CellAutomaton.next
+      simp only [C]
+      -- By induction hypothesis, states at previous step match
+      have h1 := ih (p - 1)
+      have h2 := ih p
+      have h3 := ih (p + 1)
+      simp only [C] at h1 h2 h3
+      -- All branches of δ set state := e.C_ctl.δ qa.state qb.state qc.state
+      -- After substituting via h1, h2, h3, both sides are definitionally equal
+      grind
 
   def T (t: ℕ) (p: ℤ) (k: ℕ) := 3 * t + 3 + 2 * p.natAbs + k
 
@@ -857,7 +868,7 @@ namespace Composition
 
         sorry
 
-      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by sorry) t₂ := by rw [e.C_sim.spec _ _ x]
+      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial) t₂ := by rw [e.C_sim.spec _ _ x]
       _ = e.C2_3x.C.trace c_inr (t₁ + 1) t₂ := by rfl
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by
 

@@ -6,7 +6,7 @@ import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
 import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 -- import CellularAutomatas.proofs.advice_two_stage_closed_under_composition
 import CellularAutomatas.proofs.middle_not_two_stage
-import CellularAutomatas.proofs.cart_transducers
+-- import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
 -- import CellularAutomatas.proofs.lcellautomaton
 -- import CellularAutomatas.proofs.k_step_speedup

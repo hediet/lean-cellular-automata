@@ -82,8 +82,12 @@ namespace backwards_fsm
 
     induction t generalizing p with
     | zero =>
+      simp only [Nat.cast_zero, add_zero, CellAutomaton.nextt, Function.iterate_zero, id_eq, C', Word.get'?, Word.range]
       by_cases h : p ∈ w.range
-      <;> simp [h, C', Word.get'?, scanr_get'_eq2]
+      · have hr : p ∈ (e.M.scanr w).range := by simp [h]
+        simp only [embed_word_at_eq1 w p h, embed_word_at_eq1 (e.M.scanr w) p hr, scanr_get'_eq2 w p h]
+        simp_all [Word.range]
+      · simp_all [embed_word_at_eq2, Word.range]
 
     | succ t ih =>
 

@@ -7,7 +7,7 @@
 	"coloredBackground.rules": [
 		{
 			"path": ".*\\.lean",
-			"startLine": "structure (.*) where",
+			"startLine": "structure ([a-zA-Z]+) .*",
 			"endLine": "end \\1",
 			"poolId": "myPool"
 		},
