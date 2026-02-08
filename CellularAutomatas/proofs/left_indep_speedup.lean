@@ -1,5 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.passive_border
 
 namespace CellularAutomatas
 
@@ -15,7 +16,7 @@ into a single tuple.
 - Border state `#` is quiescent and initial
 -/
 
-structure LeftIndepSpeedup where
+structure LeftIndepSpeedupQuiescent where
   {α : Type}
   {β : Type}
   [_inst_α : Alphabet α]
@@ -26,12 +27,12 @@ structure LeftIndepSpeedup where
   h_left_indep : C_orig.left_independent
   h_quiescent : C_orig.quiescent C_orig.border
 
-attribute [instance] LeftIndepSpeedup._inst_α
-attribute [instance] LeftIndepSpeedup._inst_β
+attribute [instance] LeftIndepSpeedupQuiescent._inst_α
+attribute [instance] LeftIndepSpeedupQuiescent._inst_β
 
-namespace LeftIndepSpeedup
+namespace LeftIndepSpeedupQuiescent
 
-variable (e : LeftIndepSpeedup)
+variable (e : LeftIndepSpeedupQuiescent)
 
 -- Convenience: k ≥ 1
 lemma hk1 : e.k ≥ 1 := Nat.one_le_of_lt e.hk
@@ -89,6 +90,16 @@ def compr_at (q : e.Q') (j : Fin e.k) : e.C_orig.Q :=
   match q with
   | Q'.single _ => e.C_orig.border
   | Q'.compr w  => w j
+
+/-- Project Q' to a k-tuple of β: for compr return the projected tuple, for single return all-default -/
+def projectQ' (q : e.Q') : Fin e.k → e.β :=
+  match q with
+  | Q'.single _ => fun _ => default
+  | Q'.compr w  => fun j => e.C_orig.project (w j)
+
+/-- Project component j of Q' to β -/
+def projectQ'_at (q : e.Q') (j : Fin e.k) : e.β :=
+  e.C_orig.project (e.compr_at q j)
 
 def foldAux : (n : ℕ) → (Fin n → e.C_orig.Q) → e.C_orig.Q → (Fin n → e.C_orig.Q)
   | 0, _, _ => Fin.elim0
@@ -181,15 +192,13 @@ def δ' (_a b c : e.Q') : e.Q' :=
   | Q'.compr w_b  => Q'.compr (fun j => e.fold w_b (e.asQ c) j)
 
 -- The compressed CA
-def C : CellAutomaton e.α？ e.β := {
+def C : CellAutomaton e.α？ (Fin e.k → e.β) := {
   Q := e.Q'
   δ := e.δ'
   embed := fun a => match a with
     | some a' => Q'.single (e.C_orig.embed (some a'))
     | none    => e.border'
-  project := fun q => match q with
-    | Q'.single s => e.C_orig.project s
-    | Q'.compr w  => e.C_orig.project (w ⟨0, by have := e.hk; omega⟩)
+  project := e.projectQ'
 }
 
 -- Simp lemmas for the compressed transition, keeping asQ folded
@@ -206,6 +215,10 @@ lemma C_left_indep : e.C.left_independent := by
 
 -- The border of C is border'
 @[simp] lemma C_border : e.C.border = e.border' := rfl
+
+/-- Compute and project component j: run C for t steps, then project component j at position i -/
+def comp_at (c : Config e.C.Q) (t : ℕ) (i : ℤ) (j : Fin e.k) : e.β :=
+  e.C.comp c t i j
 
 -- The compressed CA is quiescent at border'
 lemma C_quiescent : e.C.quiescent e.C.border := by
@@ -426,7 +439,7 @@ lemma neg_is_compr (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) :
 -- equals the original cell at position ψ(i,j) after φ(t,i,j) steps.
 --
 -- Proof by outer induction on t, with inner descending induction on j for the inductive case.
-theorem spec (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
+theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
     e.compr_at (e.C.nextt (CellAutomaton.embed_word w) t i) j =
     e.C_orig.nextt (CellAutomaton.embed_word w) (e.φ t i j).toNat (e.ψ i j) := by
   -- Outer induction on t
@@ -553,6 +566,129 @@ theorem spec (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
         exact h1
       rw [phi_toNat_succ, CellAutomaton.nextt_succ, CellAutomaton.next]
       exact (e.h_left_indep _ _ _ _).symm
+
+/-- Specification using comp: for i < 0, component j of the projected output
+    equals the original CA's output at position ψ(i,j) after φ(t,i,j) steps. -/
+theorem spec' (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
+    (e.C.comp (CellAutomaton.embed_word w) t i) j = e.C_orig.comp (CellAutomaton.embed_word w) (e.φ t i j).toNat (e.ψ i j) := by
+  obtain ⟨w', hw'⟩ := e.neg_is_compr w i hi t
+  have h := e.spec_nextt w i hi t j
+  rw [hw', compr_at_compr] at h
+  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C]
+  show e.projectQ' (e.C.nextt (CellAutomaton.embed_word w) t i) j = _
+  rw [hw']
+  simp only [projectQ']
+  exact congrArg e.C_orig.project h
+
+
+--def ψ (i : ℤ) (j : Fin e.k) : ℤ := e.k * i + j
+--def φ (t : ℕ) (i : ℤ) (j : Fin e.k) : ℤ := t - (e.k - 1 : ℕ) * i - j
+
+/-- Main specification with inlined φ and ψ: for i < 0, component j of the projected output
+    equals the original CA's output at position (k*i + j) after (t - (k-1)*i - j) steps. -/
+theorem spec (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
+    (e.C.comp (CellAutomaton.embed_word w) t i) j =
+    e.C_orig.comp (CellAutomaton.embed_word w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
+  have hk1 : ((e.k - 1 : ℕ) : ℤ) = (e.k : ℤ) - 1 := by have := e.hk1; omega
+  have h := e.spec' w i hi t j
+  simp only [φ, ψ, hk1] at h
+  exact h
+
+end LeftIndepSpeedupQuiescent
+
+/-!
+## LeftIndepSpeedup (without quiescence requirement)
+
+By composing with PassiveBorderLeftIndep, we can apply the k-step speedup
+to any left-independent CA without requiring the border to be quiescent.
+-/
+
+structure LeftIndepSpeedup where
+  {α : Type}
+  {β : Type}
+  [_inst_α : Alphabet α]
+  [_inst_β : Alphabet β]
+  C_orig : CellAutomaton α？ β
+  k : ℕ
+  hk : k ≥ 2
+  h_left_indep : C_orig.left_independent
+
+attribute [instance] LeftIndepSpeedup._inst_α
+attribute [instance] LeftIndepSpeedup._inst_β
+
+namespace LeftIndepSpeedup
+
+variable (e : LeftIndepSpeedup)
+
+/-- The PassiveBorderLeftIndep construction applied to the original CA -/
+def pb : PassiveBorderLeftIndep :=
+  { C_orig := e.C_orig
+    h_left_indep := e.h_left_indep }
+
+/-- The LeftIndepSpeedupQuiescent construction applied to the passive border CA -/
+def speedup : LeftIndepSpeedupQuiescent :=
+  { C_orig := e.pb.C
+    k := e.k
+    hk := e.hk
+    h_left_indep := e.pb.C_left_indep
+    h_quiescent := e.pb.C_border_passive }
+
+/-- The compressed CA: C = speedup.C -/
+def C : CellAutomaton e.α？ (Fin e.k → e.β) := e.speedup.C
+
+/-- The compressed CA is left-independent -/
+lemma C_left_indep : e.C.left_independent := e.speedup.C_left_indep
+
+/-- Main specification with inlined φ and ψ: for i < 0 and i ≥ -t, component j of the projected output
+    equals the original CA's output at position (k*i + j) after (t - (k-1)*i - j) steps.
+
+    This version works without requiring the original CA to have a passive border.
+    The constraint i ≥ -t ensures the position is within the light cone. -/
+theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi' : -(t : ℤ) ≤ i) (hi : i < 0)
+    (j : Fin e.k) :
+    (e.C.comp (CellAutomaton.embed_word w) t i) j =
+    e.C_orig.comp (CellAutomaton.embed_word w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
+  -- Key definitional equalities
+  have hk_eq : e.speedup.k = e.k := rfl
+  have hC_orig_eq : e.speedup.C_orig = e.pb.C := rfl
+  have hpb_C_orig_eq : e.pb.C_orig = e.C_orig := rfl
+  -- Use the speedup spec
+  have h_speedup := e.speedup.spec w i hi t j
+  simp only [hk_eq] at h_speedup
+  -- For i < 0, ψ(i, j) = k*i + j < 0 (always in the cone for left-indep)
+  have h_psi_neg : e.k * i + (j : ℤ) < 0 := by
+    have hj : (j : ℤ) ≤ e.k - 1 := by have := j.isLt; omega
+    have hki : (e.k : ℤ) * i ≤ -(e.k : ℤ) := by
+      have hk : (0 : ℤ) < e.k := by have := e.hk; omega
+      have : i ≤ -1 := by omega
+      calc (e.k : ℤ) * i ≤ (e.k : ℤ) * (-1) := by apply Int.mul_le_mul_of_nonneg_left this; omega
+        _ = -(e.k : ℤ) := by ring
+    linarith
+  have h_phi_nonneg : 0 ≤ (t : ℤ) - ((e.k - 1) * i) - j := by
+    have hj : (j : ℤ) ≤ e.k - 1 := by have := j.isLt; omega
+    have hi' : -i ≥ 1 := by omega
+    have h1 : ((e.k : ℤ) - 1) * (-i) ≥ ((e.k : ℤ) - 1) * 1 := by
+      apply mul_le_mul_of_nonneg_left hi'
+      have := e.hk; omega
+    linarith
+  have h_psi_in_cone : e.k * i + (j : ℤ) ∈ WordConeLeftIndep w (t - ((e.k - 1) * i) - j).toNat := by
+    rw [WordConeLeftIndep_mem]
+    constructor
+    · rw [Int.toNat_of_nonneg h_phi_nonneg]
+      -- Need: -(t - (k-1)*i - j) ≤ k*i + j
+      -- Simplifies to: -t ≤ i (use hi')
+      have hk_pos : (e.k : ℤ) > 0 := by have := e.hk; omega
+      calc -(↑t - (↑e.k - 1) * i - ↑↑j)
+          = -↑t + (↑e.k - 1) * i + ↑↑j := by ring
+        _ ≤ i + (↑e.k - 1) * i + ↑↑j := by linarith [hi']
+        _ = ↑e.k * i + ↑↑j := by ring
+    · omega
+  -- Use passive_border.spec
+  have h_pb := e.pb.spec w hw (t - ((e.k - 1) * i) - j).toNat (e.k * i + j)
+  rw [if_pos h_psi_in_cone, hpb_C_orig_eq] at h_pb
+  -- Combine: C.comp = speedup.C.comp → pb.C.comp → C_orig.comp
+  simp only [C]
+  rw [h_speedup, hC_orig_eq, h_pb]
 
 end LeftIndepSpeedup
 

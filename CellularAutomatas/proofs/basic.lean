@@ -707,3 +707,38 @@ theorem CellAutomaton.border_stays_right (C : CellAutomaton α？ β)
     exact C.quiescent_δ h_quiescent
 
 end BorderStays
+
+
+
+lemma nextt_shift {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ) (x d: ℤ):
+    C.nextt c t (x + d) = C.nextt (fun i => c (i + d)) t x := by
+  induction t generalizing x with
+  | zero => simp
+  | succ t ih =>
+    rw [nextt_succ, nextt_succ]
+    unfold CellAutomaton.next
+    have h1 : x + d - 1 = x - 1 + d := by ring
+    have h2 : x + d + 1 = x + 1 + d := by ring
+    rw [h1, h2]
+    rw [ih (x-1), ih x, ih (x+1)]
+
+lemma nextt_locality {α β: Type} (C: CellAutomaton α β) (c1 c2: Config C.Q) (t: ℕ) (x: ℤ):
+    (∀ y, x - t ≤ y ∧ y ≤ x + t → c1 y = c2 y) → C.nextt c1 t x = C.nextt c2 t x := by
+  induction t generalizing x with
+  | zero =>
+    intro h
+    apply h
+    simp
+  | succ t ih =>
+    intro h
+    rw [nextt_succ, nextt_succ]
+    unfold CellAutomaton.next
+    grind
+
+
+
+lemma nextt_add {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t1 t2: ℕ):
+    C.nextt c (t1 + t2) = C.nextt (C.nextt c t1) t2 := by
+  rw [Nat.add_comm]
+  rw [nextt, Function.iterate_add_apply]
+  rfl

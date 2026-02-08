@@ -1,0 +1,55 @@
+name: Publish Summary PDF
+
+on:
+  push:
+    branches: [main]
+    paths: [summary.typ]
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Typst
+        run: |
+          curl -fsSL https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-unknown-linux-musl.tar.xz | tar xJ
+          sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
+
+      - name: Compile PDF
+        run: typst compile summary.typ summary.pdf
+
+      - name: Prepare pages
+        run: |
+          mkdir -p _site
+          cp summary.pdf _site/summary.pdf
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><meta http-equiv="refresh" content="0; url=summary.pdf"></head>
+          <body><a href="summary.pdf">summary.pdf</a></body>
+          </html>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
