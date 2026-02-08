@@ -13,6 +13,7 @@ import Mathlib.Data.Fintype.Option
 import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.k_step_speedup
+import CellularAutomatas.proofs.sim_from_lambda
 
 
 namespace CellularAutomatas
@@ -515,113 +516,6 @@ namespace SpeedupAndTraceKx
 end SpeedupAndTraceKx
 
 
-structure SimFromΛ where
-  {α: Type}
-  {β: Type}
-  {γ: Type}
-  [_inst_α: Alphabet α]
-  [_inst_β: Alphabet β]
-  [_inst_γ: Alphabet γ]
-  C_ctl: CellAutomaton α β？
-  C_inr: CellAutomaton β γ
-
-attribute [instance] SimFromΛ._inst_α
-attribute [instance] SimFromΛ._inst_β
-attribute [instance] SimFromΛ._inst_γ
-
-namespace SimFromΛ
-  variable (e: SimFromΛ)
-
-  structure Q where
-    state: e.C_ctl.Q
-    counter: Fin 3
-    sim: Option (e.C_inr.Q × e.C_inr.Q)
-  deriving Inhabited, DecidableEq
-
-  -- TODO@hediet - why cannot I derive Fintype automatically here?
-  instance : Fintype (Q e) :=
-    Fintype.ofEquiv (e.C_ctl.Q × Fin 3 × Option (e.C_inr.Q × e.C_inr.Q))
-    { toFun := fun x => ⟨x.1, x.2.1, x.2.2⟩
-      invFun := fun x => (x.state, x.counter, x.sim)
-      left_inv := fun _ => rfl
-      right_inv := fun _ => rfl }
-
-  def get_neighbor_val (q: Q e) : e.C_inr.Q :=
-    match q.sim with
-    | some (new, old) => if q.counter == 1 then old else new
-    | none => default
-
-  def C: CellAutomaton e.α e.γ？ := {
-    Q := Q e
-    δ := fun qa qb qc =>
-        let next_q_ctl := e.C_ctl.δ qa.state qb.state qc.state
-        let trigger := e.C_ctl.project next_q_ctl
-        match trigger with
-        | some s =>
-          { state := next_q_ctl, counter := 0, sim := some (e.C_inr.embed s, e.C_inr.embed s) }
-        | none =>
-          match qb.sim with
-          | some (new_b, old_b) =>
-             if qb.counter == 2 then
-               let val_a := e.get_neighbor_val qa
-               let val_c := e.get_neighbor_val qc
-               let next_val := e.C_inr.δ val_a new_b val_c
-               { state := next_q_ctl, counter := 0, sim := some (next_val, new_b) }
-             else
-               { state := next_q_ctl, counter := qb.counter + 1, sim := some (new_b, old_b) }
-          | none =>
-             { state := next_q_ctl, counter := 0, sim := none }
-    embed := fun a =>
-      { state := e.C_ctl.embed a, counter := 0, sim := none }
-    project := fun q =>
-      match q.sim with
-      | some (new, _) => some (e.C_inr.project new)
-      | none => none
-  }
-
-  variable (c_ctl: Config e.α)
-  variable (c_inr: Config e.β)
-
-  def c_ctl_computes_c_inr: Prop :=
-    ∀ (t: ℕ) (p: ℤ),
-    e.C_ctl.comp c_ctl t p =
-      if t = 3 + 2 * p.natAbs
-      then some (c_inr p)
-      else none
-
-
-  lemma state_track (t: ℕ) (p: ℤ):
-    (e.C.nextt ⦋c_ctl⦌ t p).state = e.C_ctl.nextt ⦋c_ctl⦌ t p := by
-    induction t generalizing p with
-    | zero =>
-      simp [CellAutomaton.embed_config, C]
-    | succ t ih =>
-      rw [CellAutomaton.nextt_succ, CellAutomaton.nextt_succ]
-      unfold CellAutomaton.next
-      simp only [C]
-      -- By induction hypothesis, states at previous step match
-      have h1 := ih (p - 1)
-      have h2 := ih p
-      have h3 := ih (p + 1)
-      simp only [C] at h1 h2 h3
-      -- All branches of δ set state := e.C_ctl.δ qa.state qb.state qc.state
-      -- After substituting via h1, h2, h3, both sides are definitionally equal
-      grind
-
-  def T (t: ℕ) (p: ℤ) (k: ℕ) := 3 * t + 3 + 2 * p.natAbs + k
-
-  lemma T_reset_iff (t: ℕ) (p: ℤ) (k: Fin 3):
-    T t p k = 3 + 2 * p.natAbs ↔ t = 0 ∧ k = 0 := by
-    unfold T
-    omega
-
-  theorem spec (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr) (t: ℕ):
-    e.C.trace c_ctl (3 * t + 3) = some (e.C_inr.trace c_inr t) := by
-    sorry
-
-end SimFromΛ
-
-
 structure DecompressTriple where
   {α: Type}
   {β: Type}
@@ -636,23 +530,56 @@ namespace DecompressTriple
 
   variable (e: DecompressTriple)
 
-  def C (e: DecompressTriple): CellAutomaton e.α (e.β) := sorry
+  -- State: original state, counter mod 3, stored triple
+  def C: CellAutomaton e.α e.β := {
+    Q := e.C_orig.Q × Fin 3 × e.β³
+    δ := fun (qa, _, _) (qb, cb, vb) (qc, _, _) =>
+      let next_q := e.C_orig.δ qa qb qc
+      match e.C_orig.project next_q with
+      | some triple => (next_q, 0, triple)
+      | none => (next_q, cb + 1, vb)
+    embed := fun a =>
+      (e.C_orig.embed a, 0, fun _ => default)
+    project := fun (_, c, v) => v c
+  }
 
+  -- h_cond says: output exists at times k, k+3, k+6, ... (i.e., when t % 3 == 0)
+  def h_cond (c: Config e.α) (k: ℕ): Prop :=
+      ∀ (t: ℕ), ((e.C_orig.trace c (t + k))).isSome == (t % 3 == 0)
 
-  theorem spec (c: Config e.α) (t: ℕ) (v: (e.β³))
+  -- Helper: state tracking for C_orig
+  -- The first component of the Decompress CA state tracks C_orig's state
+  lemma state_track (c: Config e.α) (t: ℕ) (p: ℤ):
+      (e.C.nextt ⦋c⦌ t p).1 = e.C_orig.nextt ⦋c⦌ t p := by
+    induction t generalizing p with
+    | zero => simp [CellAutomaton.embed_config, C]
+    | succ t ih =>
+      -- The transition function always sets first component to e.C_orig.δ ...
+      -- which matches C_orig's transition by induction
+      sorry
+
+  theorem spec (c: Config e.α) (t: ℕ) (v: e.β³)
     (h: ∀ o: Fin 3, e.C_orig.comp c (t + o) 0 = if o == 0 then some v else none):
-      ∀ o: Fin 3, (e.C.comp c (t + o) 0) = some (v o) := by
+      ∀ o: Fin 3, e.C.comp c (t + o) 0 = v o := by
+    intro o
+    -- The proof tracks state evolution:
+    -- At t: C_orig outputs some v, so C stores v and sets counter to 0
+    -- At t+1: C_orig outputs none, so C keeps v and increments counter to 1
+    -- At t+2: C_orig outputs none, so C keeps v and increments counter to 2
+    -- Output at t+o is v[counter] = v[o]
     sorry
 
-
-  def h_cond (c: Config e.α) (k: ℕ): Prop :=
-      ∀ (t: ℕ), ((e.C_orig.trace c (t + k))).isSome == ((t - k) % 3 == 0)
-
-
   theorem spec2 (c: Config e.α) (h: e.h_cond c k) (t1: ℕ) (t2: Fin 3):
-        e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (sorry) t2
-      := by
-    -- should be simple to prove from spec
+      e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (by
+        have := h (3 * t1)
+        simp only [beq_iff_eq, Nat.mul_mod_right] at this
+        simp [trace, CellAutomaton.comp] at this ⊢
+        exact this
+      ) t2 := by
+    -- Follows from spec:
+    -- h_cond gives: output at t+k exists iff t % 3 == 0
+    -- Thus at 3*t1+k: output some v; at 3*t1+1+k, 3*t1+2+k: output none
+    -- spec applied at time (3*t1+k) gives the result
     sorry
 
 end DecompressTriple
@@ -862,13 +789,26 @@ namespace Composition
       _ = e.C_decomp.C.trace ⟬w⟭ (t + 3 + 3) := by simp
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * t₁ + t₂ + 3 + 3) := by rw [ht]
       _ = e.C_decomp.C.trace ⟬w⟭ (3 * (t₁ + 1) + t₂ + 3) := by ring_nf
-      _ = (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get (by sorry) t₂ := by
+      _ = (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get (by
+          rw [e.C_sim.spec ⟬w⟭ c_inr x]
+          simp) t₂ := by
         rw [DecompressTriple.spec2]
-        change ∀ (t : ℕ), ((e.C_sim.C.trace ⟬w⟭ (t + 3))).isSome == ((t - 3) % 3 == 0)
+        exact e.C_sim.h_cond_form ⟬w⟭ c_inr x 3 rfl
 
-        sorry
-
-      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial) t₂ := by rw [e.C_sim.spec _ _ x]
+      _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial) t₂ := by
+        have h := e.C_sim.spec ⟬w⟭ c_inr x (t₁ + 1)
+        -- The issue is dependent types. Let's work with the values directly.
+        -- Both `.get _ t₂` and the RHS are function applications to t₂
+        -- Show they evaluate to the same thing by showing the options are equal
+        -- and thus their `.get`s are the same
+        have h2 : (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)) =
+                  some (e.C2_3x.C.trace c_inr (t₁ + 1)) := h
+        -- Now the goal is: opt.get _ t₂ = (some v).get _ t₂
+        -- where opt = some v by h2
+        -- This is true because get extracts the value
+        rw [show (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get _ =
+               (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial)
+            from by simp only [h2, Option.get_some]]
       _ = e.C2_3x.C.trace c_inr (t₁ + 1) t₂ := by rfl
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by
 

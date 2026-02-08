@@ -20,7 +20,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.composition
-import CellularAutomatas.proofs.left_indep_speedup2
+import CellularAutomatas.proofs.left_indep_speedup
 
 namespace CellularAutomatas
 
@@ -147,30 +147,35 @@ namespace RegularToLeftIndep
 
 variable (e : RegularToLeftIndep)
 
-/-- State space: Either a single state or a pair of states -/
+/-- State space: Either a single state, a pair of states, or a dead (quiescent) border state -/
 inductive Q'
   | single : e.C_orig.Q → Q'
   | pair : e.C_orig.Q → e.C_orig.Q → Q'
+  | dead : Q'  -- Quiescent border state: δ'(dead, dead, dead) = dead
   deriving DecidableEq
 
-instance : Inhabited (Q' e) := ⟨Q'.single default⟩
+instance : Inhabited (Q' e) := ⟨Q'.dead⟩
 
 instance : Fintype (Q' e) :=
-  Fintype.ofEquiv (e.C_orig.Q ⊕ (e.C_orig.Q × e.C_orig.Q))
+  Fintype.ofEquiv (e.C_orig.Q ⊕ (e.C_orig.Q × e.C_orig.Q) ⊕ Unit)
     { toFun := fun
         | .inl q => Q'.single q
-        | .inr (q1, q2) => Q'.pair q1 q2
+        | .inr (.inl (q1, q2)) => Q'.pair q1 q2
+        | .inr (.inr ()) => Q'.dead
       invFun := fun
         | Q'.single q => .inl q
-        | Q'.pair q1 q2 => .inr (q1, q2)
-      left_inv := fun x => by cases x <;> rfl
+        | Q'.pair q1 q2 => .inr (.inl (q1, q2))
+        | Q'.dead => .inr (.inr ())
+      left_inv := fun x => by rcases x with _ | (_ | _) <;> rfl
       right_inv := fun x => by cases x <;> rfl }
 
-/-- Transition function: left-independent by construction -/
+/-- Transition function: left-independent by construction.
+    The dead state is quiescent: δ'(_, dead, dead) = dead -/
 def δ' : Q' e → Q' e → Q' e → Q' e
+  | _, .dead, .dead => .dead  -- Quiescent border
   | _, .single b, .single c => .pair b c
   | _, .pair b1 b2, .pair _ c2 => .single (e.C_orig.δ b1 b2 c2)
-  | _, _, _ => .pair default default  -- shouldn't happen in valid execution
+  | _, _, _ => .dead  -- Invalid transitions go to dead state
 
 /-- The left-independent CA C' -/
 def C : CellAutomaton e.α (Q' e) := {
@@ -186,10 +191,12 @@ lemma C_left_independent : e.C.left_independent := by
   unfold C δ'
   cases q2 <;> cases q3 <;> rfl
 
-/-- Extract the first component from Q' when we know the time parity -/
+/-- Extract the first component from Q' when we know the time parity.
+    For dead state, returns default (shouldn't happen in valid word computation). -/
 def get_state : Q' e → e.C_orig.Q
   | .single q => q
   | .pair q _ => q
+  | .dead => default
 
 /-- Combined spec: even times give single with shifted value, odd times give pairs -/
 theorem spec_combined (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
@@ -218,7 +225,7 @@ theorem spec_combined (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
       rw [CellAutomaton.nextt_succ]
       show Q'.single (e.C_orig.δ _ _ _) = Q'.single (e.C_orig.next (e.C_orig.nextt c t) _)
       unfold CellAutomaton.next
-      congr 2 <;> (push_cast; ring)
+      congr 2 <;> ring_nf
     · -- Odd case: 2(t+1)+1 = (2(t+1)) + 1
       -- At time 2(t+1), we have singles. Applying δ' to singles gives pairs.
       rw [show 2 * (t + 1) + 1 = (2 * (t + 1)) + 1 by ring]
@@ -234,12 +241,14 @@ theorem spec_combined (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
         show Q'.single _ = _
         rw [CellAutomaton.nextt_succ]
         unfold CellAutomaton.next
-        congr 2 <;> (push_cast; ring)
+        congr 2 <;> ring_nf
 
       show e.δ' _ _ _ = Q'.pair _ _
       rw [h_step (i-1), h_step i, h_step (i+1)]
       show Q'.pair _ _ = Q'.pair _ _
-      congr 1 <;> (push_cast; ring)
+      congr 1
+      push_cast
+      ring_nf
 
 /-- Main spec for even times -/
 theorem spec_even (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
@@ -255,67 +264,156 @@ theorem spec_odd (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
 
 end RegularToLeftIndep
 
-/-! ## Combining the transformations: The Full Pipeline
+/-! ## Combining the transformations: CAgfSpeedup
 
-  For an arbitrary CA C, the full pipeline is:
+  The CAgfSpeedup (Satz 3.9) combines:
+  1. C' = zellautoZuLinksunabhaengig(C) - Regular → Left-independent
+  2. C'' = linksunabhaengigSpeedup(C', k=3) - k-step diagonal compression
+  3. C''' = linksunabhaengigZuZellauto(C'') - Left-independent → Regular
 
-  C  --Step1-->  C'  --Step2-->  C''  --Step3-->  C'''
+  Result: Functions g₁, g₂ such that:
+  - g₁(Δ^{2p-1}_{C'''}(c)_p) = Δ^{3p-2}_C(c)_1
+  - g₂(Δ^{2p}_{C'''}(c)_{p+1}) = (Δ^{3p-1}_C(c)_1, Δ^{3p}_C(c)_1)
 
-  Where:
-  - Step 1: C → left-independent C' (2× slower, shifts left)
-  - Step 2: C' → left-independent C'' with Q^k states (k× compression)
-  - Step 3: C'' → regular C''' (2× faster, shifts right)
+  And function f such that for i ≥ 1:
+  - f(Δ^{2i+1}_{C_1}(c)_i) = (Δ^{3i-3}_C(c)_1, Δ^{3i-2}_C(c)_1, Δ^{3i-1}_C(c)_1)
 
-  The final result C''' satisfies (for k=3):
-    g₁(Δ^{2p-1}_{C'''}(c)_p) = Δ^{3p-2}_C(c)_1
-    g₂(Δ^{2p}_{C'''}(c)_{p+1}) = (Δ^{3p-1}_C(c)_1, Δ^{3p}_C(c)_1)
-
-  This gives a 3/2 speedup with diagonal movement.
+  Note: The thesis starts with a regular CA. We implement the full pipeline.
 -/
 
-/-- Full pipeline: Regular CA → compressed diagonal form (Steps 1 + 3 only for now) -/
-def compressToDiagonal {α β : Type} [Alphabet α] [Alphabet β]
-    (C : CellAutomaton α β) : CellAutomaton α (RegularToLeftIndep.Q' ⟨C⟩) :=
-  let step1 : RegularToLeftIndep := ⟨C⟩
-  let step3 : LeftIndepToRegular := ⟨step1.C, step1.C_left_independent⟩
-  step3.C
+/-! ### Full Pipeline: CAgfSpeedup
 
-/-- The embedding from input alphabet to Q' states -/
-def compressToDiagonal_embed {α β : Type} [Alphabet α] [Alphabet β]
-    (C : CellAutomaton α β) (c : Config α) : Config (RegularToLeftIndep.Q' ⟨C⟩) :=
-  fun j => RegularToLeftIndep.Q'.single (C.embed (c j))
-
-/-- Full pipeline specification:
-    t steps of the compressed CA at position i equals t steps of original CA at position i.
-    The left-shift from Step 1 exactly cancels the right-shift from Step 3!
-
-    Proof is by composing:
-    - Step 3 spec: C'''.nextt c' t i = C'.nextt c' (2*t) (i - t)
-    - Step 1 spec: C'.nextt (embed c) (2*t) i = single(C.nextt c t (i + t))
-
-    Substituting i' = i - t in Step 1:
-      C'.nextt (embed c) (2*t) (i - t) = single(C.nextt c t (i - t + t)) = single(C.nextt c t i)
+  Starting from an arbitrary CA C, we construct C''' via all three steps.
+  For now, we provide the structure and leave the main specs as sorry.
 -/
-theorem compressToDiagonal_spec {α β : Type} [Alphabet α] [Alphabet β]
-    (C : CellAutomaton α β) (c : Config α) (t : ℕ) (i : ℤ) :
-    (compressToDiagonal C).nextt (compressToDiagonal_embed C c) t i =
-    RegularToLeftIndep.Q'.single (C.nextt ⦋c⦌ t i) := by
-  -- Unfold the pipeline construction
-  let step1 : RegularToLeftIndep := ⟨C⟩
-  let step3 : LeftIndepToRegular := ⟨step1.C, step1.C_left_independent⟩
 
-  -- The compressed CA is step3.C
-  show step3.C.nextt (fun j => RegularToLeftIndep.Q'.single (C.embed (c j))) t i =
-       RegularToLeftIndep.Q'.single (C.nextt ⦋c⦌ t i)
+structure CAgfSpeedup where
+  {α : Type}
+  {β : Type}
+  [_inst_α : Alphabet α]
+  [_inst_β : Alphabet β]
+  C_orig : CellAutomaton α β
 
-  -- Step 3 spec: t steps of step3.C = 2*t steps of step1.C shifted right by t
-  rw [step3.spec]
+attribute [instance] CAgfSpeedup._inst_α
+attribute [instance] CAgfSpeedup._inst_β
 
-  -- Now we need: step1.C.nextt (embed c) (2*t) (i - t) = single(C.nextt (embed c) t i)
-  -- This follows from step1.spec_combined with position (i - t)
-  have h := (step1.spec_combined ⦋c⦌ t (i - t)).1
-  -- h says: step1.C.nextt (embed c) (2*t) (i - t) = single(C.nextt (embed c) t (i - t + t))
-  simp only [sub_add_cancel] at h
-  exact h
+namespace CAgfSpeedup
 
-end CellularAutomatas
+variable (e : CAgfSpeedup)
+
+/-- Step 1: Regular CA → Left-independent CA -/
+def step1 : RegularToLeftIndep where
+  C_orig := e.C_orig
+
+/-- C' = the left-independent CA from step 1 -/
+def C' : CellAutomaton e.α (RegularToLeftIndep.Q' e.step1) := e.step1.C
+
+/-- C' is left-independent -/
+lemma C'_left_indep : e.C'.left_independent := e.step1.C_left_independent
+
+/-- C' with optional alphabet wrapper for step 2.
+    The border is the dead state which is quiescent by construction.
+-/
+def C'_opt : CellAutomaton e.α？ (RegularToLeftIndep.Q' e.step1) := {
+  Q := e.C'.Q
+  δ := e.C'.δ
+  embed := fun a => match a with
+    | some a' => e.C'.embed a'
+    | none => RegularToLeftIndep.Q'.dead  -- border = embed none = dead (quiescent)
+  project := e.C'.project
+}
+
+/-- C'_opt is left-independent -/
+lemma C'_opt_left_indep : e.C'_opt.left_independent := by
+  intro a b c a'
+  exact e.C'_left_indep a b c a'
+
+/-- C'_opt has quiescent border (dead state is quiescent by construction) -/
+lemma C'_opt_quiescent : e.C'_opt.quiescent e.C'_opt.border := by
+  unfold CellAutomaton.quiescent CellAutomaton.quiescent_set CellAutomaton.border
+  intro ⟨a, ha⟩ ⟨b, hb⟩ ⟨c, hc⟩
+  simp only [Set.mem_singleton_iff] at ha hb hc
+  subst ha hb hc
+  simp only [C'_opt, C', step1, RegularToLeftIndep.C, RegularToLeftIndep.δ']
+  -- δ'(dead, dead, dead) = dead by definition
+  rfl
+
+/-- Step 2: Left-independent → k-compressed with k=3 -/
+def step2 : LeftIndepSpeedup where
+  C_orig := e.C'_opt
+  k := 3
+  hk := by decide
+  h_left_indep := e.C'_opt_left_indep
+  h_quiescent := e.C'_opt_quiescent
+
+/-- C'' = the compressed left-independent CA from step 2 -/
+def C'' : CellAutomaton e.α？ (RegularToLeftIndep.Q' e.step1) := e.step2.C
+
+/-- C'' is left-independent -/
+lemma C''_left_indep : e.C''.left_independent := e.step2.C_left_indep
+
+/-- Step 3: Left-independent → Regular (with 2x speedup) -/
+def step3 : LeftIndepToRegular where
+  C_orig := e.C''
+  h_left_indep := e.C''_left_indep
+
+/-- C''' = the final CA after all transformations -/
+def C''' : CellAutomaton e.α？ (RegularToLeftIndep.Q' e.step1) := e.step3.C
+
+/-- The state type of C''' (same as C'') -/
+abbrev Q''' := e.step2.Q'
+
+-- Helper: k = 3 for step2
+@[simp] lemma step2_k : e.step2.k = 3 := rfl
+
+/-- Extract function g₁: given C''' state, extract component that gives Δ^{3p-2}_C(c)_1 -/
+def g₁ (q : e.Q''') : e.C_orig.Q :=
+  -- Takes the 3rd component (j=2), then extracts from the pair
+  let q' := e.step2.compr_at q ⟨2, by simp⟩
+  e.step1.get_state q'
+
+/-- Extract function g₂: given C''' state, extract pair giving (Δ^{3p-1}_C(c)_1, Δ^{3p}_C(c)_1) -/
+def g₂ (q : e.Q''') : e.C_orig.Q × e.C_orig.Q :=
+  let q1' := e.step2.compr_at q ⟨1, by simp⟩
+  let q0' := e.step2.compr_at q ⟨0, by simp⟩
+  (e.step1.get_state q1', e.step1.get_state q0')
+
+/-- Combined extraction function f -/
+def f (q_prev q_curr : e.Q''') : e.C_orig.Q × e.C_orig.Q × e.C_orig.Q :=
+  let (q1, q2) := e.g₂ q_prev
+  let q3 := e.g₁ q_curr
+  (q1, q2, q3)
+
+/-- Helper: embed a word into C_orig's state space -/
+def embed_word_orig (w : Word e.α) : Config e.C_orig.Q :=
+  e.C_orig.embed_config (fun i => if 0 ≤ i ∧ i < w.length then w.getD i.toNat default else default)
+
+/-- Main spec theorem for g₁: g₁(Δ^{2p-1}_{C'''}(c)_p) = Δ^{3p-2}_C(c)_1 for p ≥ 1
+
+  The full proof requires composing the three specs:
+  1. step1.spec_even: relates C' to C_orig
+  2. step2.spec: relates C'' to C'
+  3. step3.spec: relates C''' to C''
+-/
+theorem spec_g₁ (w : Word e.α) (p : ℕ) (hp : p ≥ 1) :
+    e.g₁ (e.C'''.nextt (CellAutomaton.embed_word (C := e.C''') w) (2*p - 1) p) =
+    e.C_orig.nextt (e.embed_word_orig w) (3*p - 2) 1 := by
+  sorry
+
+/-- Main spec theorem for g₂ -/
+theorem spec_g₂ (w : Word e.α) (p : ℕ) (hp : p ≥ 1) :
+    e.g₂ (e.C'''.nextt (CellAutomaton.embed_word (C := e.C''') w) (2*p) (p + 1)) =
+    (e.C_orig.nextt (e.embed_word_orig w) (3*p - 1) 1,
+     e.C_orig.nextt (e.embed_word_orig w) (3*p) 1) := by
+  sorry
+
+/-- Combined spec: f extracts three consecutive values at position 1 -/
+theorem spec_f (w : Word e.α) (i : ℕ) (hi : i ≥ 1) :
+    e.f (e.C'''.nextt (CellAutomaton.embed_word (C := e.C''') w) (2*i) i)
+        (e.C'''.nextt (CellAutomaton.embed_word (C := e.C''') w) (2*i + 1) i) =
+    (e.C_orig.nextt (e.embed_word_orig w) (3*i - 3) 1,
+     e.C_orig.nextt (e.embed_word_orig w) (3*i - 2) 1,
+     e.C_orig.nextt (e.embed_word_orig w) (3*i - 1) 1) := by
+  sorry
+
+end CAgfSpeedup
