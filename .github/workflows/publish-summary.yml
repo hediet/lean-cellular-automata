@@ -3,7 +3,7 @@ name: Publish Summary PDF
 on:
   push:
     branches: [main]
-    paths: [summary.typ]
+    paths: [docs/summary.typ]
   workflow_dispatch:
 
 permissions:
@@ -26,12 +26,12 @@ jobs:
           sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
 
       - name: Compile PDF
-        run: typst compile summary.typ summary.pdf
+        run: typst compile docs/summary.typ docs/summary.pdf
 
       - name: Prepare pages
         run: |
           mkdir -p _site
-          cp summary.pdf _site/summary.pdf
+          cp docs/summary.pdf _site/summary.pdf
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html>

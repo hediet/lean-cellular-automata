@@ -644,7 +644,7 @@ lemma C_left_indep : e.C.left_independent := e.speedup.C_left_indep
 
     This version works without requiring the original CA to have a passive border.
     The constraint i ≥ -t ensures the position is within the light cone. -/
-theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi' : -(t : ℤ) ≤ i) (hi : i < 0)
+theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi2 : -(t : ℤ) ≤ i) (hi : i < 0)
     (j : Fin e.k) :
     (e.C.comp (CellAutomaton.embed_word w) t i) j =
     e.C_orig.comp (CellAutomaton.embed_word w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
@@ -680,7 +680,7 @@ theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi' : -(t 
       have hk_pos : (e.k : ℤ) > 0 := by have := e.hk; omega
       calc -(↑t - (↑e.k - 1) * i - ↑↑j)
           = -↑t + (↑e.k - 1) * i + ↑↑j := by ring
-        _ ≤ i + (↑e.k - 1) * i + ↑↑j := by linarith [hi']
+        _ ≤ i + (↑e.k - 1) * i + ↑↑j := by linarith [hi2]
         _ = ↑e.k * i + ↑↑j := by ring
     · omega
   -- Use passive_border.spec

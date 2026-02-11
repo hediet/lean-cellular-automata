@@ -170,6 +170,25 @@ theorem spec_odd (c : Config e.α) (t : ℕ) (i : ℤ) :
   simp only [C] at h
   rw [h]
 
+
+theorem spec (c : Config e.α) (t : ℕ) (i : ℤ) :
+    e.C.comp c t i =
+      if t % 2 = 0 then
+        .single (e.C_orig.comp c (t / 2) (i + t / 2))
+      else
+        .pair (e.C_orig.comp c (t / 2) (i + t / 2)) (e.C_orig.comp c (t / 2) (i + t / 2 + 1)) := by
+  rcases Nat.mod_two_eq_zero_or_one t with h | h
+  · -- t % 2 = 0 (even case)
+    simp only [h, ↓reduceIte]
+    have hk : t = 2 * (t / 2) := by omega
+    conv_lhs => rw [hk]
+    exact spec_even e c (t / 2) i
+  · -- t % 2 = 1 (odd case)
+    simp only [h, one_ne_zero, ↓reduceIte]
+    have hk : t = 2 * (t / 2) + 1 := by omega
+    conv_lhs => rw [hk]
+    exact spec_odd e c (t / 2) i
+
 end RegularToLeftIndep
 
 end CellularAutomatas

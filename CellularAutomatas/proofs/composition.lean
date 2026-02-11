@@ -14,83 +14,39 @@ import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.k_step_speedup
 import CellularAutomatas.proofs.sim_from_lambda
+import CellularAutomatas.proofs.decompress_triple
+import CellularAutomatas.proofs.compress_to_diag
 
 
 namespace CellularAutomatas
 
-notation:max x "³"  => Fin 3 → x
-
 
 open CellAutomaton
-
-
-
-
-
-
-
-
-
-
-
-
-
-def triple_at {Q} (c: ℕ → Q) (i: ℕ): Q³ := fun o => c (i + o)
-
-
-
-
-structure CompressToDiag where
-  {α: Type}
-  {β: Type}
-  [_inst_α: Alphabet α]
-  [_inst_β: Alphabet β]
-  C_orig: CellAutomaton α？ β
-
-attribute [instance] CompressToDiag._inst_α
-attribute [instance] CompressToDiag._inst_β
-
-namespace CompressToDiag
-
-  variable (e: CompressToDiag)
-
-  def C: CellAutomaton e.α？ (Option (e.β³)) := sorry
-
-  theorem spec (w: Word e.α) (t: ℕ) (p: ℤ):
-      e.C.comp w t p =
-        if p >= 0 ∧ t = 2 * p + 3
-        then some (triple_at (e.C_orig.trace w) (3 * p).natAbs)
-        else none
-        := by
-    sorry
-
-end CompressToDiag
 
 section DiagLeft
 
   inductive Q_DL
   | idle
-  | p_s0 | p_s1 | p_s2 | p_fire | hold | v_fire | dead
+  | p_s0 | p_s1 | p_s2 | hold | v_fire | dead
   deriving DecidableEq, Inhabited, Fintype
 
-  def diag_left {α β: Type} [_inst_α: Alphabet α] [_inst_β: Alphabet β] : CellAutomaton α？ ((β？)³)？ := {
+  def diag_left {α: Type} [Alphabet α] : CellAutomaton α？ Bool := {
     Q := Q_DL
     δ := fun _ c r =>
       match c with
       | .p_s0 => .p_s1
       | .p_s1 => .p_s2
-      | .p_s2 => .p_fire
-      | .p_fire => .hold
+      | .p_s2 => .v_fire
+      | .v_fire => .hold
       | .hold => .dead
       | .dead => .dead
-      | .v_fire => .hold
       | .idle => if r == .hold then .v_fire else .idle
     embed := fun
       | some _ => .p_s0
       | none => .idle
     project := fun
-      | .v_fire => some (fun _ => none)
-      | _ => none
+      | .v_fire => true  -- fires at p≤0, t=3+2*|p|
+      | _ => false
   }
 
   /-
@@ -103,7 +59,7 @@ section DiagLeft
      t=0    .  .  .  .  .  0  .
      t=1    .  .  .  .  .  1  .
      t=2    .  .  .  .  .  2  .
-     t=3    .  .  .  .  .  F  .
+     t=3    .  .  .  .  .  V  .   <-- Cell 0 fires (Output!)
      t=4    .  .  .  .  .  H  .   <-- Cell 0 in Hold
      t=5    .  .  .  .  V  x  .   <-- Cell -1 sees Hold, becomes V_fire (Output!)
      t=6    .  .  .  .  H  x  .   <-- Cell -1 becomes Hold
@@ -116,15 +72,19 @@ section DiagLeft
      t=13   V  x  x  x  x  x  .
   -/
 
-  lemma diag_left_spec {α β} [_inst_α: Alphabet α] [_inst_β: Alphabet β] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_left α β _ _).comp w t p =
-        if w ≠ [] ∧ p < 0 ∧ t = 3 + 2 * p.natAbs
-        then some (fun _ => none)
-        else none
-        := by
-    unfold CellAutomaton.comp CellAutomaton.project_config diag_left
-    simp only [Function.comp_apply]
-    -- Need to characterize nextt
+  lemma diag_left_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
+      (@diag_left α _).comp w t p = (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
+    sorry
+
+  def diag_right {α: Type} [Alphabet α] : CellAutomaton α？ Bool :=
+    (@diag_left α _).flip
+
+  lemma diag_right_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
+      (@diag_right α _).comp w t p = (w ≠ [] ∧ p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
+    -- Uses: diag_right = diag_left.flip
+    -- flip_comp: C.flip.comp c t p = C.comp c.flip t (-p)
+    -- diag_left fires at (t, p) when p ≤ 0 and t = 3 + 2*|p|
+    -- So diag_right fires when -p ≤ 0 (i.e., p ≥ 0) and t = 3 + 2*|-p| = 3 + 2*|p|
     sorry
 
 end DiagLeft
@@ -142,14 +102,21 @@ attribute [instance] CompressToΛ._inst_β
 namespace CompressToΛ
   variable (e: CompressToΛ)
 
-  def diag_right : CompressToDiag := {
+  def data_source : CompressToDiag := {
     α := e.α
     β := e.β？
     C_orig := e.C_orig
   }
 
+  -- diag_right fires (true) at p >= 0 at correct diagonal time
+  -- diag_left fires (true) at p < 0 at correct diagonal time
+  -- data_source.C provides the actual triple values (but always outputs some)
   def C: CellAutomaton e.α？ ((e.β？)³)？ :=
-    (e.diag_right.C ⨂ diag_left).map_project (fun (v1, v2) => Option.or v1 v2)
+    (e.data_source.C ⨂ (diag_right : CellAutomaton e.α？ Bool) ⨂ (diag_left : CellAutomaton e.α？ Bool)).map_project
+      (fun (triple, (signal_right, signal_left)) =>
+        if signal_right then triple              -- p >= 0 on diagonal: use computed triple
+        else if signal_left then some (fun _ => none)  -- p < 0 on diagonal: placeholder
+        else none)                                -- not on diagonal
 
 
   def decode_cfg (w: Word e.α): Config ((e.β？)³) :=
@@ -164,6 +131,16 @@ namespace CompressToΛ
         then some (e.decode_cfg w p)
         else none
         := by
+    -- Main proof idea:
+    -- 1. e.C = (data_source.C ⨂ diag_right ⨂ diag_left).map_project f
+    -- 2. By ca_zip_comp: each component computes independently
+    -- 3. diag_right fires (true) iff p ≥ 0 ∧ t = 3 + 2*|p|
+    -- 4. diag_left fires (true) iff p ≤ 0 ∧ t = 3 + 2*|p|
+    -- 5. data_source.C.comp gives triple_at for p > 0 via CompressToDiag.spec
+    -- 6. Combine: on diagonal t = 3 + 2*|p|:
+    --    - p ≥ 0: diag_right fires, use data_source.C output
+    --    - p < 0: diag_left fires, output (fun _ => none)
+    --    - off diagonal: neither fires, output none
     sorry
 
 end CompressToΛ
@@ -482,80 +459,6 @@ namespace SpeedupAndTraceKx
 
 
 end SpeedupAndTraceKx
-
-
-structure DecompressTriple where
-  {α: Type}
-  {β: Type}
-  [_inst_α: Alphabet α]
-  [_inst_β: Alphabet β]
-  C_orig: CellAutomaton α (Option (β³))
-
-attribute [instance] DecompressTriple._inst_α
-attribute [instance] DecompressTriple._inst_β
-
-namespace DecompressTriple
-
-  variable (e: DecompressTriple)
-
-  -- State: original state, counter mod 3, stored triple
-  def C: CellAutomaton e.α e.β := {
-    Q := e.C_orig.Q × Fin 3 × e.β³
-    δ := fun (qa, _, _) (qb, cb, vb) (qc, _, _) =>
-      let next_q := e.C_orig.δ qa qb qc
-      match e.C_orig.project next_q with
-      | some triple => (next_q, 0, triple)
-      | none => (next_q, cb + 1, vb)
-    embed := fun a =>
-      (e.C_orig.embed a, 0, fun _ => default)
-    project := fun (_, c, v) => v c
-  }
-
-  -- h_cond says: output exists at times k, k+3, k+6, ... (i.e., when t % 3 == 0)
-  def h_cond (c: Config e.α) (k: ℕ): Prop :=
-      ∀ (t: ℕ), ((e.C_orig.trace c (t + k))).isSome == (t % 3 == 0)
-
-  -- Helper: state tracking for C_orig
-  -- The first component of the Decompress CA state tracks C_orig's state
-  lemma state_track (c: Config e.α) (t: ℕ) (p: ℤ):
-      (e.C.nextt ⦋c⦌ t p).1 = e.C_orig.nextt ⦋c⦌ t p := by
-    induction t generalizing p with
-    | zero => simp [CellAutomaton.embed_config, C]
-    | succ t ih =>
-      -- The transition function always sets first component to e.C_orig.δ ...
-      -- which matches C_orig's transition by induction
-      sorry
-
-  theorem spec (c: Config e.α) (t: ℕ) (v: e.β³)
-    (h: ∀ o: Fin 3, e.C_orig.comp c (t + o) 0 = if o == 0 then some v else none):
-      ∀ o: Fin 3, e.C.comp c (t + o) 0 = v o := by
-    intro o
-    -- The proof tracks state evolution:
-    -- At t: C_orig outputs some v, so C stores v and sets counter to 0
-    -- At t+1: C_orig outputs none, so C keeps v and increments counter to 1
-    -- At t+2: C_orig outputs none, so C keeps v and increments counter to 2
-    -- Output at t+o is v[counter] = v[o]
-    sorry
-
-  theorem spec2 (c: Config e.α) (h: e.h_cond c k) (t1: ℕ) (t2: Fin 3):
-      e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (by
-        have := h (3 * t1)
-        simp only [beq_iff_eq, Nat.mul_mod_right] at this
-        simp [trace, CellAutomaton.comp] at this ⊢
-        exact this
-      ) t2 := by
-    -- Follows from spec:
-    -- h_cond gives: output at t+k exists iff t % 3 == 0
-    -- Thus at 3*t1+k: output some v; at 3*t1+1+k, 3*t1+2+k: output none
-    -- spec applied at time (3*t1+k) gives the result
-    sorry
-
-end DecompressTriple
-
-
-
-
-
 
 
 structure AddBorder where
