@@ -125,6 +125,30 @@ lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
   grind
   grind
 
+-- At time 0, the speedup gives the initial state.
+-- After the projectQ' change, g2 on the initial projected output gives trace(0).
+lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
+    (e.g2 (e.C.comp w 0 0)).2 = e.C_orig.comp w 0 0 := by
+  -- First establish that C.comp w 0 0 = fun _ => BetaUnionSq.single(C_orig.comp w 0 0)
+  have key : e.C.comp w 0 0 = fun _ => BetaUnionSq.single (e.C_orig.comp w 0 0) := by
+    rw [C]
+    unfold embed_word
+    rw [e.step3.spec]
+    have : e.step3.C_orig = e.step2.C := by rfl
+    rw [this, <-embed_word, <-embed_word]
+    simp only [mul_zero, zero_sub, CellAutomaton.comp, CellAutomaton.project_config,
+      CellAutomaton.nextt_zero, Function.comp_apply]
+    have h0 : (-↑(0:ℕ) : ℤ) = 0 := by norm_num
+    rw [h0]
+    funext j
+    simp only [embed_word, CellAutomaton.embed_config, word_to_config]
+    have hw0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < ↑w.length := ⟨le_refl 0, by omega⟩
+    simp only [hw0, dite_true, and_self]
+    -- Goal: step2.C.project(step2.C.embed(some w[0])) j = BetaUnionSq.single(C_orig.project(C_orig.embed(some w[0])))
+    rfl
+  -- Now rewrite using key and simplify g2
+  unfold g2
+  rw [key]
 
 end CAgfSpeedup
 
@@ -301,87 +325,70 @@ namespace CompressToDiag
       convert h_self using 2
 
 
-  theorem spec (w: Word e.α) (hw : w.length > 0) (p: ℕ) (hp : p > 0):
+  theorem spec (w: Word e.α) (hw : w.length > 0) (p: ℕ):
       e.C.comp w (2*p + 3) p =
         some (triple_at (e.C_orig.trace w) (3 * p)) := by
     simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C]
 
-    -- At time t = 2p+3 and position i = p, we extract:
-    --   self[0] = speedup.C at time 2p+3-3+0 = 2p, position p
-    --   self[1] = speedup.C at time 2p+3-3+1 = 2p+1, position p
-    --   rightHist[3] = speedup.C at time 2p+3-4+3 = 2p+2, position p+1
-
-    -- First, get the state components
     have h_self0 := e.C_self_tracks_speedup w (2*p+3) p ⟨0, by decide⟩ (by omega)
     have h_self1 := e.C_self_tracks_speedup w (2*p+3) p ⟨1, by decide⟩ (by omega)
-    have h_right3 := e.C_right_tracks_speedup w (2*p+3) p ⟨3, by decide⟩ (by omega)
 
-    -- Simplify the time calculations
     have ht0 : 2*p + 3 - 3 + 0 = 2*p := by omega
     have ht1 : 2*p + 3 - 3 + 1 = 2*p + 1 := by omega
-    have ht2 : 2*p + 3 - 4 + 3 = 2*p + 2 := by omega
-
     simp only [ht0] at h_self0
     simp only [ht1] at h_self1
-    simp only [ht2] at h_right3
 
-    -- The projected outputs match the inputs to g1/g2 specs
-    -- o0 = speedup.C.project(self[0]) = speedup.C.comp w (2p) p
-    -- By g2_spec at (p-1): g2(speedup.C.comp w (2(p-1)+2) ((p-1)+1)) = (trace(3p-1), trace(3p))
-    --   Since 2(p-1)+2 = 2p and (p-1)+1 = p, g2(o0) = (trace(3p-1), trace(3p))
-    --   So g2(o0).2 = trace(3p)
-
-    -- o1 = speedup.C.project(self[1]) = speedup.C.comp w (2p+1) p
-    -- By g1_spec at p: g1(speedup.C.comp w (2p+1) p) = trace(3p+1)
-    --   So g1(o1) = trace(3p+1)
-
-    -- o2 = speedup.C.project(rightHist[3]) = speedup.C.comp w (2p+2) (p+1)
-    -- By g2_spec at p: g2(speedup.C.comp w (2p+2) (p+1)) = (trace(3p+2), trace(3p+3))
-    --   So g2(o2).1 = trace(3p+2)
+    -- rightHist[3]: for p ≥ 1, use C_right_tracks_speedup; for p = 0, compute directly
+    have h_right3 : (e.C.nextt (embed_word w) (2*p+3) p).2 ⟨3, by decide⟩ =
+        e.speedup.C.nextt (embed_word w) (2*p + 2) (p + 1) := by
+      by_cases hp : p = 0
+      · subst hp; rfl
+      · have hp' : p ≥ 1 := Nat.one_le_iff_ne_zero.mpr hp
+        have h := e.C_right_tracks_speedup w (2*p+3) p ⟨3, by decide⟩ (by omega)
+        simp only [show 2*p + 3 - 4 + 3 = 2*p + 2 by omega] at h
+        convert h using 3
 
     congr 1
     funext j
     match j with
     | ⟨0, _⟩ =>
       simp only [triple_at, Nat.add_zero, CellAutomaton.trace]
-      -- Need: g2(project(self[0])).2 = C_orig.comp w (3*p) 0
-      -- g2_spec at p-1: g2(speedup.C.comp w (2*(p-1)+2) ((p-1)+1)) = (trace(3*(p-1)+2), trace(3*(p-1)+3))
-      -- Simplify: 2*(p-1)+2 = 2p, (p-1)+1 = p, 3*(p-1)+3 = 3p
-      have hg2 := e.speedup.g2_spec w hw (p - 1)
-      have htime : 2 * (p - 1) + 2 = 2 * p := by omega
-      have hpos : (p - 1 : ℤ) + 1 = p := by omega
-      have hout2 : 3 * (p - 1) + 3 = 3 * p := by omega
-      simp only [htime, hout2, Nat.cast_sub hp, Nat.cast_one, hpos] at hg2
-      -- Now hg2: g2(speedup.C.comp w (2*p) p) = (_, C_orig.comp w (3*p) 0)
       show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).1 ⟨0, _⟩))).2
           = e.C_orig.comp (embed_word w) (3 * p) 0
       rw [h_self0]
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2 ⊢
-      -- speedup.C_orig = C_orig by definition
+      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
-      rw [h_eq] at hg2
-      exact congrArg Prod.snd hg2
+      -- For p = 0: use g2_initial_spec; for p > 0: use g2_spec(p-1)
+      by_cases hp : p = 0
+      · subst hp
+        simp only [mul_zero, Nat.cast_zero]
+        have := e.speedup.g2_initial_spec w hw
+        simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at this
+        rw [h_eq] at this; exact this
+      · have hp' : p > 0 := Nat.pos_of_ne_zero hp
+        have hg2 := e.speedup.g2_spec w hw (p - 1)
+        simp only [show 2 * (p - 1) + 2 = 2 * p by omega,
+          show 3 * (p - 1) + 3 = 3 * p by omega,
+          Nat.cast_sub hp', Nat.cast_one, show (p - 1 : ℤ) + 1 = p by omega] at hg2
+        simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2
+        rw [h_eq] at hg2; exact congrArg Prod.snd hg2
     | ⟨1, _⟩ =>
       simp only [triple_at, CellAutomaton.trace]
-      -- Need: g1(project(self[1])) = C_orig.comp w (3*p+1) 0
       have hg1 := e.speedup.g1_spec w hw p
       show (e.speedup.g1 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).1 ⟨1, _⟩)))
           = e.C_orig.comp (embed_word w) (3 * p + 1) 0
       rw [h_self1]
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg1 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
-      rw [h_eq] at hg1
-      exact hg1
+      rw [h_eq] at hg1; exact hg1
     | ⟨2, _⟩ =>
       simp only [triple_at, CellAutomaton.trace]
-      -- Need: g2(project(rightHist[3])).1 = C_orig.comp w (3*p+2) 0
       have hg2 := e.speedup.g2_spec w hw p
       show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).2 ⟨3, _⟩))).1
           = e.C_orig.comp (embed_word w) (3 * p + 2) 0
       rw [h_right3]
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
-      rw [h_eq] at hg2
-      exact congrArg Prod.fst hg2
+      rw [h_eq] at hg2; exact congrArg Prod.fst hg2
 
 end CompressToDiag

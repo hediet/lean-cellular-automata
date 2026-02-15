@@ -1,137 +1,172 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import Mathlib.Tactic.Linarith
+import Mathlib.Logic.Function.Iterate
 
 namespace CellularAutomatas
 
 open CellAutomaton
-
-/-!
-# Diagonal Left Cellular Automata
-
-This file defines:
-1. `DiagLeft` - A CA that fires at t = 2*|p| for p ≤ 0 (fires immediately at p=0, t=0)
-2. `ConstDelay` - A general construction to delay any CA's output by k steps
-3. `DiagLeft3` - DiagLeft delayed by 3 steps, firing at t = 3 + 2*|p|
--/
 
 section DiagLeft
 
   /-
     DiagLeft: Fires at p ≤ 0 at time t = 2*|p|
 
-    Execution for a single input cell at position 0:
+    Input: Single cell [()] at position 0.
+
+    Execution:
 
     Time   Space (x)
     (t)    -5 -4 -3 -2 -1  0  1
     ---------------------------
      t=0    .  .  .  .  .  V  .   <-- Cell 0 fires immediately
      t=1    .  .  .  .  .  H  .   <-- Cell 0 in Hold
-     t=2    .  .  .  .  V  x  .   <-- Cell -1 sees Hold, fires
-     t=3    .  .  .  .  H  x  .
-     t=4    .  .  .  V  x  x  .   <-- Cell -2 fires
-     t=5    .  .  .  H  x  x  .
-     t=6    .  .  V  x  x  x  .   <-- Cell -3 fires
-     t=7    .  .  H  x  x  x  .
-     t=8    .  V  x  x  x  x  .   <-- Cell -4 fires
-     t=9    .  H  x  x  x  x  .
-     t=10   V  x  x  x  x  x  .   <-- Cell -5 fires
+     t=2    .  .  .  .  V  .  .   <-- Cell -1 sees Hold, fires
+     t=3    .  .  .  .  H  .  .
+     t=4    .  .  .  V  .  .  .   <-- Cell -2 fires
+     ...
+     t=2k   V at position -k
 
     States:
-    - idle: waiting (border cells)
-    - v_fire: cell is firing this step
+    - idle: waiting (border cells, p ≠ 0)
+    - fire: cell is firing this step
     - hold: cell fired, now holding to signal left neighbor
-    - dead: done
   -/
 
-  inductive Q_DiagLeft
-  | idle
-  | hold | v_fire | dead
+  inductive Q | idle | hold | fire
   deriving DecidableEq, Inhabited, Fintype
 
-  def diag_left_base {α: Type} [Alphabet α] : CellAutomaton α？ Bool := {
-    Q := Q_DiagLeft
+  def diag_left : CellAutomaton Unit？ Bool := {
+    Q := Q
     δ := fun _ c r =>
       match c with
-      | .v_fire => .hold
-      | .hold => .dead
-      | .dead => .dead
-      | .idle => if r == .hold then .v_fire else .idle
+      | .fire => .hold
+      | .hold => .idle
+      | .idle => if r == .hold then .fire else .idle
     embed := fun
-      | some _ => .v_fire  -- Input cells fire immediately at t=0
+      | some () => .fire
       | none => .idle
     project := fun
-      | .v_fire => true
+      | .fire => true
       | _ => false
   }
 
-  lemma diag_left_base_state {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_left_base α _).nextt ⦋⟬w⟭⦌ t p =
-        if w = [] then Q_DiagLeft.idle
-        else if p > 0 then Q_DiagLeft.idle
-        else if p = 0 then
-          match t with
-          | 0 => Q_DiagLeft.v_fire
-          | 1 => Q_DiagLeft.hold
-          | _ => Q_DiagLeft.dead
-        else  -- p < 0, so p = -|p|
-          let fire_time := 2 * p.natAbs
-          if t < fire_time then Q_DiagLeft.idle
-          else if t = fire_time then Q_DiagLeft.v_fire
-          else if t = fire_time + 1 then Q_DiagLeft.hold
-          else Q_DiagLeft.dead
-      := by
-    -- Proof idea:
-    -- By induction on t.
-    -- Base case t=0: initial state from embed - input cells get v_fire, border cells get idle
-    -- Inductive case: use transition function δ
-    --   - idle cells stay idle unless right neighbor is hold
-    --   - v_fire → hold → dead → dead
-    --   - Cell at p fires when right neighbor (at p+1) was in hold at t-1
-    --   - This happens at t = 2*|p| for p < 0
-    sorry
+  -- Helper: embed_word for single-element word
+  lemma embed_word_singleton (C: CellAutomaton α？ β) (a: α) (p: ℤ):
+      @CellAutomaton.embed_word α β C [a] p = if p = 0 then C.embed (some a) else C.embed none := by
+    simp only [CellAutomaton.embed_word, CellAutomaton.embed_config, word_to_config]
+    by_cases hp : p = 0
+    · simp [hp]
+    · simp only [hp, ↓reduceIte]
+      split_ifs with h
+      · simp only [List.length_singleton] at h; omega
+      · rfl
 
-  lemma diag_left_base_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_left_base α _).comp w t p = (w ≠ [] ∧ p ≤ 0 ∧ t = 2 * p.natAbs) := by
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply, ←embed_word_word_to_config_eq]
-    rw [diag_left_base_state]
-    simp only [diag_left_base, eq_iff_iff]
-    by_cases hw : w = []
-    case pos =>
-      simp only [hw, ↓reduceIte, ne_eq, not_true_eq_false, false_and]
-      constructor <;> intro h <;> cases h
-    case neg =>
-      simp only [hw, ↓reduceIte, ne_eq, not_false_eq_true, true_and]
-      by_cases hp_pos : p > 0
-      case pos =>
-        simp only [hp_pos, ↓reduceIte]
-        constructor
-        · intro h; cases h
-        · intro ⟨hp_le, _⟩; omega
-      case neg =>
-        push_neg at hp_pos
-        have hp_not_pos : ¬(p > 0) := not_lt.mpr hp_pos
-        simp only [hp_not_pos, hp_pos, true_and, ↓reduceIte]
-        by_cases hp_zero : p = 0
-        case pos =>
-          subst hp_zero
-          simp only [↓reduceIte, Int.natAbs_zero, mul_zero]
-          match t with
-          | 0 => simp
-          | 1 => simp
-          | _+2 => simp
-        case neg =>
-          have hp_neg : p < 0 := lt_of_le_of_ne hp_pos hp_zero
-          simp only [hp_zero, ↓reduceIte]
-          constructor
-          · intro h
-            split_ifs at h
-            all_goals assumption
-          · intro ht
-            simp only [ht, lt_self_iff_false, ↓reduceIte]
+  -- Convert state to canonical form
+  def diag_left_expected_state (t: ℕ) (p: ℤ) : Q :=
+    if (t : ℤ) = -2 * p then .fire
+    else if (t : ℤ) = -2 * p + 1 then .hold
+    else .idle
+
+  -- The state at each position and time follows the diagonal pattern
+  lemma diag_left_state (t: ℕ) (p: ℤ):
+      (diag_left.nextt [()] t) p = diag_left_expected_state t p := by
+    induction t generalizing p with
+    | zero =>
+      simp only [CellAutomaton.nextt_zero, Nat.cast_zero, diag_left_expected_state]
+      rw [embed_word_singleton]
+      simp only [diag_left]
+      by_cases hp : p = 0
+      · simp [hp]
+      · simp only [hp, ↓reduceIte]
+        split_ifs with h1 h2
+        · omega
+        · omega
+        · rfl
+    | succ t ih =>
+      rw [CellAutomaton.nextt_succ]
+      simp only [CellAutomaton.next]
+      rw [ih (p - 1), ih p, ih (p + 1)]
+
+      unfold diag_left_expected_state
+      simp only [Nat.cast_succ]
+
+      -- The transition function applied to the expected states
+      -- First simplify the center state using case analysis
+      by_cases h_fire : (t : ℤ) = -2 * p
+      -- Center state is .fire
+      · rw [if_pos h_fire]
+        simp only [diag_left]  -- unfold the match on .fire
+        -- After .fire comes .hold
+        have h_not_next : ¬((t : ℤ) + 1 = -2 * p) := by omega
+        have h_next : (t : ℤ) + 1 = -2 * p + 1 := by omega
+        rw [if_neg h_not_next, if_pos h_next]
+
+      · by_cases h_hold : (t : ℤ) = -2 * p + 1
+        -- Center state is .hold
+        · rw [if_neg h_fire, if_pos h_hold]
+          simp only [diag_left]  -- unfold the match on .hold
+          -- After .hold comes .idle
+          have h1 : ¬((t : ℤ) + 1 = -2 * p) := by omega
+          have h2 : ¬((t : ℤ) + 1 = -2 * p + 1) := by omega
+          rw [if_neg h1, if_neg h2]
+
+        -- Center state is .idle
+        · rw [if_neg h_fire, if_neg h_hold]
+          simp only [diag_left]  -- unfold the match on .idle
+          -- Check right neighbor for .hold
+          by_cases h_right_hold : (t : ℤ) = -2 * (p + 1) + 1
+          -- Right is .hold → fire
+          · have hR1 : ¬((t : ℤ) = -2 * (p + 1)) := by omega
+            rw [if_neg hR1, if_pos h_right_hold]
+            -- Right neighbor is .hold, so beq check succeeds
+            simp only [beq_self_eq_true, ↓reduceIte]
+            have h_next_fire : (t : ℤ) + 1 = -2 * p := by omega
+            rw [if_pos h_next_fire]
+
+          · by_cases h_right_fire : (t : ℤ) = -2 * (p + 1)
+            -- Right is .fire
+            · rw [if_pos h_right_fire]
+              have beq_false : (Q.fire == Q.hold) = false := by native_decide
+              simp only [beq_false, Bool.false_eq_true, ↓reduceIte]
+              have h1 : ¬((t : ℤ) + 1 = -2 * p) := by omega
+              have h2 : ¬((t : ℤ) + 1 = -2 * p + 1) := by omega
+              rw [if_neg h1, if_neg h2]
+
+            -- Right is .idle
+            · rw [if_neg h_right_fire, if_neg h_right_hold]
+              have beq_false : (Q.idle == Q.hold) = false := by native_decide
+              simp only [beq_false, Bool.false_eq_true, ↓reduceIte]
+              have h1 : ¬((t : ℤ) + 1 = -2 * p) := by omega
+              have h2 : ¬((t : ℤ) + 1 = -2 * p + 1) := by omega
+              rw [if_neg h1, if_neg h2]
+
+  lemma diag_left_spec (t: ℕ) (p: ℤ):
+      diag_left.comp [()] t p = ((t : ℤ) = -2 * p) := by
+    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+    rw [diag_left_state]
+    unfold diag_left_expected_state diag_left
+    split_ifs with h1 h2
+    · simp [h1]
+    · simp; omega
+    · simp; omega
 
 end DiagLeft
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 section ConstDelay
 
@@ -235,7 +270,7 @@ section DiagLeft3
 
     This is DiagLeft delayed by 3 steps.
 
-    Execution for a single input cell at position 0:
+    Execution for input [()] at position 0:
 
     Time   Space (x)
     (t)    -5 -4 -3 -2 -1  0  1
@@ -243,54 +278,113 @@ section DiagLeft3
      t=0    .  .  .  .  .  0  .   <-- Delay counter
      t=1    .  .  .  .  .  1  .
      t=2    .  .  .  .  .  2  .
-     t=3    .  .  .  .  .  V  .   <-- Cell 0 fires (t = 3 + 2*0 = 3)
+     t=3    .  .  .  .  .  F  .   <-- Cell 0 fires (t = 3 + 2*0 = 3)
      t=4    .  .  .  .  .  H  .
-     t=5    .  .  .  .  V  x  .   <-- Cell -1 fires (t = 3 + 2*1 = 5)
-     t=6    .  .  .  .  H  x  .
-     t=7    .  .  .  V  x  x  .   <-- Cell -2 fires (t = 3 + 2*2 = 7)
+     t=5    .  .  .  .  F  .  .   <-- Cell -1 fires (t = 3 + 2*1 = 5)
+     t=6    .  .  .  .  H  .  .
+     t=7    .  .  .  F  .  .  .   <-- Cell -2 fires (t = 3 + 2*2 = 7)
+     ...
+  -/
+
+  def diag_left3_via_delay : ConstDelay := {
+    α := Unit？
+    β := Bool
+    C_orig := diag_left
+    k := 3
+    default_output := false
+  }
+
+  def diag_left3 : CellAutomaton Unit？ Bool :=
+    diag_left3_via_delay.C
+
+  lemma diag_left3_spec (t: ℕ) (p: ℤ):
+      diag_left3.comp unit_input t p = (p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
+    unfold diag_left3 diag_left3_via_delay
+    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+    have h := ConstDelay.spec
+      (e := { α := Unit？, β := Bool, C_orig := diag_left, k := 3, default_output := false })
+      (c := [()]) t p
+    unfold CellAutomaton.comp CellAutomaton.project_config at h
+    simp only [Function.comp_apply] at h
+    -- Use delayed spec and diag_left_spec
+    sorry
+
+  def diag_right3 : CellAutomaton Unit？ Bool :=
+    diag_left3.flip
+
+  lemma diag_right3_spec (t: ℕ) (p: ℤ):
+      diag_right3.comp unit_input t p = (p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
+    -- diag_right3 = diag_left3.flip
+    -- flip reverses the spatial coordinate
+    sorry
+
+end DiagLeft3
+
+namespace DiagLeftRight
+
+  inductive Q_DL
+  | idle
+  | p_s0 | p_s1 | p_s2 | hold | v_fire | dead
+  deriving DecidableEq, Inhabited, Fintype
+
+  def diag_left {α: Type} [Alphabet α] : CellAutomaton α？ Bool := {
+    Q := Q_DL
+    δ := fun _ c r =>
+      match c with
+      | .p_s0 => .p_s1
+      | .p_s1 => .p_s2
+      | .p_s2 => .v_fire
+      | .v_fire => .hold
+      | .hold => .dead
+      | .dead => .dead
+      | .idle => if r == .hold then .v_fire else .idle
+    embed := fun
+      | some _ => .p_s0
+      | none => .idle
+    project := fun
+      | .v_fire => true  -- fires at p≤0, t=3+2*|p|
+      | _ => false
+  }
+
+  /-
+    Execution of diag_left for a single input cell at position 0.
+    The CA propagates a "virtual fire" (V) signal to the left.
+
+    Time   Space (x)
+    (t)    -5 -4 -3 -2 -1  0  1
+    ---------------------------
+     t=0    .  .  .  .  .  0  .
+     t=1    .  .  .  .  .  1  .
+     t=2    .  .  .  .  .  2  .
+     t=3    .  .  .  .  .  V  .   <-- Cell 0 fires (Output!)
+     t=4    .  .  .  .  .  H  .   <-- Cell 0 in Hold
+     t=5    .  .  .  .  V  x  .   <-- Cell -1 sees Hold, becomes V_fire (Output!)
+     t=6    .  .  .  .  H  x  .   <-- Cell -1 becomes Hold
+     t=7    .  .  .  V  x  x  .   <-- Cell -2 sees Hold, becomes V_fire (Output!)
      t=8    .  .  .  H  x  x  .
-     t=9    .  .  V  x  x  x  .   <-- Cell -3 fires (t = 3 + 2*3 = 9)
+     t=9    .  .  V  x  x  x  .   <-- Cell -3 sees Hold, becomes V_fire (Output!)
      t=10   .  .  H  x  x  x  .
      t=11   .  V  x  x  x  x  .
      t=12   .  H  x  x  x  x  .
      t=13   V  x  x  x  x  x  .
   -/
 
-  def diag_left3_via_delay {α: Type} [Alphabet α] : ConstDelay := {
-    α := α？
-    β := Bool
-    C_orig := diag_left_base
-    k := 3
-    default_output := false
-  }
-
-  def diag_left3 {α: Type} [Alphabet α] : CellAutomaton α？ Bool :=
-    (@diag_left3_via_delay α _).C
-
-  lemma diag_left3_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_left3 α _).comp w t p = (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
-    unfold diag_left3 diag_left3_via_delay
-    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
-    have h := ConstDelay.spec
-      (e := { α := α？, β := Bool, C_orig := diag_left_base, k := 3, default_output := false })
-      (c := ⟬w⟭) t p
-    unfold CellAutomaton.comp CellAutomaton.project_config at h
-    simp only [Function.comp_apply] at h
-    -- The ConstDelay.C embeds ⟬w⟭ then projects
-    -- Need to connect ⦋w⦌ for diag_left3 with the delayed computation
+  lemma diag_left_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
+      (@diag_left α _).comp w t p = decide (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
     sorry
 
-  def diag_right3 {α: Type} [Alphabet α] : CellAutomaton α？ Bool :=
-    (@diag_left3 α _).flip
+  def diag_right {α: Type} [Alphabet α] : CellAutomaton α？ Bool :=
+    (@diag_left α _).flip
 
-  lemma diag_right3_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_right3 α _).comp w t p = (w ≠ [] ∧ p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
-    -- Uses: diag_right3 = diag_left3.flip
-    -- By flip_comp: C.flip.comp w t p = C.comp w.flip t (-p)
-    -- diag_left3 fires at (t, p) when p ≤ 0 and t = 3 + 2*|p|
-    -- For diag_right3: fires when -p ≤ 0 (i.e., p ≥ 0) and t = 3 + 2*|-p| = 3 + 2*|p|
+  lemma diag_right_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
+      (@diag_right α _).comp w t p = decide (w ≠ [] ∧ p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
+    -- Uses: diag_right = diag_left.flip
+    -- flip_comp: C.flip.comp c t p = C.comp c.flip t (-p)
+    -- diag_left fires at (t, p) when p ≤ 0 and t = 3 + 2*|p|
+    -- So diag_right fires when -p ≤ 0 (i.e., p ≥ 0) and t = 3 + 2*|-p| = 3 + 2*|p|
     sorry
 
-end DiagLeft3
+end DiagLeftRight
+
 
 end CellularAutomatas

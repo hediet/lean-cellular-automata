@@ -91,10 +91,10 @@ def compr_at (q : e.Q') (j : Fin e.k) : e.C_orig.Q :=
   | Q'.single _ => e.C_orig.border
   | Q'.compr w  => w j
 
-/-- Project Q' to a k-tuple of β: for compr return the projected tuple, for single return all-default -/
+/-- Project Q' to a k-tuple of β: for compr return the projected tuple, for single broadcast the projected value -/
 def projectQ' (q : e.Q') : Fin e.k → e.β :=
   match q with
-  | Q'.single _ => fun _ => default
+  | Q'.single q => fun _ => e.C_orig.project q
   | Q'.compr w  => fun j => e.C_orig.project (w j)
 
 /-- Project component j of Q' to β -/

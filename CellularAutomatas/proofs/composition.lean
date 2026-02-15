@@ -16,78 +16,13 @@ import CellularAutomatas.proofs.k_step_speedup
 import CellularAutomatas.proofs.sim_from_lambda
 import CellularAutomatas.proofs.decompress_triple
 import CellularAutomatas.proofs.compress_to_diag
+import CellularAutomatas.proofs.diag_left3
 
 
 namespace CellularAutomatas
 
 
 open CellAutomaton
-
-section DiagLeft
-
-  inductive Q_DL
-  | idle
-  | p_s0 | p_s1 | p_s2 | hold | v_fire | dead
-  deriving DecidableEq, Inhabited, Fintype
-
-  def diag_left {α: Type} [Alphabet α] : CellAutomaton α？ Bool := {
-    Q := Q_DL
-    δ := fun _ c r =>
-      match c with
-      | .p_s0 => .p_s1
-      | .p_s1 => .p_s2
-      | .p_s2 => .v_fire
-      | .v_fire => .hold
-      | .hold => .dead
-      | .dead => .dead
-      | .idle => if r == .hold then .v_fire else .idle
-    embed := fun
-      | some _ => .p_s0
-      | none => .idle
-    project := fun
-      | .v_fire => true  -- fires at p≤0, t=3+2*|p|
-      | _ => false
-  }
-
-  /-
-    Execution of diag_left for a single input cell at position 0.
-    The CA propagates a "virtual fire" (V) signal to the left.
-
-    Time   Space (x)
-    (t)    -5 -4 -3 -2 -1  0  1
-    ---------------------------
-     t=0    .  .  .  .  .  0  .
-     t=1    .  .  .  .  .  1  .
-     t=2    .  .  .  .  .  2  .
-     t=3    .  .  .  .  .  V  .   <-- Cell 0 fires (Output!)
-     t=4    .  .  .  .  .  H  .   <-- Cell 0 in Hold
-     t=5    .  .  .  .  V  x  .   <-- Cell -1 sees Hold, becomes V_fire (Output!)
-     t=6    .  .  .  .  H  x  .   <-- Cell -1 becomes Hold
-     t=7    .  .  .  V  x  x  .   <-- Cell -2 sees Hold, becomes V_fire (Output!)
-     t=8    .  .  .  H  x  x  .
-     t=9    .  .  V  x  x  x  .   <-- Cell -3 sees Hold, becomes V_fire (Output!)
-     t=10   .  .  H  x  x  x  .
-     t=11   .  V  x  x  x  x  .
-     t=12   .  H  x  x  x  x  .
-     t=13   V  x  x  x  x  x  .
-  -/
-
-  lemma diag_left_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_left α _).comp w t p = (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
-    sorry
-
-  def diag_right {α: Type} [Alphabet α] : CellAutomaton α？ Bool :=
-    (@diag_left α _).flip
-
-  lemma diag_right_spec {α} [Alphabet α] (w: Word α) (t: ℕ) (p: ℤ):
-      (@diag_right α _).comp w t p = (w ≠ [] ∧ p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
-    -- Uses: diag_right = diag_left.flip
-    -- flip_comp: C.flip.comp c t p = C.comp c.flip t (-p)
-    -- diag_left fires at (t, p) when p ≤ 0 and t = 3 + 2*|p|
-    -- So diag_right fires when -p ≤ 0 (i.e., p ≥ 0) and t = 3 + 2*|-p| = 3 + 2*|p|
-    sorry
-
-end DiagLeft
 
 structure CompressToΛ where
   {α: Type}
@@ -112,7 +47,7 @@ namespace CompressToΛ
   -- diag_left fires (true) at p < 0 at correct diagonal time
   -- data_source.C provides the actual triple values (but always outputs some)
   def C: CellAutomaton e.α？ ((e.β？)³)？ :=
-    (e.data_source.C ⨂ (diag_right : CellAutomaton e.α？ Bool) ⨂ (diag_left : CellAutomaton e.α？ Bool)).map_project
+    (e.data_source.C ⨂ (DiagLeftRight.diag_right : CellAutomaton e.α？ Bool) ⨂ (DiagLeftRight.diag_left : CellAutomaton e.α？ Bool)).map_project
       (fun (triple, (signal_right, signal_left)) =>
         if signal_right then triple              -- p >= 0 on diagonal: use computed triple
         else if signal_left then some (fun _ => none)  -- p < 0 on diagonal: placeholder
@@ -125,23 +60,64 @@ namespace CompressToΛ
       then triple_at (e.C_orig.trace w) (3 * p).natAbs
       else (fun _ => none)
 
+  @[simp]
+  lemma map_project_comp2 {α β γ: Type} (C: CellAutomaton α？ β) (f: β → γ) (w: Word α) (t: ℕ):
+    (C.map_project f).comp w t p = f (C.comp w t p) := by rfl
+
+  @[simp]
+  lemma ca_zip_comp2 {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
+      {C1: CellAutomaton α？ β1} {C2: CellAutomaton α？ β2} {w: Word α} {t: ℕ} {i: ℤ}:
+      (C1 ⨂ C2).comp w t i = ((C1.comp w t i), (C2.comp w t i)) := by
+    unfold embed_word
+    simp only [ca_zip_comp]
+
   theorem spec (w: Word e.α) (hw: w ≠ []) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
         if t = 3 + 2 * p.natAbs
         then some (e.decode_cfg w p)
         else none
         := by
-    -- Main proof idea:
-    -- 1. e.C = (data_source.C ⨂ diag_right ⨂ diag_left).map_project f
-    -- 2. By ca_zip_comp: each component computes independently
-    -- 3. diag_right fires (true) iff p ≥ 0 ∧ t = 3 + 2*|p|
-    -- 4. diag_left fires (true) iff p ≤ 0 ∧ t = 3 + 2*|p|
-    -- 5. data_source.C.comp gives triple_at for p > 0 via CompressToDiag.spec
-    -- 6. Combine: on diagonal t = 3 + 2*|p|:
-    --    - p ≥ 0: diag_right fires, use data_source.C output
-    --    - p < 0: diag_left fires, output (fun _ => none)
-    --    - off diagonal: neither fires, output none
-    sorry
+    -- Step 1: Unfold C and use composition lemmas
+    unfold C
+    simp only [map_project_comp2, ca_zip_comp2]
+
+    -- Step 2: Get the specs for diag signals
+    rw [DiagLeftRight.diag_right_spec, DiagLeftRight.diag_left_spec]
+    simp only [hw, ne_eq, not_false_eq_true, true_and]
+
+    -- Step 3: Case split on diagonal timing
+    by_cases ht : t = 3 + 2 * p.natAbs
+    case pos =>
+      -- On diagonal
+      simp only [ht, and_true, decide_eq_true_eq]
+      by_cases hp : p ≥ 0
+      case pos =>
+        -- p ≥ 0: diag_right fires, use data_source.C output
+        simp only [hp, ↓reduceIte]
+        -- Need: data_source.C.comp w t p = some (decode_cfg w p)
+        unfold decode_cfg
+        simp only [hp, ↓reduceIte]
+        -- data_source.C.comp gives triple_at via CompressToDiag.spec
+        have hw' : w.length > 0 := List.length_pos_of_ne_nil hw
+        -- Convert p to ℕ since p ≥ 0
+        lift p to ℕ using hp
+        simp only [Int.natAbs_natCast] at ht ⊢
+        have h := e.data_source.spec w hw' p
+        simp only [mul_comm 2 p] at h ⊢
+        convert h using 1
+        ring_nf
+      case neg =>
+        -- p < 0: diag_left fires, diag_right doesn't
+        push_neg at hp
+        have hp' : p ≤ 0 := le_of_lt hp
+        simp only [hp', ↓reduceIte]
+        -- Output is some (fun _ => none) which matches decode_cfg for p < 0
+        unfold decode_cfg
+        simp only [show ¬(p ≥ 0) by linarith, ↓reduceIte]
+    case neg =>
+      -- Off diagonal: both diag signals are false
+      simp only [ht, and_false, decide_false]
+      rfl
 
 end CompressToΛ
 
@@ -682,14 +658,13 @@ namespace Composition
             from by simp only [h2, Option.get_some]]
       _ = e.C2_3x.C.trace c_inr (t₁ + 1) t₂ := by rfl
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ (3 * t₁ + t₂) := by
-
-        rw [SpeedupAndTraceKx.spec1]
+          rw [SpeedupAndTraceKx.spec1]
 
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ t := by rw [ht]
       _ = (e.C2.trace_rt (e.C1.trace_rt w))[t]'(by simp_all) := by simp [trace_rt]
 
-
 end Composition
+
 
 def CArtTransducer.compose {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
     (C2: CArtTransducer β γ) (C1: CArtTransducer α β): CArtTransducer α γ :=
