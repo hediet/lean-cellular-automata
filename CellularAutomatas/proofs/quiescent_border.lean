@@ -1,12 +1,12 @@
 /-
-  PassiveBorderLeftIndep: Converting a left-independent CA to one with passive border
+  QuiescentBorderLeftIndep: Converting a left-independent CA to one with quiescent border
 
   Given a left-independent CA C, we construct C' where:
-  - The border is passive (δ(border, border, border) = border)
+  - The border is quiescent (δ(border, border, border) = border)
   - Left-independence is preserved
   - The computation inside the word cone matches the original
 
-  Key insight from thesis (Satz "Wahl eines passiven und initialen Randes"):
+  Key insight from thesis (Satz "Wahl eines quiescentn und initialen Randes"):
   For left-independent CAs, we only look at the tracked border from the MIDDLE
   and RIGHT neighbors (not left). This preserves left-independence.
 
@@ -22,7 +22,7 @@ open CellAutomaton
 
 /-! ## Iterated border transition
 
-  When the border is not passive, it evolves over time as δ(#, #, #).
+  When the border is not quiescent, it evolves over time as δ(#, #, #).
   We define δδt to track this evolution.
 -/
 
@@ -38,8 +38,8 @@ lemma δδt_zero {α β : Type} (C : CellAutomaton α β) (q : C.Q) : δδt C q 
 lemma δδt_succ {α β : Type} (C : CellAutomaton α β) (q : C.Q) (t : ℕ) :
     δδt C q (t + 1) = C.δ (δδt C q t) (δδt C q t) (δδt C q t) := rfl
 
-/-- If q is passive, then δδt q t = q for all t -/
-lemma δδt_passive {α β : Type} (C : CellAutomaton α β) (q : C.Q) (h : C.quiescent q) (t : ℕ) :
+/-- If q is quiescent, then δδt q t = q for all t -/
+lemma δδt_quiescent {α β : Type} (C : CellAutomaton α β) (q : C.Q) (h : C.quiescent q) (t : ℕ) :
     δδt C q t = q := by
   induction t with
   | zero => rfl
@@ -77,17 +77,17 @@ lemma WordConeLeftIndep_mem {α : Type} (w : Word α) (t : ℕ) (i : ℤ) :
     i ∈ WordConeLeftIndep w t ↔ (-t : ℤ) ≤ i ∧ i < w.length := by
   simp only [WordConeLeftIndep, Set.mem_setOf_eq]
 
-/-! ## PassiveBorderLeftIndep construction
+/-! ## QuiescentBorderLeftIndep construction
 
   Given a left-independent CA C, we construct C' with:
   - Q' = border | state(s, tracked_border)
-  - δ'(_, border, border) = border  (passive!)
+  - δ'(_, border, border) = border  (quiescent!)
   - δ' ignores the left neighbor's tracked border (preserving left-independence)
 
   The tracked border evolves as δδt C.border t.
 -/
 
-structure PassiveBorderLeftIndep where
+structure QuiescentBorderLeftIndep where
   {α : Type}
   {β : Type}
   [_inst_α : Alphabet α]
@@ -95,14 +95,14 @@ structure PassiveBorderLeftIndep where
   C_orig : CellAutomaton α？ β
   h_left_indep : C_orig.left_independent
 
-attribute [instance] PassiveBorderLeftIndep._inst_α
-attribute [instance] PassiveBorderLeftIndep._inst_β
+attribute [instance] QuiescentBorderLeftIndep._inst_α
+attribute [instance] QuiescentBorderLeftIndep._inst_β
 
-namespace PassiveBorderLeftIndep
+namespace QuiescentBorderLeftIndep
 
-variable (e : PassiveBorderLeftIndep)
+variable (e : QuiescentBorderLeftIndep)
 
-/-- State space for C': either the passive border, or a state paired with the tracked border value -/
+/-- State space for C': either the quiescent border, or a state paired with the tracked border value -/
 inductive Q'
   | border : Q'
   | state (s : e.C_orig.Q) (tracked_border : e.C_orig.Q) : Q'
@@ -132,7 +132,7 @@ def get_tracked_border : Q' e → Option e.C_orig.Q
   | .state _ br => some br
 
 /-- Transition function for C'.
-    The border is passive.
+    The border is quiescent.
 
     Key insight from thesis: to preserve left-independence, we only look at the
     tracked border from the MIDDLE and RIGHT neighbors (not left).
@@ -157,7 +157,7 @@ def δ' : Q' e → Q' e → Q' e → Q' e
       let a' := e.unwrap a br
       .state (e.C_orig.δ a' br c) (e.C_orig.δ br br br)
   | _, .border, .border =>
-      -- Neither middle nor right has tracked border → passive border
+      -- Neither middle nor right has tracked border → quiescent border
       .border
 
 /-- Project Q' to the original output type -/
@@ -165,7 +165,7 @@ def project' : Q' e → e.β
   | .border => e.C_orig.project e.C_orig.border
   | .state s _ => e.C_orig.project s
 
-/-- The CA with passive border -/
+/-- The CA with quiescent border -/
 def C : CellAutomaton e.α？ e.β := {
   Q := Q' e
   δ := e.δ'
@@ -175,8 +175,8 @@ def C : CellAutomaton e.α？ e.β := {
   project := e.project'
 }
 
-/-- The border of C is passive -/
-lemma C_border_passive : e.C.quiescent e.C.border := by
+/-- The border of C is quiescent -/
+lemma C_border_quiescent : e.C.quiescent e.C.border := by
   unfold CellAutomaton.quiescent CellAutomaton.quiescent_set CellAutomaton.border C
   intro ⟨a, ha⟩ ⟨b, hb⟩ ⟨c, hc⟩
   simp only [Set.mem_singleton_iff] at ha hb hc
@@ -246,7 +246,7 @@ lemma embed_word_out_range (w : Word e.α) (i : ℤ) (hi : i ∉ w.range) :
 /-- Helper: border stays for positions ≥ w.length using left-independence -/
 lemma border_stays_right (w : Word e.α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
     e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i = Q'.border := by
-  exact CellAutomaton.border_stays_right e.C e.C_left_indep e.C_border_passive w i hi t
+  exact CellAutomaton.border_stays_right e.C e.C_left_indep e.C_border_quiescent w i hi t
 
 /-- For positions left of the cone, the original CA computes as δδt of the border -/
 lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(t : ℤ)) :
@@ -432,14 +432,14 @@ private theorem spec_unwrap (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : �
   rw [spec_internal e w hw t i]
   simp only [hi, ↓reduceIte, unwrap]
 
-/-- If the original border was already passive, the tracked border stays constant -/
-private theorem spec_passive_orig (w : Word e.α) (hw : w.length > 0)
-    (h_passive : e.C_orig.quiescent e.C_orig.border) (t : ℕ) (i : ℤ)
+/-- If the original border was already quiescent, the tracked border stays constant -/
+private theorem spec_quiescent_orig (w : Word e.α) (hw : w.length > 0)
+    (h_quiescent : e.C_orig.quiescent e.C_orig.border) (t : ℕ) (i : ℤ)
     (hi : i ∈ WordConeLeftIndep w t) :
     e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i =
     Q'.state (e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i)
              e.C_orig.border := by
-  rw [spec_internal e w hw t i, δδt_passive e.C_orig e.C_orig.border h_passive t]
+  rw [spec_internal e w hw t i, δδt_quiescent e.C_orig e.C_orig.border h_quiescent t]
   simp only [hi, ↓reduceIte]
 
 /-- Main specification using comp: the projected computation matches the original -/
@@ -452,6 +452,6 @@ theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) :
   rw [spec_internal e w hw t i]
   split_ifs with hi <;> rfl
 
-end PassiveBorderLeftIndep
+end QuiescentBorderLeftIndep
 
 end CellularAutomatas

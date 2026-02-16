@@ -13,7 +13,7 @@ import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_causal
 import CellularAutomatas.proofs.left_indep_to_regular
 import CellularAutomatas.proofs.regular_to_left_indep
 import CellularAutomatas.proofs.left_indep_speedup
-import CellularAutomatas.proofs.passive_border
+import CellularAutomatas.proofs.quiescent_border
 import CellularAutomatas.proofs.dead_border
 import CellularAutomatas.proofs.composition
 import CellularAutomatas.proofs.two_stage_is_rt_closed
@@ -85,34 +85,34 @@ theorem result_left_indep_speedup
   exact LeftIndepSpeedup.spec e w hw t i hi2 hi j
 
 /-!
-### Result 3: Passive Border for Left-Independent CAs
+### Result 3: Quiescent Border for Left-Independent CAs
 
 Given a left-independent CA C, there exists C' whose border is quiescent
 (δ(#, #, #) = #), while preserving the computation inside the left-independent
 light cone.
 -/
 
-theorem result_passive_border_left_indep
+theorem result_quiescent_border_left_indep
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent)
     (w : Word α) (hw : w.length > 0) (t : ℕ) (i : ℤ) :
-    let e := PassiveBorderLeftIndep.mk C h_left_indep
+    let e := QuiescentBorderLeftIndep.mk C h_left_indep
     e.C.comp w t i =
       if i ∈ WordConeLeftIndep w t
       then C.comp w t i
       else C.project C.border := by
   intro e
-  exact PassiveBorderLeftIndep.spec e w hw t i
+  exact QuiescentBorderLeftIndep.spec e w hw t i
 
-theorem result_passive_border_left_indep_is_quiescent
+theorem result_quiescent_border_left_indep_is_quiescent
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
-    let e := PassiveBorderLeftIndep.mk C h_left_indep
+    let e := QuiescentBorderLeftIndep.mk C h_left_indep
     e.C.quiescent e.C.border :=
-  PassiveBorderLeftIndep.C_border_passive _
+  QuiescentBorderLeftIndep.C_border_quiescent _
 
-theorem result_passive_border_left_indep_preserves_left_indep
+theorem result_quiescent_border_left_indep_preserves_left_indep
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
-    (PassiveBorderLeftIndep.mk C h_left_indep).C.left_independent :=
-  PassiveBorderLeftIndep.C_left_indep _
+    (QuiescentBorderLeftIndep.mk C h_left_indep).C.left_independent :=
+  QuiescentBorderLeftIndep.C_left_indep _
 
 /-!
 ### Result 4: Dead Border Construction

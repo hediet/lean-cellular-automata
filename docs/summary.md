@@ -96,9 +96,9 @@ For any CA $C$ and constant $k$, construct $C'$ such that:
 
 $$\text{trace}_{C'}(w)(i) = \text{trace}_C(w)(i + k)$$
 
-This achieves a constant additive speedup by chaining PassiveBorder and DeadBorder constructions.
+This achieves a constant additive speedup by chaining QuiescentBorder and DeadBorder constructions.
 
-### 4. Passive Border for Left-Independent CAs
+### 4. Quiescent Border for Left-Independent CAs
 
 Given a left-independent CA $C$, construct $C'$ whose border is **quiescent** ($\delta(\#, \#, \#) = \#$), while $\text{comp}_{C'} = \text{comp}_C$ inside the left-independent light cone. Together with Result 5, this shows that the unconstrained border in our formalization is without loss of generality.
 

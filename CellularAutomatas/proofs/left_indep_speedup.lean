@@ -1,6 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.passive_border
+import CellularAutomatas.proofs.quiescent_border
 
 namespace CellularAutomatas
 
@@ -306,7 +306,7 @@ lemma psi_neg (i : ℤ) (hi : i < 0) (j : Fin e.k) : e.ψ i j < 0 := by
       _ = -e.k := by ring
   linarith
 
--- φ(0, i, j) < -ψ(i, j) for i < 0: at t=0, we're strictly in the passive zone
+-- φ(0, i, j) < -ψ(i, j) for i < 0: at t=0, we're strictly in the quiescent zone
 -- Proof: φ(0,i,j) = -(k-1)*i - j and -ψ(i,j) = -k*i - j, so φ - (-ψ) = i < 0.
 lemma phi_zero_lt_neg_psi (i : ℤ) (hi : i < 0) (j : Fin e.k) : e.φ 0 i j < -e.ψ i j := by
   simp only [φ, ψ]
@@ -449,7 +449,7 @@ theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k
     rw [e.nextt_zero_neg w i hi]
     simp only [compr_at_border']
     -- Need: C_orig.nextt ... (φ(0,i,j)).toNat (ψ(i,j)) = border
-    -- Since ψ(i,j) < 0 and φ(0,i,j) ≤ -ψ(i,j), we're in the passive zone
+    -- Since ψ(i,j) < 0 and φ(0,i,j) ≤ -ψ(i,j), we're in the quiescent zone
     have hpsi : e.ψ i j < 0 := e.psi_neg i hi j
     have hphi_lt : e.φ 0 i j < -e.ψ i j := e.phi_zero_lt_neg_psi i hi j
     have hphi_nonneg : 0 ≤ e.φ 0 i j := e.phi_nonneg 0 i hi j
@@ -599,7 +599,7 @@ end LeftIndepSpeedupQuiescent
 /-!
 ## LeftIndepSpeedup (without quiescence requirement)
 
-By composing with PassiveBorderLeftIndep, we can apply the k-step speedup
+By composing with QuiescentBorderLeftIndep, we can apply the k-step speedup
 to any left-independent CA without requiring the border to be quiescent.
 -/
 
@@ -620,18 +620,18 @@ namespace LeftIndepSpeedup
 
 variable (e : LeftIndepSpeedup)
 
-/-- The PassiveBorderLeftIndep construction applied to the original CA -/
-def pb : PassiveBorderLeftIndep :=
+/-- The QuiescentBorderLeftIndep construction applied to the original CA -/
+def pb : QuiescentBorderLeftIndep :=
   { C_orig := e.C_orig
     h_left_indep := e.h_left_indep }
 
-/-- The LeftIndepSpeedupQuiescent construction applied to the passive border CA -/
+/-- The LeftIndepSpeedupQuiescent construction applied to the quiescent border CA -/
 def speedup : LeftIndepSpeedupQuiescent :=
   { C_orig := e.pb.C
     k := e.k
     hk := e.hk
     h_left_indep := e.pb.C_left_indep
-    h_quiescent := e.pb.C_border_passive }
+    h_quiescent := e.pb.C_border_quiescent }
 
 /-- The compressed CA: C = speedup.C -/
 def C : CellAutomaton e.α？ (Fin e.k → e.β) := e.speedup.C
@@ -642,7 +642,7 @@ lemma C_left_indep : e.C.left_independent := e.speedup.C_left_indep
 /-- Main specification with inlined φ and ψ: for i < 0 and i ≥ -t, component j of the projected output
     equals the original CA's output at position (k*i + j) after (t - (k-1)*i - j) steps.
 
-    This version works without requiring the original CA to have a passive border.
+    This version works without requiring the original CA to have a quiescent border.
     The constraint i ≥ -t ensures the position is within the light cone. -/
 theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi2 : -(t : ℤ) ≤ i) (hi : i < 0)
     (j : Fin e.k) :
@@ -683,7 +683,7 @@ theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi2 : -(t 
         _ ≤ i + (↑e.k - 1) * i + ↑↑j := by linarith [hi2]
         _ = ↑e.k * i + ↑↑j := by ring
     · omega
-  -- Use passive_border.spec
+  -- Use quiescent_border.spec
   have h_pb := e.pb.spec w hw (t - ((e.k - 1) * i) - j).toNat (e.k * i + j)
   rw [if_pos h_psi_in_cone, hpb_C_orig_eq] at h_pb
   -- Combine: C.comp = speedup.C.comp → pb.C.comp → C_orig.comp

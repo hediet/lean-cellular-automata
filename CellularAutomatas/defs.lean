@@ -356,11 +356,11 @@ end Advice
 section FiniteStateTransducer
 
   structure FiniteStateTransducer (α: Type) (β: Type) where
-      Q: Type
-      [alphabetQ: Alphabet Q]
-      δ: Q → α → Q
-      q0: Q
-      f: Q → β
+    Q: Type
+    [alphabetQ: Alphabet Q]
+    δ: Q → α → Q
+    q0: Q
+    f: Q → β
 
   namespace FiniteStateTransducer
     attribute [instance] FiniteStateTransducer.alphabetQ

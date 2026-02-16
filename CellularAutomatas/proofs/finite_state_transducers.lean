@@ -3,12 +3,7 @@ import Mathlib.Data.List.Basic
 import Mathlib.Data.List.TakeDrop
 import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
-
 namespace CellularAutomatas
-
-
-
-
 namespace FiniteStateTransducer
   section
 
@@ -367,9 +362,6 @@ namespace FiniteStateTransducer
       (M1 ⊚ M2).advice.f = M1.advice.f ∘ M2.advice.f := by
     funext w
     simp [compose_spec2, FiniteStateTransducer.advice]
-
-
-
 
 
   section M_map

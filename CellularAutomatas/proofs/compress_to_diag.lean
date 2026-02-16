@@ -1,7 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.left_indep_speedup
-import CellularAutomatas.proofs.passive_border
+import CellularAutomatas.proofs.quiescent_border
 import CellularAutomatas.proofs.left_indep_to_regular
 import CellularAutomatas.proofs.regular_to_left_indep
 
