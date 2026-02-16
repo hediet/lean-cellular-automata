@@ -576,7 +576,7 @@ namespace Composition
 
 
   theorem spec: e.C.trace_rt = e.C2.trace_rt ∘ e.C1.trace_rt := by
-    rw [eq_of_is_causal _ _ (by simp) (by simp)]
+    rw [IsCausal.eq_iff _ _ (by simp) (by simp)]
 
     intro w
 

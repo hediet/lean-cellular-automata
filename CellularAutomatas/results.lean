@@ -9,7 +9,7 @@ import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
-import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_prefix_stable
+import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_causal
 import CellularAutomatas.proofs.left_indep_to_regular
 import CellularAutomatas.proofs.regular_to_left_indep
 import CellularAutomatas.proofs.left_indep_speedup
@@ -189,10 +189,10 @@ theorem result_advice_prefix_mem_is_two_stage_advice:
 If an advice f is both RT-closed and prefix-stable, then f is two-stage.
 -/
 
-theorem result_is_two_stage_of_rt_closed_and_prefix_stable:
-    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.prefix_stable → adv.is_two_stage_advice := by
+theorem result_is_two_stage_of_rt_closed_and_causal:
+    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.causal → adv.is_two_stage_advice := by
   intro adv h
-  exact is_two_stage_of_rt_closed_and_prefix_stable adv h.1 h.2
+  exact is_two_stage_of_rt_closed_and_causal adv h.1 h.2
 
 /-!
 ### Result 9: Two-Stage Advice is Closed Under Composition

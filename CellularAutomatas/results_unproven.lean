@@ -58,7 +58,7 @@ section advice_theorems
   -- w[0..i+1] ∈ L_c <-> adv(w)_i = c (because adv is prefix-stable).
   -- Because advice_prefix_mem is rt_closed, we have adv = advice_prefix_mem(L_c1) + advice_prefix_mem(L_c2) + ...
 
-  theorem prefix_stable_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable) :
+  theorem causal_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal) :
       adv.is_two_stage_advice := by
     sorry
 
@@ -75,7 +75,7 @@ section advice_theorems
 
 /-
   theorem CartTraceAdvice_classification (adv: Advice α Γ) :
-    adv.is_CartTraceAdvice ↔ adv.rt_closed ∧ adv.prefix_stable :=
+    adv.is_CartTraceAdvice ↔ adv.rt_closed ∧ adv.causal :=
     by sorry
 -/
 
@@ -86,7 +86,7 @@ section advice_theorems
   theorem CartTraceFstAdvice_classification (adv: Advice α Γ) :
     adv.is_two_stage_advice ↔
       adv.rt_closed ∧
-      ∃ as: List { a: Advice α Γ // a.rt_closed ∧ a.prefix_stable },
+      ∃ as: List { a: Advice α Γ // a.rt_closed ∧ a.causal },
         ∀ w, adv w ∈ { a.val w | a ∈ as } :=
     by
 

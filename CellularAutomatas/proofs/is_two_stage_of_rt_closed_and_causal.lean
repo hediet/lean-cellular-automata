@@ -110,7 +110,7 @@ namespace PrefixStableProof
   lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
     grind
 
-  lemma ts_adv_spec (h2: adv.prefix_stable): (ts_adv adv h1).advice = adv := by
+  lemma ts_adv_spec (h2: adv.causal): (ts_adv adv h1).advice = adv := by
     apply advice_eq_iff
     funext w
     apply List.ext_getElem
@@ -140,7 +140,7 @@ end PrefixStableProof
 
 
 
-theorem is_two_stage_of_rt_closed_and_prefix_stable (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.prefix_stable):
+theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
     adv.is_two_stage_advice := by
 
   unfold Advice.is_two_stage_advice

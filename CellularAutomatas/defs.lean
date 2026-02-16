@@ -283,6 +283,17 @@ section CAClasses
 
 end CAClasses
 
+section Causal
+  variable {α β: Type} (f: Word α → Word β)
+
+  def IsCausal: Prop := ∀ w, (f w).length = w.length ∧ ∀ i, f (w.take i) = (f w).take i
+
+  lemma IsCausal.len (h: IsCausal f) (w: Word α): (f w).length = w.length := (h w).1
+
+  lemma IsCausal.prefix (h: IsCausal f) (w: Word α) (i: ℕ): f (w.take i) = (f w).take i := (h w).2 i
+
+end Causal
+
 section Advice
 
   structure Advice (α: Type) (Γ: Type) where
@@ -310,9 +321,7 @@ section Advice
 
       def annotate (w: Word α): Word (α × Γ) := w ⨂ (adv.f w)
 
-      def prefix_stable: Prop :=
-        ∀ w: Word α, ∀ i: ℕ,
-          adv.f (w.take i) = (adv.f w).take i
+      def causal: Prop := IsCausal adv.f
     end
 
     def compose {Γ₁: Type} {Γ₂: Type} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
