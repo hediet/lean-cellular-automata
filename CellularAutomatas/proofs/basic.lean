@@ -283,18 +283,22 @@ section flip
       rw [C.flip_next]
       simp
 
-  theorem CellAutomaton.flip_comp {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ) (p: ℤ):
+  @[simp] theorem CellAutomaton.flip_comp {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ) (p: ℤ):
       C.flip.comp c t p = C.comp c.flip t (-p) := by
-    sorry
+    show C.flip.project_config (C.flip.nextt c t) p = C.project_config (C.nextt c.flip t) (-p)
+    rw [C.flip_nextt]
+    simp only [CellAutomaton.project_config, Config.flip_apply, CellAutomaton.flip]
 
   lemma CellAutomaton.flip_embed_config' {α β: Type} (C: CellAutomaton α β) (c: Config α):
       (C.embed_config c).flip = C.embed_config c.flip := by
     funext p
     simp [embed_config, Config.flip]
 
-  theorem CellAutomaton.flip_trace {α β: Type} (C: CellAutomaton α β) (c: Config α) (t: ℕ):
+  @[simp] theorem CellAutomaton.flip_trace {α β: Type} (C: CellAutomaton α β) (c: Config α) (t: ℕ):
       C.flip.trace c t = C.trace c.flip t := by
-    sorry
+    unfold trace
+    simp
+    rfl
 
 end flip
 
@@ -476,7 +480,7 @@ def L_dvd_k (k: ℕ) (L: Language α): Language (Option α) := { word_dvd_k k w 
 
 theorem L_in_RT_iff_L_dvd_k_in_RT [Alphabet α] (k: ℕ) (L: Language α):
     L ∈ ℒ (CA_rt α) ↔ (L_dvd_k k L) ∈ ℒ (CA_rt (Option α)) := by
-  sorry
+  sor ry
 
 -/
 

@@ -77,25 +77,114 @@ namespace DecompressTriple
   -- Helper: track (counter, stored_value) after an output at time t
   -- If C_orig outputs v at time t (and none at t+1, t+2), then at time t+o
   -- the state has counter=o and stored=v
+  -- The second component of the state tracks: at time t (when output exists),
+  -- counter resets to 0 and stored value becomes v. At t+1 and t+2 (no output),
+  -- counter increments and stored value is preserved.
+  -- Requires t ≥ 1 because at t=0 the state is the initial embedding,
+  -- which has stored = fun _ => default, not necessarily v.
   lemma counter_stored (c: Config e.α) (t: ℕ) (v: e.β³)
+    (ht: 0 < t)
     (h0: e.C_orig.comp c t 0 = some v)
     (h1: e.C_orig.comp c (t + 1) 0 = none)
     (h2: e.C_orig.comp c (t + 2) 0 = none)
     (o: Fin 3):
     let state := e.C.nextt ⦋c⦌ (t + o) 0
     state.2.1 = o ∧ state.2.2 = v := by
-    -- Proof outline:
-    -- For o = 0: At time t, h0 says C_orig project = some v
-    --   So the C transition at step t-1→t stores (0, v)
-    -- For o = 1: At time t+1, h1 says C_orig project = none
-    --   So counter increments: (0+1, v) = (1, v)
-    -- For o = 2: At time t+2, h2 says C_orig project = none
-    --   So counter increments: (1+1, v) = (2, v)
-    -- The actual proof requires careful tracking of the match expression
-    -- in the C.δ transition function, which is complex to formalize
-    sorry
+
+    -- Rewrite comp hypotheses to project form
+    unfold CellAutomaton.comp CellAutomaton.project_config at h0 h1 h2
+    simp only [Function.comp_apply] at h0 h1 h2
+
+    obtain ⟨t', rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : t ≠ 0)
+    -- Now t = t' + 1 (i.e. Nat.succ t')
+
+    -- Helper: unfold one step of C and relate to C_orig using state_track
+    -- At time n+1, the C transition computes next_q = C_orig.δ ... = C_orig.nextt ⦋c⦌ (n+1) 0
+    -- and then matches on C_orig.project next_q.
+    have unfold_step (n : ℕ) :
+        (e.C.nextt ⦋c⦌ (n + 1) 0).2 =
+          match e.C_orig.project (e.C_orig.nextt ⦋c⦌ (n + 1) 0) with
+          | some triple => (0, triple)
+          | none => ((e.C.nextt ⦋c⦌ n 0).2.1 + 1, (e.C.nextt ⦋c⦌ n 0).2.2) := by
+      rw [CellAutomaton.nextt_succ]
+      unfold CellAutomaton.next
+      simp only [C]
+      -- After unfolding C, the goal has the match on C_orig.project (C_orig.δ ...).
+      -- Replace the first components using state_track
+      have h_l := state_track e c n (0 - 1)
+      have h_m := state_track e c n 0
+      have h_r := state_track e c n (0 + 1)
+      simp only [C] at h_l h_m h_r
+      simp only [h_l, h_m, h_r]
+      -- Now the δ application matches C_orig.δ applied to C_orig states
+      rw [show e.C_orig.δ (e.C_orig.nextt ⦋c⦌ n (0 - 1))
+                          (e.C_orig.nextt ⦋c⦌ n 0)
+                          (e.C_orig.nextt ⦋c⦌ n (0 + 1))
+            = e.C_orig.nextt ⦋c⦌ (n + 1) 0 from by
+        rw [CellAutomaton.nextt_succ]; rfl]
+      cases e.C_orig.project (e.C_orig.nextt ⦋c⦌ (n + 1) 0) with
+      | some triple => rfl
+      | none => rfl
+
+    -- Step at time t'+1: project = some v → state.2 = (0, v)
+    have step_at_t : (e.C.nextt ⦋c⦌ (t' + 1) 0).2 = (0, v) := by
+      have key := unfold_step t'
+      rw [h0] at key
+      exact key
+
+    -- Step at time t'+2: project = none → counter increments from 0 to 1
+    have step_at_t1 : (e.C.nextt ⦋c⦌ (t' + 2) 0).2 = (1, v) := by
+      have key := unfold_step (t' + 1)
+      have h1' : e.C_orig.project (e.C_orig.nextt ⦋c⦌ (t' + 1 + 1) 0) = none := by
+        convert h1 using 2
+      rw [h1'] at key
+      simp only at key
+      -- key now says: (prev.2.1 + 1, prev.2.2) where prev = state at t'+1
+      rw [show (e.C.nextt ⦋c⦌ (t' + 1) 0).2.1 = (0 : Fin 3) from congrArg Prod.fst step_at_t] at key
+      rw [show (e.C.nextt ⦋c⦌ (t' + 1) 0).2.2 = v from congrArg Prod.snd step_at_t] at key
+      exact key
+
+    -- Step at time t'+3: project = none → counter increments from 1 to 2
+    have step_at_t2 : (e.C.nextt ⦋c⦌ (t' + 3) 0).2 = (2, v) := by
+      have key := unfold_step (t' + 2)
+      rw [show t' + 2 + 1 = t' + 3 from by ring] at key
+      have h2' : e.C_orig.project (e.C_orig.nextt ⦋c⦌ (t' + 3) 0) = none := by
+        convert h2 using 2
+      rw [h2'] at key
+      simp only at key
+      -- key : (t'+3 state).2 = (prev.2.1 + 1, prev.2.2)
+      -- Use step_at_t1 to substitute prev.2
+      rw [show (e.C.nextt ⦋c⦌ (t' + 2) 0).2.1 = (1 : Fin 3) from congrArg Prod.fst step_at_t1] at key
+      rw [show (e.C.nextt ⦋c⦌ (t' + 2) 0).2.2 = v from congrArg Prod.snd step_at_t1] at key
+      convert key using 1
+
+    -- Dispatch by cases on o
+    -- Note: after obtain, t = t'.succ = t' + 1
+    intro state
+    refine ⟨?_, ?_⟩
+    · -- state.2.1 = o
+      cases o using Fin.cases with
+      | zero => exact congrArg Prod.fst step_at_t
+      | succ o' =>
+        cases o' using Fin.cases with
+        | zero => exact congrArg Prod.fst step_at_t1
+        | succ o'' =>
+          cases o'' using Fin.cases with
+          | zero => exact congrArg Prod.fst step_at_t2
+          | succ o''' => exact o'''.elim0
+    · -- state.2.2 = v
+      cases o using Fin.cases with
+      | zero => exact congrArg Prod.snd step_at_t
+      | succ o' =>
+        cases o' using Fin.cases with
+        | zero => exact congrArg Prod.snd step_at_t1
+        | succ o'' =>
+          cases o'' using Fin.cases with
+          | zero => exact congrArg Prod.snd step_at_t2
+          | succ o''' => exact o'''.elim0
 
   theorem spec (c: Config e.α) (t: ℕ) (v: e.β³)
+    (ht: 0 < t)
     (h: ∀ o: Fin 3, e.C_orig.comp c (t + o) 0 = if o == 0 then some v else none):
       ∀ o: Fin 3, e.C.comp c (t + o) 0 = v o := by
     intro o
@@ -104,7 +193,7 @@ namespace DecompressTriple
     have h1 : e.C_orig.comp c (t + 1) 0 = none := by simpa using h 1
     have h2 : e.C_orig.comp c (t + 2) 0 = none := by simpa using h 2
     -- Use counter_stored to get the state at t+o
-    have hs := counter_stored e c t v h0 h1 h2 o
+    have hs := counter_stored e c t v ht h0 h1 h2 o
     -- The output is v[counter] = v[o]
     -- project (_, counter, stored) = stored counter
     -- By hs, counter = o and stored = v, so output = v o
@@ -119,7 +208,7 @@ namespace DecompressTriple
     show (e.C.nextt ⦋c⦌ (t + o) 0).2.2 (e.C.nextt ⦋c⦌ (t + o) 0).2.1 = v o
     rw [h_counter, h_stored]
 
-  theorem spec2 (c: Config e.α) (h: e.h_cond c k) (t1: ℕ) (t2: Fin 3):
+  theorem spec2 (c: Config e.α) (h: e.h_cond c k) (hk: 0 < k) (t1: ℕ) (t2: Fin 3):
       e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (by
         have := h (3 * t1)
         simp only [beq_iff_eq, Nat.mul_mod_right] at this
@@ -171,7 +260,7 @@ namespace DecompressTriple
         rw [h_eq]
         exact ho
     -- Now apply spec
-    have h_spec := spec e c (3 * t1 + k) v h_spec_hyp t2
+    have h_spec := spec e c (3 * t1 + k) v (by omega) h_spec_hyp t2
     -- Adjust the indices: 3*t1 + k + t2 = 3*t1 + t2 + k
     convert h_spec using 2
     ring

@@ -82,7 +82,7 @@ namespace CompressToΛ
     simp only [map_project_comp2, ca_zip_comp2]
 
     -- Step 2: Get the specs for diag signals
-    rw [DiagLeftRight.diag_right_spec, DiagLeftRight.diag_left_spec]
+    rw [DiagLeftRight.diag_right_spec w hw, DiagLeftRight.diag_left_spec2 w hw]
     simp only [hw, ne_eq, not_false_eq_true, true_and]
 
     -- Step 3: Case split on diagonal timing
@@ -641,6 +641,7 @@ namespace Composition
           simp) t₂ := by
         rw [DecompressTriple.spec2]
         exact e.C_sim.h_cond_form ⟬w⟭ c_inr x 3 rfl
+        simp
 
       _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial) t₂ := by
         have h := e.C_sim.spec ⟬w⟭ c_inr x (t₁ + 1)
@@ -662,6 +663,8 @@ namespace Composition
 
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ t := by rw [ht]
       _ = (e.C2.trace_rt (e.C1.trace_rt w))[t]'(by simp_all) := by simp [trace_rt]
+
+  #print axioms spec
 
 end Composition
 

@@ -79,7 +79,7 @@ namespace FiniteStateTransducer
 
   /-
     lemma scanr {M: FiniteStateTransducer α β} (w: Word α) (p: Fin w.length) (q: M.Q):
-        (M.scanr_q q w).get ⟨ p, by simp ⟩ = M.f (M.scanr_reduce_q q (w.drop p)) := sorry
+        (M.scanr_q q w).get ⟨ p, by simp ⟩ = M.f (M.scanr_reduce_q q (w.drop p)) := sor ry
   -/
 
 
