@@ -128,7 +128,7 @@ section DiagLeft
           · by_cases h_right_fire : (t : ℤ) = -2 * (p + 1)
             -- Right is .fire
             · rw [if_pos h_right_fire]
-              have beq_false : (Q.fire == Q.hold) = false := by native_decide
+              have beq_false : (Q.fire == Q.hold) = false := by decide
               simp only [beq_false, Bool.false_eq_true, ↓reduceIte]
               have h1 : ¬((t : ℤ) + 1 = -2 * p) := by omega
               have h2 : ¬((t : ℤ) + 1 = -2 * p + 1) := by omega
@@ -136,7 +136,7 @@ section DiagLeft
 
             -- Right is .idle
             · rw [if_neg h_right_fire, if_neg h_right_hold]
-              have beq_false : (Q.idle == Q.hold) = false := by native_decide
+              have beq_false : (Q.idle == Q.hold) = false := by decide
               simp only [beq_false, Bool.false_eq_true, ↓reduceIte]
               have h1 : ¬((t : ℤ) + 1 = -2 * p) := by omega
               have h2 : ¬((t : ℤ) + 1 = -2 * p + 1) := by omega

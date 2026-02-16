@@ -664,7 +664,6 @@ namespace Composition
       _ = e.C2.trace ⟬e.C1.trace_rt w⟭ t := by rw [ht]
       _ = (e.C2.trace_rt (e.C1.trace_rt w))[t]'(by simp_all) := by simp [trace_rt]
 
-  #print axioms spec
 
 end Composition
 
