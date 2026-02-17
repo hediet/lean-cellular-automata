@@ -119,13 +119,30 @@ def nameToString (n : Name) : String :=
   toString n
 
 
+def moduleNameToFilePath (modName : Name) : String :=
+  modName.components.map (·.toString) |>.intersperse "/" |>.foldl (· ++ ·) "" |>.append ".lean"
+
 -- Convert a Name and List Name pair to JSON
 def pairToJson (pair : Name × List Name) : TermElabM (Option Json) := do
   let nameStr := nameToString pair.fst
   let constCategoryStr ← try (getConstType pair.fst) catch | _ => return none
   let nameListStr := pair.snd.map nameToString
   let constTypeStr ← getTypeStr pair.fst
-  return Json.mkObj [("name", Json.str nameStr),("constCategory", Json.str constCategoryStr), ("constType", constTypeStr), ("references", Json.arr (nameListStr.map Json.str).toArray)]
+  let modName? ← findModuleOf? pair.fst
+  let ranges? ← findDeclarationRanges? pair.fst
+  let locationFields := match modName?, ranges? with
+    | some modName, some ranges => [
+        ("fileName", Json.str (moduleNameToFilePath modName)),
+        ("line", Json.num ranges.range.pos.line),
+        ("column", Json.num ranges.range.pos.column)
+      ]
+    | _, _ => []
+  return Json.mkObj ([
+    ("name", Json.str nameStr),
+    ("constCategory", Json.str constCategoryStr),
+    ("constType", constTypeStr),
+    ("references", Json.arr (nameListStr.map Json.str).toArray)
+  ] ++ locationFields)
 
 -- Serialize a List (Name, List Name) to JSON
 def serializeList (l : List (Name × List Name)) : TermElabM Json := do

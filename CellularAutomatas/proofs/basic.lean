@@ -486,18 +486,6 @@ theorem L_in_RT_iff_L_dvd_k_in_RT [Alphabet α] (k: ℕ) (L: Language α):
 
 
 
-@[simp]
-lemma map_project_comp {α β γ: Type} (C: CellAutomaton α β) (f: β → γ) (c: Config α) (t: ℕ):
-  (C.map_project f).comp c t p = f (C.comp c t p) := by rfl
-
-@[simp]
-lemma map_project_trace_rt {α β γ: Type} (C: CellAutomaton α？ β) (f: β → γ) (w: Word α):
-    (C.map_project f).trace_rt w = (C.trace_rt w).map f := by
-  apply List.ext_getElem
-  · simp
-  · simp
-
-
 
 
 @[simp]
