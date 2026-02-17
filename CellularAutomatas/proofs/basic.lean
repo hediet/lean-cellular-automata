@@ -464,8 +464,8 @@ lemma ca_zip_trace_rt {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
   intro i
   simp [ProdCA.zipMany_get?]
   by_cases h: i < List.length w
-  · simp [h, zip_words]
-  · simp [h, zip_words]
+  · simp [h, List.zip]
+  · simp [h, List.zip]
 
 
 
@@ -599,8 +599,6 @@ lemma CA_rt_subseteq_CA_rt_with_advice (adv: Advice α Γ):
 
     rw [Set.mem_setOf_eq]
     simp [C']
-    unfold zip_words
-    rw [<-List.zip]
     rw [List.map_fst_zip]
     simp
 
@@ -663,7 +661,7 @@ lemma adv_empty_2 {α} {Γ} (adv : Advice α Γ) (w: Word α): adv.f w = [] ↔ 
 @[simp]
 lemma zip_length {α β} (w1: Word α) (w2: Word β):
     (w1 ⨂ w2).length = Nat.min w1.length w2.length := by
-  simp [zip_words]
+  simp [List.zip]
 
 
 @[simp]
@@ -703,7 +701,7 @@ section
   @[simp] lemma Word.cons_fst (a: α × β) (w: Word (α × β)): Word.fst (a :: w) = a.1 :: (Word.fst w) := by simp [Word.fst]
   @[simp] lemma Word.cons_snd (a: α × β) (w: Word (α × β)): Word.snd (a :: w) = a.2 :: (Word.snd w) := by simp [Word.snd]
 
-  @[simp] lemma Word.zip_fst (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).fst = w1 := by
+  @[simp] lemma Word.zip_fst (w1: Word α) (w2: Word β) (h: w1.length = w2.length): Word.fst (w1 ⨂ w2) = w1 := by
     induction w1 generalizing w2 with
     | nil =>
       cases w2
@@ -713,13 +711,11 @@ section
       cases w2 with
       | nil => contradiction
       | cons b w2 =>
-        simp [zip_words, Word.cons_fst]
+        simp
         simp at h
-        specialize ih w2 h
-        simp [zip_words] at ih
-        exact ih
+        exact ih w2 h
 
-  @[simp] lemma Word.zip_snd (w1: Word α) (w2: Word β) (h: w1.length = w2.length): (w1 ⨂ w2).snd = w2 := by
+  @[simp] lemma Word.zip_snd (w1: Word α) (w2: Word β) (h: w1.length = w2.length): Word.snd (w1 ⨂ w2) = w2 := by
     induction w1 generalizing w2 with
     | nil =>
       cases w2
@@ -729,11 +725,9 @@ section
       cases w2 with
       | nil => contradiction
       | cons b w2 =>
-        simp [zip_words, Word.cons_snd]
+        simp
         simp at h
-        specialize ih w2 h
-        simp [zip_words] at ih
-        exact ih
+        exact ih w2 h
 
 end
 

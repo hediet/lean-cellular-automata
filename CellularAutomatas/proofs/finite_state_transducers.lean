@@ -398,7 +398,7 @@ namespace FiniteStateTransducer
       FiniteStateTransducer α (β1 × β2) := (M_prod M1 M2) ⊚ (M_map fun a => (a, a))
 
   @[simp]
-  lemma zip_with_eq: List.map (fun a => (a, a)) w = w ⨂ w := by simp [zip_words]
+  lemma zip_with_eq: List.map (fun a => (a, a)) w = w ⨂ w := by simp [List.zip]
 
   @[simp]
   lemma M_prod2_spec [Alphabet α] {M1: FiniteStateTransducer α β1} {M2: FiniteStateTransducer α β2}:

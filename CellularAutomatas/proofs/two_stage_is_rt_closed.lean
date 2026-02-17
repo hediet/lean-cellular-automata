@@ -129,7 +129,6 @@ def zip_two_stage [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice 
 def zip_spec [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice α β) (a2: TwoStageAdvice α γ):
     (zip_two_stage a1 a2).advice.f w = (a1.advice.f w ⨂ a2.advice.f w) := by
   simp [zip_two_stage, TwoStageAdvice.advice, TwoStageAdvice.from_transducers]
-  rfl
 
 infixl:65 " ⨂ " => zip_two_stage
 
@@ -289,14 +288,14 @@ lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
 
 
 @[simp]
-lemma zip_left_empty {α} {v: Word β}: ([]: Word α) ⨂ v = [] := by simp [zip_words]
+lemma zip_left_empty {α} {v: Word β}: ([]: Word α) ⨂ v = [] := by simp [List.zip]
 
 @[simp]
-lemma zip_right_empty {α} {v: Word β}: v ⨂ ([]: Word α) = [] := by simp [zip_words]
+lemma zip_right_empty {α} {v: Word β}: v ⨂ ([]: Word α) = [] := by simp [List.zip]
 
 @[simp]
 lemma zip_empty_iff {α β} {v1: Word α} {v2: Word β}:
-    v1 ⨂ v2 = [] ↔ v1 = [] ∨ v2 = [] := by simp [zip_words]
+    v1 ⨂ v2 = [] ↔ v1 = [] ∨ v2 = [] := by simp [List.zip]
 
 
 

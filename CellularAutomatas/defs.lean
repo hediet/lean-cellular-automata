@@ -304,12 +304,9 @@ section Advice
   lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv.f w).length = w.length := by
     simp [adv.len]
 
-  def zip_words {α β} (w: List α) (a: List β): Word (α × β) :=
-    List.zipWith (·,·) w a
+  infixl:65 " ⨂ " => List.zip
 
-  infixl:65 " ⨂ " => zip_words
-
-  @[app_unexpander zip_words]
+  @[app_unexpander List.zip]
   def unexpand_zip_words : Lean.PrettyPrinter.Unexpander
   | `($_ $w $a) => `($w ⨂ $a)
   | _ => throw ()
