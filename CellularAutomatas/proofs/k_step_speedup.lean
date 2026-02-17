@@ -12,6 +12,7 @@ import Mathlib.Data.Fintype.Prod
 import Mathlib.Data.Fintype.Option
 import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.border
 import CellularAutomatas.proofs.dead_border
 import CellularAutomatas.proofs.causal
 
@@ -94,27 +95,6 @@ end
 def SpB (C: CellAutomaton α？ β) := (Sp C).map_project (fun q => q C.border)
 
 def SpBk (k: ℕ) (C: CellAutomaton α？ β) := (SpB)^[k] C
-
--- dead implies left_dead
-lemma dead_implies_left_dead {C: CellAutomaton α？ β} (h: C.dead C.border): C.left_dead C.border := by
-  intro a b c ⟨ha, hb⟩
-  exact h a b c hb
-
--- All positions to the left of 0 stay as border when border is left_dead
-lemma left_dead_border_left {C: CellAutomaton α？ β} (h: C.left_dead C.border) (w: Word α) (t: ℕ) (p: ℤ) (hp: p < 0):
-    C.nextt w t p = C.border := by
-  induction t generalizing p with
-  | zero =>
-    simp only [nextt0]
-    have : p ∉ w.range := by simp [Word.range]; omega
-    rw [embed_word_at_eq2 w p this]
-    rfl
-  | succ t ih =>
-    rw [CellAutomaton.nextt_succ, CellAutomaton.next]
-    apply h
-    constructor
-    · exact ih (p - 1) (by omega)
-    · exact ih p hp
 
 -- SpB speeds up by 1 step when the condition t + 1 ≥ w.length holds
 lemma SpB_trace_eq {C: CellAutomaton α？ β} (h: C.left_dead C.border) (w: Word α) (t: ℕ) (ht: t + 1 ≥ w.length):

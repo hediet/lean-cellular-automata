@@ -15,6 +15,7 @@
 
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.border
 
 namespace CellularAutomatas
 

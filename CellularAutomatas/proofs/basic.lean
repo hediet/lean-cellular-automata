@@ -705,39 +705,6 @@ section
 
 end
 
-section BorderStays
-
-variable {α β : Type} [Alphabet α]
-
--- Quiescence unfold helper
-omit [Alphabet α] in
-lemma CellAutomaton.quiescent_δ {C : CellAutomaton α？ β} (h : C.quiescent C.border) :
-    C.δ C.border C.border C.border = C.border := by
-  unfold CellAutomaton.quiescent CellAutomaton.quiescent_set at h
-  exact h ⟨C.border, rfl⟩ ⟨C.border, rfl⟩ ⟨C.border, rfl⟩
-
--- For left-independent CAs with quiescent border, positions beyond word stay at border
-omit [Alphabet α] in
-theorem CellAutomaton.border_stays_right (C : CellAutomaton α？ β)
-    (h_left_indep : C.left_independent) (h_quiescent : C.quiescent C.border)
-    (w : Word α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
-    C.nextt (CellAutomaton.embed_word w) t i = C.border := by
-  induction t generalizing i with
-  | zero =>
-    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_word, CellAutomaton.embed_config,
-               word_to_config, CellAutomaton.border]
-    split_ifs with h
-    · omega
-    · rfl
-  | succ t iht =>
-    simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
-    have hm := iht i hi
-    have hr := iht (i + 1) (by omega)
-    rw [hm, hr, h_left_indep _ _ _ C.border]
-    exact C.quiescent_δ h_quiescent
-
-end BorderStays
-
 
 
 lemma nextt_shift {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ) (x d: ℤ):

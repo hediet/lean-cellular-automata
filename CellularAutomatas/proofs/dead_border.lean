@@ -1,5 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.border
 import CellularAutomatas.proofs.int_lemmas
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Pi
@@ -11,71 +12,6 @@ import Mathlib.Order.Interval.Finset.Defs
 import Mathlib.Data.Int.Interval
 
 namespace CellularAutomatas
-
-  lemma dead_border_prop {α β : Type}
-      (C: CellAutomaton (Option α) β) (h_dead: C.dead C.border)
-      (w: Word α) (t: ℕ) (p: ℤ) (h_p: p ∉ w.range):
-      C.nextt (C.embed_word w) t p = C.border := by
-    induction t with
-    | zero =>
-      simp only [CellAutomaton.nextt_zero]
-      rw [embed_word_at_eq2 (C:=C) w p h_p]
-      rfl
-    | succ t ih =>
-      rw [CellAutomaton.nextt_succ, CellAutomaton.next]
-      apply h_dead
-      exact ih
-
-
-  lemma initial_border_prop {α β : Type}
-      (C: CellAutomaton (Option α) β)
-      (h_initial_border: C.initial C.border)
-      (h: C.inj_embed none)
-      (w: Word α) (t: ℕ) (p: ℤ) (h_p: p ∈ w.range):
-      C.nextt (C.embed_word w) t p ≠ C.border := by
-      induction t with
-      | zero =>
-        simp only [CellAutomaton.nextt_zero]
-        rw [embed_word_at_eq1 (C:=C) w p h_p]
-        unfold CellAutomaton.inj_embed at h
-        grind [CellAutomaton.border]
-      | succ t ih =>
-        rw [CellAutomaton.nextt_succ]
-        intro h
-        apply ih
-        rw [CellAutomaton.next] at h
-        apply h_initial_border _ _ _ h
-
-  lemma to_word_exists_generic {α : Type} [Inhabited α] {c: Config (Option α)} {len: ℕ}
-    (h: ∀ p, (c p).isSome ↔ 0 ≤ p ∧ p < len):
-    ∃ w': Word α, w'.length = len ∧ c = word_to_config w' := by
-
-    set l := (List.range len).map (fun (i: ℕ) => (c i).get!)
-    exists l
-
-    constructor
-    · simp [l]
-    · funext p
-      simp only [word_to_config]
-      have h_len_l : l.length = len := by simp [l]
-      by_cases hp: 0 ≤ p ∧ p < len
-      · have hp_l : 0 ≤ p ∧ p < l.length := by rw [h_len_l]; exact hp
-        simp_all
-        simp_all [l]
-        have : (c p).isSome := by
-          grind
-
-        rw [←Option.get_eq_get! (h := by simp_all)]
-        rw [Option.some_get]
-
-      · have hp_l : ¬(0 ≤ p ∧ p < l.length) := by rw [h_len_l]; exact hp
-        rw [dif_neg hp_l]
-        match hc : c p with
-        | some v =>
-           have : (c p).isSome := by simp [hc]
-           rw [h] at this
-           contradiction
-        | none => rfl
 
 structure DeadBorderCoord where
   c: ℕ
