@@ -45,7 +45,7 @@ lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + a
   ext w
   rw [tCellAutomatonWithAdvice.elem_L_iff]
   rw [L_c]
-  rw [prop_of_elem_prop_set]
+  rw [Set.mem_setOf_eq]
 
 
   by_cases h: w = []
@@ -128,7 +128,7 @@ namespace PrefixStableProof
         ext b
         congr
         unfold L_c
-        rw [prop_of_elem_prop_set]
+        rw [Set.mem_setOf_eq]
         rw [(h2 w).2]
         simp [List.getLast?_take, w_len]
 

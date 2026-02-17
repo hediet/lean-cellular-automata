@@ -207,15 +207,12 @@ end fix_empty
 
 
 
-lemma subset_iff {α} {A B: Set α}: A ⊆ B ↔ (∀ L, L ∈ A → L ∈ B) := by rfl
-
-
 lemma advice_rt_closed_iff (adv: Advice α Γ):
     adv.rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv.f w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
   unfold Advice.rt_closed
   rw [subset_antisymm_iff]
   simp only [CA_rt_subseteq_CA_rt_with_advice adv, and_true]
-  rw [subset_iff]
+  rw [Set.subset_def]
   simp [ℒ_oca_def]
   grind
 
@@ -256,11 +253,11 @@ lemma TwoStageAdvice.to_CA_rt_L {α} [Alphabet α] (adv: TwoStageAdvice α Bool)
 
   by_cases h: w = []
   · unfold TwoStageAdvice.L
-    rw [prop_of_elem_prop_set]
+    rw [Set.mem_setOf_eq]
     simp [h]
 
   unfold TwoStageAdvice.L
-  rw [prop_of_elem_prop_set]
+  rw [Set.mem_setOf_eq]
 
   simp [h]
   rw [←trace_rt_L h]
@@ -317,7 +314,7 @@ theorem two_stage_rt_closed (adv: TwoStageAdvice α Γ):
 
 
   simp [C']
-  rw [prop_of_elem_prop_set]
+  rw [Set.mem_setOf_eq]
 
   by_cases h_empty: w = []
   · simp [h_empty]
@@ -326,7 +323,7 @@ theorem two_stage_rt_closed (adv: TwoStageAdvice α Γ):
   simp [x]
 
   unfold TwoStageAdvice.L
-  rw [prop_of_elem_prop_set]
+  rw [Set.mem_setOf_eq]
 
   have : ↑C ∈ CA_rt (α ⨉ Γ) := by simp
   rw [elemL_iff_trace_rt this]

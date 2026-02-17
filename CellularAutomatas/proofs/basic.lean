@@ -9,24 +9,10 @@ import Mathlib.Tactic.Ring
 namespace CellularAutomatas
 
 
-lemma prop_of_elem_prop_set {α} (x: α) (P: α → Prop): x ∈ { x | P x } ↔ P x := by
-  constructor
-  · intro h
-    exact h
-  · intro h
-    exact h
 
 
 
 
-private lemma list_map_congr {α β} {f g : α → β} {l : List α} (h : ∀ x ∈ l, f x = g x) : l.map f = l.map g := by
-  induction l with
-  | nil => rfl
-  | cons a l ih =>
-  simp only [List.map_cons, List.cons.injEq]
-  constructor
-  · apply h; simp
-  · apply ih; intro x hx; apply h; simp [hx]
 
 
 lemma nextt_congr {α β} (C: CellAutomaton α β) (c1 c2: Config C.Q) (t: ℕ) (i: ℤ):
@@ -82,7 +68,7 @@ theorem LCellAutomaton.scan_temporal_independence {β} [Alphabet β] (C: CellAut
   (C.trace_rt (p ++ s)).take p.length = C.trace_rt p := by
   unfold CellAutomaton.trace_rt
   rw [← List.map_take, List.take_range, min_eq_left (by simp)]
-  apply list_map_congr
+  apply List.map_congr_left
   intro t ht
   rw [List.mem_range] at ht
   unfold CellAutomaton.trace CellAutomaton.comp CellAutomaton.project_config
