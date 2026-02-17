@@ -196,7 +196,7 @@ namespace SimFromΛ
       rw [show 3 * 0 + (3 + 2 * p.natAbs) + 0 = 3 + 2 * p.natAbs from by omega] at h_prev
       have h := e.step_counter_sim c_ctl c_inr h_CM (3 + 2 * p.natAbs) p
       rw [if_neg (by omega)] at h; rw [h_prev.2] at h; simp only [h_prev.1] at h
-      simp only [beq_iff_eq, Fin.mk_eq_zero, ↓reduceIte] at h
+      simp only [beq_iff_eq] at h
       refine ⟨?_, h.2⟩; rw [h.1]; rfl
     | 0, 2, hk =>
       have h_time : 3 * 0 + (3 + 2 * p.natAbs) + 2 = (3 + 2 * p.natAbs + 1) + 1 := by omega
@@ -262,7 +262,7 @@ namespace SimFromΛ
       rw [show 3 * (t + 1) + (3 + 2 * p.natAbs) + 0 = 3 * (t + 1) + (3 + 2 * p.natAbs) from by omega] at h_prev
       have h := e.step_counter_sim c_ctl c_inr h_CM (3 * (t + 1) + (3 + 2 * p.natAbs)) p
       rw [if_neg (by omega)] at h; rw [h_prev.2] at h; simp only [h_prev.1] at h
-      simp only [beq_iff_eq, Fin.mk_eq_zero, ↓reduceIte] at h
+      simp only [beq_iff_eq] at h
       refine ⟨?_, h.2⟩; rw [h.1]; rfl
     | t + 1, 2, hk =>
       have h_time : 3 * (t + 1) + (3 + 2 * p.natAbs) + 2 = (3 * (t + 1) + (3 + 2 * p.natAbs) + 1) + 1 := by omega
@@ -316,7 +316,7 @@ namespace SimFromΛ
         simp only [Int.natAbs_zero, Nat.mul_zero, Nat.add_zero] at h_at
         rw [show 3 * t + 3 + k = T from by omega] at h_at
         rw [h_at.1, h_at.2] at h_some
-        simp only [beq_iff_eq, Fin.mk_eq_zero, Option.isSome_some, ↓reduceIte] at h_some
+        simp only [beq_iff_eq, Fin.mk_eq_zero] at h_some
         split at h_some
         · exact ⟨t, by omega⟩
         · simp at h_some

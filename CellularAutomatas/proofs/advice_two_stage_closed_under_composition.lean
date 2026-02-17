@@ -247,7 +247,7 @@ lemma TwoStageAdvice.from_transducers_eq {β: Type} [Alphabet α] [Alphabet β] 
 def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a2: TwoStageAdvice Γ1 Γ) (a1: TwoStageAdvice α Γ1):
     TwoStageAdvice α Γ :=
   let e := backwards_fsm.Params.mk a1.M a2.C
-  let ca_new := (backwards_fsm.C' e).compose a1.C
+  let ca_new := (backwards_fsm.C' e) ⊚ a1.C
   let fst_new := a2.M ⊚ backwards_fsm.M' e
   TwoStageAdvice.from_transducers fst_new ca_new
 
@@ -283,11 +283,11 @@ theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a
       simp [Function.comp_assoc]
 
     _ = fsm_new.advice.f ∘ ca_new.advice.f := by
-      rw [CArtTransducer.compose_spec2]
+      rw [CArtTransducer.compose_trace_rt_advice_spec]
       rw [FiniteStateTransducer.compose_spec]
 
     _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice.f := by simp [TwoStageAdvice.from_transducers_eq]
     _ = (compose_two_stage a2 a1).advice.f := by rfl
 
 
-infixr:90 " ⊚ "  => compose_two_stage
+infixr:90 "⊚"  => compose_two_stage

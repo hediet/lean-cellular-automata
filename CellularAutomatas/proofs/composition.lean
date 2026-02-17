@@ -668,21 +668,20 @@ namespace Composition
 end Composition
 
 
-def CArtTransducer.compose {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
+def CellAutomaton.compose_trace_rt {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
     (C2: CArtTransducer β γ) (C1: CArtTransducer α β): CArtTransducer α γ :=
   ({ α := α, β := β, γ := γ, C2 := C2, C1 := C1 }: Composition).C
 
-infixr:90 "⊚"  => CArtTransducer.compose
+infixr:90 "⊚"  => CellAutomaton.compose_trace_rt
 
 @[simp]
-theorem CArtTransducer.compose_spec {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
+theorem CellAutomaton.compose_trace_rt_spec {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
     (C2: CArtTransducer β γ) (C1: CArtTransducer α β):
-    (C2.compose C1).trace_rt = C2.trace_rt ∘ C1.trace_rt := by
-  simp [compose]
-  rw [Composition.spec]
+    (C2.compose_trace_rt C1).trace_rt = C2.trace_rt ∘ C1.trace_rt := by
+  rw [compose_trace_rt, Composition.spec]
 
 @[simp]
-theorem CArtTransducer.compose_spec2 {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
+theorem CArtTransducer.compose_trace_rt_advice_spec {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
     (C2: CArtTransducer β γ) (C1: CArtTransducer α β):
-    (C2.compose C1).advice.f = C2.advice.f ∘ C1.advice.f := by
+    (C2.compose_trace_rt C1).advice.f = C2.advice.f ∘ C1.advice.f := by
   simp [CArtTransducer.advice]

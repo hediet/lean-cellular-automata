@@ -156,9 +156,9 @@ such that trace_rt_C = trace_rt_{C₂} ∘ trace_rt_{C₁}.
 
 theorem result_rt_transducers_closed_under_composition
     {β γ : Type} [Alphabet β] [Alphabet γ]
-    (C1 : CArtTransducer α β) (C2 : CArtTransducer β γ) :
-    (C2.compose C1).trace_rt = C2.trace_rt ∘ C1.trace_rt :=
-  CArtTransducer.compose_spec C2 C1
+    (C1 : CellAutomaton α？ β) (C2 : CellAutomaton β？ γ) :
+    (C2.compose_trace_rt C1).trace_rt = C2.trace_rt ∘ C1.trace_rt :=
+  CellAutomaton.compose_trace_rt_spec C2 C1
 
 /-!
 ### Result 6: Two-Stage Advice is RT-Closed
@@ -204,7 +204,7 @@ the composition f₂ ∘ f₁ is again two-stage.
 theorem result_two_stage_closed_under_composition
     {Γ' : Type} [Alphabet Γ']
     (a1 : TwoStageAdvice α Γ') (a2 : TwoStageAdvice Γ' Γ) :
-    (compose_two_stage a2 a1).advice.f = a2.advice.f ∘ a1.advice.f :=
+    (compose_two_stage a2 a1: TwoStageAdvice α Γ).advice.f = a2.advice.f ∘ a1.advice.f :=
   advice_two_stage_closed_under_composition a1 a2
 
 /-!

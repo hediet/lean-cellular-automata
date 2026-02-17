@@ -302,8 +302,6 @@ lemma zip_empty_iff {α β} {v1: Word α} {v2: Word β}:
 
 theorem two_stage_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.rt_closed := by
-  open Classical in -- I'm quite sure this is not needed logically
-
   rw [advice_rt_closed_iff]
   intro C
   rw [ℒ_CA_rt_iff]
