@@ -38,7 +38,7 @@ def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
 
 
 def CA_adv_L_c (α) [Alphabet α] (c : Γ) : CA_rt (α × Γ) :=
-  fix_empty false (toRtCa ((ca_id_word (α × Γ)).map_project (fun (_, g) => g == c)))
+  fix_empty false (toRtCa ((ca_trace_id_word (α × Γ)).map_project (fun (_, g) => g == c)))
 
 
 lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + adv).L = L_c adv c := by

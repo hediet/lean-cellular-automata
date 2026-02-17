@@ -302,7 +302,7 @@ theorem two_stage_rt_closed (adv: TwoStageAdvice α Γ):
   intro C
   rw [ℒ_CA_rt_iff]
 
-  let x := ((TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_id_word α)) ⨂ adv))
+  let x := ((TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv))
   let C' := fix_empty ([] ∈ C.val.L) x.to_CA_rt
 
   use C'
