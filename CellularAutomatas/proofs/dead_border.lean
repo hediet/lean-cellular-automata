@@ -147,7 +147,7 @@ namespace DeadBorderCoord
 
 
 
-  lemma map_coord_iff (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
+  private lemma map_coord_iff (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
     (h_pos: w_len > 0) :
     e.map_coord w_len p = some (cp, li) ↔
       (e.is_valid_idx (p / w_len) ∧
@@ -162,7 +162,7 @@ namespace DeadBorderCoord
     grind
     grind
 
-  lemma map_coord_prev (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
+  private lemma map_coord_prev (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
     (h_pos: w_len > 0)
     (h1: e.map_coord w_len p = some (cp, li)) :
     e.map_coord w_len (p - 1) =
@@ -286,7 +286,7 @@ namespace DeadBorderCoord
       rw [←h_li]
       simp [h_valid_prev]
 
-  lemma map_coord_next (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
+  private lemma map_coord_next (w_len: ℕ) (p: ℤ) (cp: ℤ) (li: e.LaneIdx)
     (h_pos: w_len > 0)
     (h1: e.map_coord w_len p = some (cp, li)) :
     e.map_coord w_len (p + 1) =
@@ -500,12 +500,12 @@ namespace DeadBorder
     cases q' <;> simp_all
 
   -- Shape preservation: outside word range → none (border)
-  lemma shape_outside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∉ w.range):
+  private lemma shape_outside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∉ w.range):
       C.nextt (C.embed_word w) t p = C.border :=
     dead_border_prop C spec_left_border_dead w t p h_p
 
   -- Shape preservation: inside word range → not none (not border)
-  lemma shape_inside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∈ w.range):
+  private lemma shape_inside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∈ w.range):
       C.nextt (C.embed_word w) t p ≠ C.border :=
     initial_border_prop C spec_initial_border spec_inj_embed_none w t p h_p
 
@@ -529,7 +529,7 @@ namespace DeadBorder
       · simp
 
 
-  lemma main_center (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
+  private lemma main_center (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
     (h1: e.map_coord c.length p = some (cell_p, lane_idx)):
       (unfold_neighborhood (neighborhood_at ⟬c⟭ cell_p) lane_idx).2.1
         = (unfold ⟬c⟭ c.length p) := by
@@ -551,7 +551,7 @@ namespace DeadBorder
             omega
     simp [word_to_config, range_ok]
 
-  lemma main_left (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
+  private lemma main_left (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
     (h_pos: c.length > 0)
     (h_map: e.map_coord c.length p = some (cell_p, lane_idx))
     (h_prev: e.map_coord c.length (p - 1) =
@@ -577,7 +577,7 @@ namespace DeadBorder
     grind
     grind
 
-  lemma main_right (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
+  private lemma main_right (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
     (h_pos: c.length > 0)
     (h_map: e.map_coord c.length p = some (cell_p, lane_idx))
     (h_next: e.map_coord c.length (p + 1) =
@@ -606,7 +606,7 @@ namespace DeadBorder
     grind
     grind
 
-  lemma main (c: Word e.Cell) (p: ℤ)
+  private lemma main (c: Word e.Cell) (p: ℤ)
     (h1: e.map_coord c.length p = some (cell_p, lane_idx)):
       unfold_neighborhood (neighborhood_at ⟬c⟭ cell_p) lane_idx
         = neighborhood_at (unfold ⟬c⟭ c.length) p := by
@@ -628,7 +628,7 @@ namespace DeadBorder
 
 
 
-  lemma inv (w: Word e.α) (t: ℕ) (p: ℤ) (h: |p| < e.c * w.length - t): unfold (C.nextt w t) w.length p = e.C_orig.nextt w t p := by
+  private lemma inv (w: Word e.α) (t: ℕ) (p: ℤ) (h: |p| < e.c * w.length - t): unfold (C.nextt w t) w.length p = e.C_orig.nextt w t p := by
     induction t generalizing p with
     | zero =>
       dsimp [nextt0]
@@ -738,7 +738,7 @@ namespace DeadBorder
 
 
   -- Key observation 1: e.C.trace is e.C_orig.project of unfold at position 0
-  lemma trace_eq_project_unfold (w: Word e.α) (t: ℕ) (h: w.length > 0):
+  private lemma trace_eq_project_unfold (w: Word e.α) (t: ℕ) (h: w.length > 0):
       e.C.trace w t = e.C_orig.project (unfold (C.nextt ⦋w⦌ t) w.length 0) := by
     simp only [CellAutomaton.trace, CellAutomaton.comp, Function.comp_apply,
                CellAutomaton.project_config, embed_word_word_to_config_eq]

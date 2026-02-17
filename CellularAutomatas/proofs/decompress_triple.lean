@@ -39,7 +39,7 @@ namespace DecompressTriple
 
   -- Helper: state tracking for C_orig
   -- The first component of the Decompress CA state tracks C_orig's state
-  lemma state_track (c: Config e.α) (t: ℕ) (p: ℤ):
+  private lemma state_track (c: Config e.α) (t: ℕ) (p: ℤ):
       (e.C.nextt ⦋c⦌ t p).1 = e.C_orig.nextt ⦋c⦌ t p := by
     induction t generalizing p with
     | zero => simp [CellAutomaton.embed_config, C]
@@ -82,7 +82,7 @@ namespace DecompressTriple
   -- counter increments and stored value is preserved.
   -- Requires t ≥ 1 because at t=0 the state is the initial embedding,
   -- which has stored = fun _ => default, not necessarily v.
-  lemma counter_stored (c: Config e.α) (t: ℕ) (v: e.β³)
+  private lemma counter_stored (c: Config e.α) (t: ℕ) (v: e.β³)
     (ht: 0 < t)
     (h0: e.C_orig.comp c t 0 = some v)
     (h1: e.C_orig.comp c (t + 1) 0 = none)

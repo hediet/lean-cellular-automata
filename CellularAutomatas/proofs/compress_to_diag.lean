@@ -28,11 +28,11 @@ namespace CAgfSpeedup
 
 variable (e : CAgfSpeedup)
 
-def step1 := RegularToLeftIndep.mk e.C_orig
+private def step1 := RegularToLeftIndep.mk e.C_orig
 
-def step2 := LeftIndepSpeedup.mk e.step1.C 3 (by decide) e.step1.C_left_independent
+private def step2 := LeftIndepSpeedup.mk e.step1.C 3 (by decide) e.step1.C_left_independent
 
-def step3 := LeftIndepToRegular.mk e.step2.C e.step2.C_left_indep
+private def step3 := LeftIndepToRegular.mk e.step2.C e.step2.C_left_indep
 
 def C := e.step3.C
 
@@ -40,7 +40,7 @@ def g1 (q: Fin 3 → e.step2.β): e.β := match q 2 with
   | BetaUnionSq.single s => s
   | BetaUnionSq.pair _ _ => default
 
-lemma g1_spec (w: Word e.α) (h: w.length > 0) (p: ℕ):
+private lemma g1_spec (w: Word e.α) (h: w.length > 0) (p: ℕ):
     e.g1 (e.C.comp w (2 * p + 1) (p)) = e.C_orig.comp w (3 * p + 1) 0 := by
   rw [C]
   unfold embed_word
@@ -83,7 +83,7 @@ def g2 (q: Fin 3 → e.step2.β): e.β × e.β :=
   )
 
 
-lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
+private lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
     e.g2 (e.C.comp w (2 * p + 2) (p + 1)) = (e.C_orig.comp w (3 * p + 2) 0, e.C_orig.comp w (3 * p + 3) 0) := by
   rw [C]
   unfold embed_word
@@ -128,7 +128,7 @@ lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
 
 -- At time 0, the speedup gives the initial state.
 -- After the projectQ' change, g2 on the initial projected output gives trace(0).
-lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
+private lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
     (e.g2 (e.C.comp w 0 0)).2 = e.C_orig.comp w 0 0 := by
   -- First establish that C.comp w 0 0 = fun _ => BetaUnionSq.single(C_orig.comp w 0 0)
   have key : e.C.comp w 0 0 = fun _ => BetaUnionSq.single (e.C_orig.comp w 0 0) := by
@@ -218,17 +218,17 @@ namespace CompressToDiag
   }
 
   /-- The δ function at index k<3 returns the previous self at k+1 -/
-  lemma C_δ_fst_lt (a b c : e.C.Q) (k : Fin 4) (hk : k.val < 3) :
+  private lemma C_δ_fst_lt (a b c : e.C.Q) (k : Fin 4) (hk : k.val < 3) :
       (e.C.δ a b c).1 k = b.1 ⟨k.val + 1, by omega⟩ := by
     simp only [C, dif_pos hk]
 
   /-- The δ function at index 3 computes the speedup transition -/
-  lemma C_δ_fst_3 (a b c : e.C.Q) :
+  private lemma C_δ_fst_3 (a b c : e.C.Q) :
       (e.C.δ a b c).1 ⟨3, by omega⟩ = e.speedup.C.δ (a.1 ⟨3, by omega⟩) (b.1 ⟨3, by omega⟩) (c.1 ⟨3, by omega⟩) := by
     simp only [C, show ¬(3 < 3) by omega, dif_neg, not_false_eq_true]
 
   /-- Helper: at time t, the state at position i has form (history, rightHist) where history tracks speedup states -/
-  lemma C_embed_eq (w: Word e.α) (i: ℤ):
+  private lemma C_embed_eq (w: Word e.α) (i: ℤ):
       e.C.nextt (embed_word w) 0 i =
       (fun _ => e.speedup.C.nextt (embed_word w) 0 i, fun _ => e.speedup.C.nextt (embed_word w) 0 i) := by
     simp only [CellAutomaton.nextt_zero, embed_word, CellAutomaton.embed_config, C]
@@ -238,7 +238,7 @@ namespace CompressToDiag
       - Base case t=3: After 3 transitions, self = [S(0), S(1), S(2), S(3)] at position i.
       - Inductive step: The transition function shifts history, so self[k] = prev.self[k+1] for k<3,
         and self[3] = speedup.δ(prev neighbors). By IH, prev.self[k+1] = speedup.nextt(t-3+(k+1)) = speedup.nextt(t-2+k). -/
-  lemma C_self_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 3):
+  private lemma C_self_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 3):
       (e.C.nextt (embed_word w) t i).1 k =
       e.speedup.C.nextt (embed_word w) (t - 3 + k) i := by
     -- Induction on t starting from t = 3
@@ -303,7 +303,7 @@ namespace CompressToDiag
 
   /-- At time t and position i, rightHist[k] = speedup.C.nextt at (t-4+k, i+1).
       Follows from C_self_tracks_speedup since rightHist copies the previous step's self from position i+1. -/
-  lemma C_right_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 4):
+  private lemma C_right_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 4):
       (e.C.nextt (embed_word w) t i).2 k =
       e.speedup.C.nextt (embed_word w) (t - 4 + k) (i + 1) := by
     -- After transition, rightHist = c.self where c is at position i+1

@@ -228,7 +228,7 @@ lemma C_left_indep : e.C.left_independent := by
 -/
 
 /-- Helper: embed_word matches for positions in the word range -/
-lemma embed_word_in_range (w : Word e.α) (i : ℤ) (hi : i ∈ w.range) :
+private lemma embed_word_in_range (w : Word e.α) (i : ℤ) (hi : i ∈ w.range) :
     (CellAutomaton.embed_word (C := e.C) w) i =
     Q'.state ((CellAutomaton.embed_word (C := e.C_orig) w) i) e.C_orig.border := by
   simp only [Word.range, ge_iff_le, Set.mem_setOf_eq] at hi
@@ -236,7 +236,7 @@ lemma embed_word_in_range (w : Word e.α) (i : ℤ) (hi : i ∈ w.range) :
   rfl
 
 /-- Helper: embed_word is border outside the word range -/
-lemma embed_word_out_range (w : Word e.α) (i : ℤ) (hi : i ∉ w.range) :
+private lemma embed_word_out_range (w : Word e.α) (i : ℤ) (hi : i ∉ w.range) :
     (CellAutomaton.embed_word (C := e.C) w) i = Q'.border := by
   simp only [Word.range, ge_iff_le, Set.mem_setOf_eq, not_and, not_lt] at hi
   simp only [embed_word, embed_config, word_to_config, C]
@@ -250,7 +250,7 @@ lemma border_stays_right (w : Word e.α) (i : ℤ) (hi : i ≥ w.length) (t : �
   exact CellAutomaton.border_stays_right e.C e.C_left_indep e.C_border_quiescent w i hi t
 
 /-- For positions left of the cone, the original CA computes as δδt of the border -/
-lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(t : ℤ)) :
+private lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(t : ℤ)) :
     e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i =
     δδt e.C_orig e.C_orig.border t := by
   induction t generalizing i with
@@ -269,7 +269,7 @@ lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(t : ℤ)
     rw [iht (i - 1) hl, iht i hc, iht (i + 1) hr]
 
 /-- For positions right of the word (>= w.length), the original CA computes as δδt of the border -/
-lemma orig_right_of_word (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i ≥ w.length) :
+private lemma orig_right_of_word (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i ≥ w.length) :
     e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i =
     δδt e.C_orig e.C_orig.border t := by
   induction t generalizing i with

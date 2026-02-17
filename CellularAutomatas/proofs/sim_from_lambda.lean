@@ -39,7 +39,7 @@ namespace SimFromΛ
       left_inv := fun _ => rfl
       right_inv := fun _ => rfl }
 
-  def get_neighbor_val (q: Q e) : e.C_inr.Q :=
+  private def get_neighbor_val (q: Q e) : e.C_inr.Q :=
     match q.sim with
     | some (new, old) => if q.counter == 1 then old else new
     | none => default
@@ -86,7 +86,7 @@ namespace SimFromΛ
       else none
 
   -- Invariant 1: The .state field tracks C_ctl
-  lemma state_track (t: ℕ) (p: ℤ):
+  private lemma state_track (t: ℕ) (p: ℤ):
     (e.C.nextt ⦋c_ctl⦌ t p).state = e.C_ctl.nextt ⦋c_ctl⦌ t p := by
     induction t generalizing p with
     | zero => simp [CellAutomaton.embed_config, C]
@@ -98,7 +98,7 @@ namespace SimFromΛ
 
   -- One-step lemma: characterizes counter and sim at time T+1
   -- Uses native_decide and grind to handle the match/split cases
-  lemma step_counter_sim (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr) (T: ℕ) (p: ℤ):
+  private lemma step_counter_sim (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr) (T: ℕ) (p: ℤ):
       if T + 1 = 3 + 2 * p.natAbs then
         (e.C.nextt ⦋c_ctl⦌ (T + 1) p).counter = 0 ∧
         (e.C.nextt ⦋c_ctl⦌ (T + 1) p).sim = some (e.C_inr.embed (c_inr p), e.C_inr.embed (c_inr p))
@@ -143,7 +143,7 @@ namespace SimFromΛ
       · exact ⟨rfl, rfl⟩
 
   -- Invariant 2: Before the trigger
-  lemma before_trigger (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr)
+  private lemma before_trigger (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr)
       (T: ℕ) (p: ℤ) (hT: T < 3 + 2 * p.natAbs):
       (e.C.nextt ⦋c_ctl⦌ T p).counter = 0 ∧ (e.C.nextt ⦋c_ctl⦌ T p).sim = none := by
     induction T with
@@ -172,7 +172,7 @@ namespace SimFromΛ
 
   -- Invariant 3: After the trigger
   -- Uses k : ℕ with hk : k < 3 to avoid Fin coercion issues
-  theorem after_trigger (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr)
+  private theorem after_trigger (h_CM: e.c_ctl_computes_c_inr c_ctl c_inr)
       (t: ℕ) (p: ℤ) (k: ℕ) (hk: k < 3):
       (e.C.nextt ⦋c_ctl⦌ (3 * t + (3 + 2 * p.natAbs) + k) p).counter = ⟨k, hk⟩ ∧
       (e.C.nextt ⦋c_ctl⦌ (3 * t + (3 + 2 * p.natAbs) + k) p).sim =
