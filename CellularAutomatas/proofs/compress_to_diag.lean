@@ -1,4 +1,5 @@
 import CellularAutomatas.defs
+import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.left_indep_speedup
 import CellularAutomatas.proofs.quiescent_border
@@ -151,13 +152,6 @@ lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
   rw [key]
 
 end CAgfSpeedup
-
-
-notation:max x "³"  => Fin 3 → x
-
-
-def triple_at {Q} (c: ℕ → Q) (i: ℕ): Q³ := fun o => c (i + o)
-
 
 
 structure CompressToDiag where
