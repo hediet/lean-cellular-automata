@@ -517,9 +517,9 @@ end AddBorder
 
 
 structure Composition where
-  α: Type
-  β: Type
-  γ: Type
+  {α: Type}
+  {β: Type}
+  {γ: Type}
   [_inst_α: Alphabet α]
   [_inst_β: Alphabet β]
   [_inst_γ: Alphabet γ]
@@ -670,7 +670,7 @@ end Composition
 
 def CellAutomaton.compose_trace_rt {α β γ} [Alphabet α] [Alphabet β] [Alphabet γ]
     (C2: CArtTransducer β γ) (C1: CArtTransducer α β): CArtTransducer α γ :=
-  ({ α := α, β := β, γ := γ, C2 := C2, C1 := C1 }: Composition).C
+  (Composition.mk C2 C1).C
 
 infixr:90 "⊚"  => CellAutomaton.compose_trace_rt
 
