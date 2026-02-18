@@ -67,13 +67,23 @@ namespace backwards_fsm
   lemma scanr_get'_eq2 {M: FiniteStateTransducer α β} (w: Word α) (i: ℤ) (h: i ∈ w.range):
     (M.scanr w).get' i (by simp [h]) = M.f (M.scanr_reduce w⟦(i).toNat..*⟧) := by
     rw [Word.get']
-    have x := M.scanr_get'_eq2 w ⟨ i.toNat, by simp_all [Word.range] ⟩
-    rw [←x]
+    have h_fin := M.scanr_get'_eq2 w ⟨ i.toNat, by simp_all [Word.range] ⟩
+    rw [←h_fin]
     congr
 
 
 
+  -- One-step backward relationship for scanr_reduce:
+  -- δ?(q, w.get'?(i)) = scanr_reduce from position i, when q = scanr_reduce from position j ≈ i+1.
+  private lemma scanr_reduce_step (w: Word e.α) (i j: ℤ)
+      {q: e.M.Q} (h_q : q = e.M.scanr_reduce w⟦j.toNat..*⟧) (h_j : j.toNat = (i + 1).toNat) :
+      e.M.δ? q (w.get'? i) = e.M.scanr_reduce w⟦i.toNat..*⟧ := by
+    conv => rhs; rw [FiniteStateTransducer.scanr_reduce'?]
+    rw [show (i + 1).toNat = j.toNat from h_j.symm, ← h_q]
 
+  -- The key invariant: at each time step t and position p,
+  -- .1 propagates the original input word rightward (tracking w at p+t), and
+  -- .2 is a function M.Q → C.Q that parametrically simulates C for every FSM state.
   lemma inv (w: Word e.α) (t: ℕ) (p: ℤ):
       let c' := (C' e).nextt w t p
       let q := e.M.scanr_reduce w⟦(p+t).toNat..*⟧
@@ -90,139 +100,117 @@ namespace backwards_fsm
       · simp_all [embed_word_at_eq2, Word.range]
 
     | succ t ih =>
-
-
+      -- Unfold one step: nextt (t+1) = next (nextt t)
       set c' := (C' e).nextt w (t + 1) p with h_c'
       set q := e.M.scanr_reduce w⟦(p + ↑(t+1)).toNat..*⟧ with h_q
-
       rw [CellAutomaton.nextt_succ] at h_c'
-
-      set c'_t := ((C' e).nextt w t) with h_c'_t
-
+      set cell := ((C' e).nextt w t) with h_cell
       unfold CellAutomaton.next at h_c'
 
-      set ql := (c'_t (p - 1)) with h_ql
-      set qc := (c'_t p) with h_qc
-      set qr := (c'_t (p + 1)) with h_qr
+      -- The three neighbor cells at time t
+      set left := (cell (p - 1)) with h_left
+      set center := (cell p) with h_center
+      set right := (cell (p + 1)) with h_right
 
-      have x: c'.2 q =
-          let q_right := e.M.δ? q qc.1
-          let q_center := e.M.δ? q_right ql.1
-          e.C.δ (ql.2 q_center) (qc.2 q_right) (qr.2 q)
-        := by simp [h_ql, h_qc, h_qr, h_c', C']
-
-
+      -- c'.2 q unfolds via C'.δ: step FSM backwards (right→center→left), then apply C.δ
       simp [C'] at h_c'
       rw [h_c']
       simp
 
-      set q1 := q
-      set q2 := e.M.δ? q1 qc.1
-      set q3 := e.M.δ? q2 ql.1
-      set q4 := e.M.δ? q2 ql.1
+      -- FSM states: q steps backwards through positions p+t+1 → p+t → p-1+t
+      set fsm_center := e.M.δ? q center.1
+      set fsm_left := e.M.δ? fsm_center left.1
 
+      -- Right neighbor: connect IH's FSM state to q
+      have fsm_at_right_eq : e.M.scanr_reduce w⟦(p + 1 + ↑t).toNat..*⟧ = q := by
+        have : (p + 1 + ↑t).toNat = (p + (↑t + 1)).toNat := by omega
+        simp [this, q]
+      have ih_right := ih (p + 1)
+      rw [fsm_at_right_eq] at ih_right
+      simp at ih_right
 
-      have ih_p1 := ih (p + 1)
+      have sim_right : right.2 q = e.C.nextt (e.M.scanr w) t (p + 1) := by
+        simp [h_right, ih_right]
 
-      have h1 : qr.2 q1 = e.C.nextt (e.M.scanr w) t (p + 1) ∧ qr.1 = (w.get'? (p + ↑t + 1)) := by
-        have q_eq : e.M.scanr_reduce w⟦(p + 1 + ↑t).toNat..*⟧ = q := by
-          have : (p + 1 + ↑t).toNat = (p + (↑t + 1)).toNat := by omega
-          simp [this, q]
-        have ih_p1 := ih (p + 1)
-        rw [q_eq] at ih_p1
-        simp at ih_p1
-        simp [h_qr, ih_p1]
+      have word_right : right.1 = (w.get'? (p + ↑t + 1)) := by
+        simp [h_right, ih_right]
         grind
 
-      have h2_1 : qc.1 = (w.get'? (p + ↑t)) := by
-        have ih_0 := ih p
-        simp [ih_0, qc]
+      -- Center: word tracking → FSM step → simulation
+      have word_center : center.1 = (w.get'? (p + ↑t)) := by
+        have ih_c := ih p
+        simp [ih_c, center]
 
-      have q2_eq : q2 = e.M.scanr_reduce w⟦(p + ↑t).toNat..*⟧ := by
-        simp [q2, h_q]
-        conv =>
-          rhs
-          rw [FiniteStateTransducer.scanr_reduce'?]
-        simp [h2_1]
+      have fsm_center_eq : fsm_center = e.M.scanr_reduce w⟦(p + ↑t).toNat..*⟧ := by
+        simp only [fsm_center]
+        rw [word_center]
+        exact scanr_reduce_step e w (p + ↑t) (p + ↑(t+1)) h_q (by omega)
+
+      have sim_center : (center.2 fsm_center) = e.C.nextt (e.M.scanr w) t p := by
+        have ih_c := ih p
+        rw [fsm_center_eq]
+        simp [center, ih_c]
+
+      -- Left neighbor: word tracking → FSM step → simulation
+      have word_left : left.1 = (w.get'? (p + ↑t - 1)) := by
+        have ih_l := ih (p - 1)
         grind
 
-      have h2 : (qc.2 q2) = e.C.nextt (e.M.scanr w) t p := by
-        have ih_0 := ih p
-        simp [ih_0, q2_eq, qc]
+      have fsm_left_eq : fsm_left = e.M.scanr_reduce w⟦(p - 1 + ↑t).toNat..*⟧ := by
+        simp only [fsm_left]
+        rw [word_left, show p + ↑t - 1 = p - 1 + ↑t from by ring]
+        exact scanr_reduce_step e w (p - 1 + ↑t) (p + ↑t) fsm_center_eq (by omega)
 
+      have sim_left : (left.2 fsm_left) = e.C.nextt (e.M.scanr w) t (p - 1) := by
+        have ih_l := ih (p - 1)
+        rw [fsm_left_eq]
+        simp [h_left, ih_l]
 
-      have h3_1 : ql.1 = (w.get'? (p + ↑t - 1)) := by
-        have ih_m1 := ih (p - 1)
-        grind
-
-      have q3_eq : q3 = e.M.scanr_reduce w⟦(p - 1 + ↑t).toNat..*⟧ := by
-          simp [q3, q2_eq]
-          conv =>
-            rhs
-            rw [FiniteStateTransducer.scanr_reduce'?]
-          grind
-
-      have h3 : (ql.2 q3) = e.C.nextt (e.M.scanr w) t (p - 1) := by
-        have ih_m1 := ih (p - 1)
-        simp [h_ql, ih_m1, q3_eq]
-
+      -- Combine: C'.δ applies C.δ to the three simulated neighbors
       constructor
-      · simp [h1.1, h2, h3, CellAutomaton.next]
+      · simp [sim_right, sim_center, sim_left, CellAutomaton.next]
       · dsimp
-        change (c'_t (p+1)).1 = _
-        rw [← h_qr]
-        rw [h1.2]
+        change (cell (p+1)).1 = _
+        rw [← h_right, word_right]
         congr 1
         omega
 
 
 
+  -- spec_ proves the functional equation for the backwards FSM construction:
+  -- composing M' after C' equals composing C.advice after M.advice.
   lemma spec_: (M' e).advice.f ∘ (C' e).advice.f = e.C.advice.f ∘ e.M.advice.f := by
       funext w
-
       unfold FiniteStateTransducer.advice
-      simp [CArtTransducer.advice, M']
-
-      simp [backwards_fsm.M_join_spec e.C.Q]
-
+      simp [CArtTransducer.advice, M', backwards_fsm.M_join_spec e.C.Q]
 
       set c' := (C' e).trace_rt w with eq_c'
-
       apply List.ext_getElem
       · simp_all
-
 
       intro i h1 h2
       simp
 
+      -- The first projection of c' recovers the original word w
       have h_w : Word.fst c' = w := by
         apply List.ext_getElem
         · simp_all
         intro t ht1 ht2
-        simp [eq_c']
-
-        simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
-
-        have x := (inv e w t 0).2
-        conv in (CellAutomaton.project (C' e)) =>
-          simp [C']
-        simp [x]
+        simp [eq_c', CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
+        have h_word_track := (inv e w t 0).2
+        conv in (CellAutomaton.project (C' e)) => simp [C']
+        simp [h_word_track]
         rw [Word.get'_eq]
 
       simp [h_w]
-      simp [eq_c']
-      simp [CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
-
+      simp [eq_c', CellAutomaton.trace_rt, CellAutomaton.trace, comp_word_eq_project_nextt]
       congr
 
-
-      have x := inv e w i 0
-      simp at x
-      conv in (CellAutomaton.project (C' e)) =>
-        simp [C']
+      have h_inv := inv e w i 0
+      simp at h_inv
+      conv in (CellAutomaton.project (C' e)) => simp [C']
       simp
-      rw [x.1]
-
+      rw [h_inv.1]
 
 
 
