@@ -221,6 +221,36 @@ lemma C_left_indep : e.C.left_independent := by
       · simp only [unwrap]; congr 1; exact e.h_left_indep _ _ _ _
     · rfl
 
+/-! ## δ' step lemmas
+
+  These lemmas reduce the case explosion in spec_internal by capturing the
+  common pattern: after applying the IH, each neighbor is either
+  Q'.state s (δδt t) or Q'.border, and δ' produces the correct result.
+-/
+
+/-- When middle is .state b br, δ' produces the correct one-step transition
+    regardless of whether left/right are .state or .border.
+    The original left value a_orig is arbitrary (by left-independence). -/
+private lemma δ'_mid_state (a_val : Q' e) (a_orig b : e.C_orig.Q) (br : e.C_orig.Q)
+    (c_val : Q' e) (c_orig : e.C_orig.Q)
+    (hc : c_val = Q'.state c_orig br ∨ (c_val = Q'.border ∧ c_orig = br)) :
+    e.δ' a_val (.state b br) c_val =
+    Q'.state (e.C_orig.δ a_orig b c_orig) (e.C_orig.δ br br br) := by
+  rcases hc with rfl | ⟨rfl, rfl⟩
+  · simp only [δ', ↓reduceIte, unwrap]
+    congr 1; exact e.h_left_indep _ _ _ _
+  · simp only [δ', unwrap]
+    congr 1; exact e.h_left_indep _ _ _ _
+
+/-- When middle and left are .border but right is .state c br,
+    δ' produces .state (orig.δ br br c) (orig.δ br br br).
+    Used at the left edge of the cone. -/
+private lemma δ'_left_edge (c : e.C_orig.Q) (br : e.C_orig.Q) (a_orig : e.C_orig.Q) :
+    e.δ' Q'.border Q'.border (.state c br) =
+    Q'.state (e.C_orig.δ a_orig br c) (e.C_orig.δ br br br) := by
+  simp only [δ', unwrap]
+  congr 1; exact e.h_left_indep _ _ _ _
+
 /-! ## Main specification
 
   The main theorem: C.comp gives the same result as C_orig.comp inside the cone,
@@ -315,114 +345,48 @@ private theorem spec_internal (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i :
     · exact embed_word_in_range e w i hi
     · exact embed_word_out_range e w i hi
   | succ t ih =>
-    -- Case split: is i in the cone at t+1?
     by_cases hi_succ : i ∈ WordConeLeftIndep w (t + 1)
     · -- i is in cone at t+1
       rw [if_pos hi_succ]
       rw [WordConeLeftIndep_mem] at hi_succ
       obtain ⟨hi_low, hi_high⟩ := hi_succ
-      -- Unfold the successor computation
       simp only [nextt_succ, CellAutomaton.next, δδt_succ]
-      -- Check middle position
       by_cases hm_in : i ∈ WordConeLeftIndep w t
-      · -- Middle is in cone at time t
+      · -- Middle is in cone
         rw [ih i, if_pos hm_in]
-        -- Check right position
+        -- Determine right neighbor: in cone → .state, else → .border (with orig = δδt)
         by_cases hr_in : i + 1 ∈ WordConeLeftIndep w t
-        · -- Right is in cone
-          rw [ih (i + 1), if_pos hr_in]
-          -- Check left position
-          by_cases hl_in : i - 1 ∈ WordConeLeftIndep w t
-          · -- All three in cone
-            rw [ih (i - 1), if_pos hl_in]
-            simp only [C, δ', ↓reduceIte, unwrap]
-          · -- Left out, middle and right in
-            rw [ih (i - 1), if_neg hl_in]
-            simp only [C, δ', ↓reduceIte, unwrap]
-            congr 1
-            exact e.h_left_indep _ _ _ _
-        · -- Right is NOT in cone (i.e., i + 1 >= w.length)
-          rw [ih (i + 1), if_neg hr_in]
-          -- Left might or might not be in cone
-          by_cases hl_in : i - 1 ∈ WordConeLeftIndep w t
-          · rw [ih (i - 1), if_pos hl_in]
-            simp only [C, δ', unwrap]
-            -- Use the helper lemma for right neighbor
-            rw [WordConeLeftIndep_mem] at hr_in hm_in
-            push_neg at hr_in
-            have hr_ge : i + 1 ≥ w.length := hr_in (by omega)
-            rw [orig_right_of_word e w t (i + 1) hr_ge]
-          · rw [ih (i - 1), if_neg hl_in]
-            simp only [C, δ', unwrap]
-            -- Use the helper lemma for right neighbor
-            rw [WordConeLeftIndep_mem] at hr_in hm_in
-            push_neg at hr_in
-            have hr_ge : i + 1 ≥ w.length := hr_in (by omega)
-            rw [orig_right_of_word e w t (i + 1) hr_ge]
-            -- Left is border, so we use left-independence
-            congr 1
-            exact e.h_left_indep _ _ _ _
-      · -- Middle is NOT in cone at time t (left edge case: i < -t)
+        · rw [ih (i + 1), if_pos hr_in]
+          exact δ'_mid_state e _ _ _ _ _ _ (Or.inl rfl)
+        · rw [ih (i + 1), if_neg hr_in]
+          rw [WordConeLeftIndep_mem] at hr_in; push_neg at hr_in
+          have := orig_right_of_word e w t (i + 1) (hr_in (by omega))
+          exact δ'_mid_state e _ _ _ _ _ _ (Or.inr ⟨rfl, this⟩)
+      · -- Middle is NOT in cone (left edge: i < -t)
         rw [ih i, if_neg hm_in]
-        -- At the left edge, the right neighbor MUST be in the cone at time t
-        -- Because i ≥ -(t+1) and i < -t means i = -(t+1), so i+1 = -t
-        -- And -t is in cone at t iff -t < w.length, which holds since w.length > 0
-        have hr_in : i + 1 ∈ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]
-          rw [WordConeLeftIndep_mem] at hm_in
-          push_neg at hm_in
-          -- hm_in : -t ≤ i → w.length ≤ i
-          -- We have hi_high : i < w.length, so ¬(-t ≤ i), i.e., i < -t
-          have hi_left : i < -(t : ℤ) := by
-            by_contra h; push_neg at h; have := hm_in h; omega
-          constructor
-          · omega
-          · omega
-        rw [ih (i + 1), if_pos hr_in]
-        -- Left is definitely not in cone
-        have hl_out : i - 1 ∉ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]
-          rw [WordConeLeftIndep_mem] at hm_in
-          push_neg at hm_in
-          intro h
-          have hi_left : i < -(t : ℤ) := by
-            by_contra hc; push_neg at hc; have := hm_in hc; omega
-          omega
-        rw [ih (i - 1), if_neg hl_out]
-        simp only [C, δ', unwrap]
-        -- The original at position i is in the border region
+        rw [WordConeLeftIndep_mem] at hm_in; push_neg at hm_in
         have hi_left : i < -(t : ℤ) := by
-          rw [WordConeLeftIndep_mem] at hm_in
-          push_neg at hm_in
           by_contra h; push_neg at h; have := hm_in h; omega
-        have h_orig_t : e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i =
-            δδt e.C_orig e.C_orig.border t := orig_left_of_cone e w t i hi_left
-        -- Also for i - 1, since i - 1 < -t
-        have h_orig_l : e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t (i - 1) =
-            δδt e.C_orig e.C_orig.border t := orig_left_of_cone e w t (i - 1) (by omega)
-        rw [h_orig_t, h_orig_l]
+        have hr_in : i + 1 ∈ WordConeLeftIndep w t := by
+          rw [WordConeLeftIndep_mem]; omega
+        have hl_out : i - 1 ∉ WordConeLeftIndep w t := by
+          rw [WordConeLeftIndep_mem]; omega
+        rw [ih (i + 1), if_pos hr_in, ih (i - 1), if_neg hl_out]
+        -- Original values at i and i-1 equal δδt t (both left of cone)
+        rw [orig_left_of_cone e w t i hi_left,
+            orig_left_of_cone e w t (i - 1) (by omega)]
+        exact δ'_left_edge e _ _ _
     · -- i is NOT in cone at t+1
       rw [if_neg hi_succ]
       simp only [nextt_succ, CellAutomaton.next]
-      rw [WordConeLeftIndep_mem] at hi_succ
-      push_neg at hi_succ
-      by_cases hi_right : i ≥ w.length
-      · -- i >= w.length
-        have hm_out : i ∉ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]; intro h; omega
-        have hr_out : i + 1 ∉ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]; intro h; omega
-        rw [ih i, ih (i + 1), if_neg hm_out, if_neg hr_out]
-        rfl
-      · -- i < -(t+1)
-        have hi_left : i < -(t + 1 : ℤ) := by
-          by_contra h; push_neg at h; have := hi_succ h; omega
-        have hm_out : i ∉ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]; intro h; omega
-        have hr_out : i + 1 ∉ WordConeLeftIndep w t := by
-          rw [WordConeLeftIndep_mem]; intro h; omega
-        rw [ih i, ih (i + 1), if_neg hm_out, if_neg hr_out]
-        rfl
+      rw [WordConeLeftIndep_mem] at hi_succ; push_neg at hi_succ
+      -- Both middle and right are outside cone at time t
+      have hm_out : i ∉ WordConeLeftIndep w t := by
+        rw [WordConeLeftIndep_mem]; intro h; omega
+      have hr_out : i + 1 ∉ WordConeLeftIndep w t := by
+        rw [WordConeLeftIndep_mem]; intro h; omega
+      rw [ih i, ih (i + 1), if_neg hm_out, if_neg hr_out]
+      rfl
 
 /-- Corollary: the projected computation matches the original -/
 private theorem spec_unwrap (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ)
