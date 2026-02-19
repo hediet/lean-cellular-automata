@@ -40,7 +40,7 @@ theorem ca_rt_equals_lt_of_closure_under_reversal: ℒ (CA α) = ℒ (CAr α) �
 
 section advice_theorems
 
-  theorem advice_two_stage_closed_under_composition {O'} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
+  theorem compose_two_stage {O'} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
       ∃ a: TwoStageAdvice α Γ, a.advice.f = a2.advice.f ∘ a1.advice.f := by
     sorry
 

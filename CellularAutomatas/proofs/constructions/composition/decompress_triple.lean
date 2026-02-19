@@ -1,6 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.compress_to_diag
+import CellularAutomatas.proofs.constructions.composition.compress_to_diag
 
 namespace CellularAutomatas
 

@@ -15,7 +15,7 @@ import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.advice_two_stage_closed_under_composition
+import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 
 namespace CellularAutomatas
 

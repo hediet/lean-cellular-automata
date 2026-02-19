@@ -1,6 +1,6 @@
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.product_ca
-import CellularAutomatas.proofs.flip
+import CellularAutomatas.proofs.constructions.basic_product_ca
+import CellularAutomatas.proofs.constructions.basic_flip
 import CellularAutomatas.proofs.word_ops
 import Mathlib.Data.List.Basic
 import Mathlib.Data.Nat.Basic

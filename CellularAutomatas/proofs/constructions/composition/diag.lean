@@ -1,6 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.compose_k_steps
+import CellularAutomatas.proofs.constructions.basic_compose_k_steps
 import Mathlib.Tactic.Linarith
 import Mathlib.Logic.Function.Iterate
 

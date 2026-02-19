@@ -11,7 +11,7 @@ import Mathlib.Data.Option.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.finite_state_transducers
 import Mathlib.Tactic
-import CellularAutomatas.proofs.composition
+import CellularAutomatas.proofs.constructions.composition.composition
 import CellularAutomatas.proofs.basic
 
 namespace CellularAutomatas
@@ -179,7 +179,7 @@ namespace backwards_fsm
 
   -- spec_ proves the functional equation for the backwards FSM construction:
   -- composing M' after C' equals composing C.advice after M.advice.
-  lemma spec_: (M' e).advice.f ∘ (C' e).advice.f = e.C.advice.f ∘ e.M.advice.f := by
+  lemma spec_: (M' e).advice ∘ (C' e).advice = e.C.advice ∘ e.M.advice := by
       funext w
       unfold FiniteStateTransducer.advice
       simp [CArtTransducer.advice, M', backwards_fsm.M_join_spec e.C.Q]
@@ -217,7 +217,7 @@ namespace backwards_fsm
   theorem spec {α β γ: Type} [Alphabet α] [Alphabet β] [Alphabet γ]
     {M: FiniteStateTransducer α β}
     {C: CArtTransducer β γ}:
-      C.advice.f ∘ M.advice.f = (M' ⟨M, C⟩).advice.f ∘ (C' ⟨M, C⟩).advice.f :=
+      C.advice ∘ M.advice = (M' ⟨M, C⟩).advice ∘ (C' ⟨M, C⟩).advice :=
     by grind only [!spec_]
 
 end backwards_fsm
@@ -229,7 +229,7 @@ def TwoStageAdvice.from_transducers {β: Type} [Alphabet α] [Alphabet β] [Alph
   { C := C, β := β, M := M }
 
 lemma TwoStageAdvice.from_transducers_eq {β: Type} [Alphabet α] [Alphabet β] [Alphabet γ] (M: FiniteStateTransducer β γ) (C: CArtTransducer α β):
-    (TwoStageAdvice.from_transducers M C).advice.f = M.advice.f ∘ C.advice.f := by rfl
+    (TwoStageAdvice.from_transducers M C).advice = M.advice ∘ C.advice := by rfl
 
 
 def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a2: TwoStageAdvice Γ1 Γ) (a1: TwoStageAdvice α Γ1):
@@ -242,15 +242,15 @@ def compose_two_stage [Alphabet α] [Alphabet Γ1] [Alphabet Γ] (a2: TwoStageAd
 variable [Alphabet Γ'] [Alphabet Γ] [Alphabet α]
 
 lemma TwoStageAdvice.advice_eq (t: TwoStageAdvice α Γ):
-    t.advice.f = (t.M.advice.f) ∘ (t.C.advice.f) := by
+    t.advice = t.M.advice ∘ t.C.advice := by
     simp [TwoStageAdvice.advice, FiniteStateTransducer.advice, CArtTransducer.advice]
 
 infixr:90 "⊚"  => compose_two_stage
 
 
 @[simp]
-theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
-    (a2 ⊚ a1).advice.f = a2.advice.f ∘ a1.advice.f := by
+theorem compose_two_stage_spec (a1: TwoStageAdvice α Γ') (a2: TwoStageAdvice Γ' Γ):
+    (a2 ⊚ a1).advice = a2.advice ∘ a1.advice := by
 
   rw [Eq.comm]
 
@@ -258,22 +258,22 @@ theorem advice_two_stage_closed_under_composition (a1: TwoStageAdvice α Γ') (a
   let ca_new := (backwards_fsm.C' e) ⊚ a1.C
   let fsm_new := a2.M ⊚ backwards_fsm.M' e
 
-  calc (a2.advice.f ∘ a1.advice.f)
-    _ = (a2.M.advice.f ∘ a2.C.advice.f) ∘ (a1.M.advice.f ∘ a1.C.advice.f) := by
+  calc (a2.advice ∘ a1.advice)
+    _ = (a2.M.advice ∘ a2.C.advice) ∘ (a1.M.advice ∘ a1.C.advice) := by
       simp [TwoStageAdvice.advice_eq]
 
-    _ = a2.M.advice.f ∘ (a2.C.advice.f ∘ a1.M.advice.f) ∘ a1.C.advice.f := by
+    _ = a2.M.advice ∘ (a2.C.advice ∘ a1.M.advice) ∘ a1.C.advice := by
       simp [Function.comp_assoc]
 
-    _ = a2.M.advice.f ∘ ((backwards_fsm.M' e).advice.f ∘ (backwards_fsm.C' e).advice.f) ∘ a1.C.advice.f := by
+    _ = a2.M.advice ∘ ((backwards_fsm.M' e).advice ∘ (backwards_fsm.C' e).advice) ∘ a1.C.advice := by
       simp [backwards_fsm.spec, e]
 
-    _ = (a2.M.advice.f ∘ (backwards_fsm.M' e).advice.f) ∘ ((backwards_fsm.C' e).advice.f ∘ a1.C.advice.f) := by
+    _ = (a2.M.advice ∘ (backwards_fsm.M' e).advice) ∘ ((backwards_fsm.C' e).advice ∘ a1.C.advice) := by
       simp [Function.comp_assoc]
 
-    _ = fsm_new.advice.f ∘ ca_new.advice.f := by
+    _ = fsm_new.advice ∘ ca_new.advice := by
       rw [CArtTransducer.compose_trace_rt_advice_spec]
       rw [FiniteStateTransducer.compose_spec]
 
-    _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice.f := by simp [TwoStageAdvice.from_transducers_eq]
-    _ = (a2 ⊚ a1).advice.f := by rfl
+    _ = (TwoStageAdvice.from_transducers fsm_new ca_new).advice := by simp [TwoStageAdvice.from_transducers_eq]
+    _ = (a2 ⊚ a1).advice := by rfl

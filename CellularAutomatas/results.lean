@@ -10,14 +10,14 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.middle_not_two_stage
 import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_causal
-import CellularAutomatas.proofs.left_indep_to_regular
-import CellularAutomatas.proofs.regular_to_left_indep
-import CellularAutomatas.proofs.left_indep_speedup
-import CellularAutomatas.proofs.quiescent_border
-import CellularAutomatas.proofs.dead_border
-import CellularAutomatas.proofs.composition
+import CellularAutomatas.proofs.constructions.left_indep_to_regular
+import CellularAutomatas.proofs.constructions.left_indep_from_regular
+import CellularAutomatas.proofs.constructions.speedup_left_independent
+import CellularAutomatas.proofs.constructions.border_quiescent
+import CellularAutomatas.proofs.constructions.border_dead
+import CellularAutomatas.proofs.constructions.composition.composition
 import CellularAutomatas.proofs.two_stage_is_rt_closed
-import CellularAutomatas.proofs.advice_two_stage_closed_under_composition
+import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 
 open CellularAutomatas
 
@@ -205,7 +205,7 @@ theorem result_two_stage_closed_under_composition
     {Γ' : Type} [Alphabet Γ']
     (a1 : TwoStageAdvice α Γ') (a2 : TwoStageAdvice Γ' Γ) :
     (compose_two_stage a2 a1: TwoStageAdvice α Γ).advice.f = a2.advice.f ∘ a1.advice.f :=
-  advice_two_stage_closed_under_composition a1 a2
+  compose_two_stage_spec a1 a2
 
 /-!
 ### Result 10: Middle Advice is NOT Two-Stage
