@@ -15,6 +15,7 @@ import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.constructions.composition.composition
 import CellularAutomatas.proofs.basic
+import CellularAutomatas.proofs.constructions.trace_id
 import CellularAutomatas.proofs.finite_state_transducers
 import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.two_stage_is_rt_closed
