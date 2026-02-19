@@ -1,3 +1,6 @@
 [submodule "docs/bachelor-thesis"]
 	path = docs/bachelor-thesis
 	url = https://github.com/hediet/bachelors-thesis
+[submodule "external/vscode-observables"]
+	path = external/vscode-observables
+	url = https://github.com/hediet/vscode-observables.git

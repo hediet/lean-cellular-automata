@@ -22,7 +22,7 @@ variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]
 
 -- We define rel_repr for generic Γ, but we will use it for Bool later.
-def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv.f (p ++ s)).take p.length
+def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv (p ++ s)).take p.length
 
 def rel (adv: Advice α Γ) (p s1 s2: Word α) :=
   rel_repr adv p s1 = rel_repr adv p s2
@@ -35,25 +35,25 @@ lemma two_stage_rel_repr_eq (adv: TwoStageAdvice α Γ) (p s: Word α):
     rel_repr adv.advice p s =
         (adv.M.scanr_q
             (adv.M.scanr_reduce
-                ((adv.C.advice.f (p ++ s)).drop p.length)
+                ((adv.C.advice (p ++ s)).drop p.length)
             )
-            (adv.C.advice.f p)
+            (adv.C.advice p)
         )
           := by
     dsimp [rel_repr, TwoStageAdvice.advice]
-    let W := adv.C.advice.f (p ++ s)
+    let W := adv.C.advice (p ++ s)
     change (adv.M.scanr W).take p.length = _
     have h_split : W = W.take p.length ++ W.drop p.length := (List.take_append_drop p.length W).symm
     conv in (adv.M.scanr W) => rw [h_split]
-    have h_indep : W.take p.length = adv.C.advice.f p := by
+    have h_indep : W.take p.length = adv.C.advice p := by
       simp [W]
     rw [h_indep]
-    have h_len_p : (adv.C.advice.f p).length = p.length := by simp
+    have h_len_p : (adv.C.advice p).length = p.length := by simp
     conv => lhs; arg 1; rw [← h_len_p]
     erw [FiniteStateTransducer.scanr_append_take]
 
 def possible_advice_prefixes (adv: TwoStageAdvice α Γ) (p: Word α) : Finset (List Γ) :=
-  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q q (adv.C.advice.f p)))
+  Finset.univ.image (fun q : adv.M.Q => (adv.M.scanr_q q (adv.C.advice p)))
 
 -- 1. The Bottleneck Lemma
 lemma two_stage_restriction_cardinality (adv: TwoStageAdvice α Γ) (p: Word α) :
@@ -103,7 +103,7 @@ lemma marker_list_take {n m k : ℕ} (h_le : m ≤ n) :
   rw [min_eq_left h_le]
 
 lemma from_len_marker_eq_marker_list {α} (f : ℕ → Option ℕ) (w : Word α) (k : ℕ) (h : f w.length = some k) :
-  (Advice.from_len_marker f).f w = marker_list w.length k := by
+  (Advice.from_len_marker f) w = marker_list w.length k := by
   dsimp [Advice.from_len_marker]
   simp [h, marker_list]
 

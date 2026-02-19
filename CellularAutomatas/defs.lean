@@ -300,8 +300,11 @@ section Advice
     f: Word α → Word Γ
     len: ∀ w: Word α, (f w).length = w.length := by simp
 
+  instance : CoeFun (Advice α Γ) (fun _ => Word α → Word Γ) where
+    coe adv := adv.f
+
   @[simp]
-  lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv.f w).length = w.length := by
+  lemma advice_len {α Γ} (adv: Advice α Γ) (w: Word α): (adv w).length = w.length := by
     simp [adv.len]
 
   infixl:65 " ⨂ " => List.zip
@@ -316,13 +319,13 @@ section Advice
     section
       variable {Γ: Type} (adv: Advice α Γ)
 
-      def annotate (w: Word α): Word (α × Γ) := w ⨂ (adv.f w)
+      def annotate (w: Word α): Word (α × Γ) := w ⨂ (adv w)
 
       def causal: Prop := IsCausal adv.f
     end
 
     def compose {Γ₁: Type} {Γ₂: Type} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
-      ⟨ fun w => adv2.f (adv1.f w), by simp [adv1.len, adv2.len] ⟩
+      ⟨ fun w => adv2 (adv1 w), by simp [adv1.len, adv2.len] ⟩
 
   end Advice
 
@@ -481,7 +484,7 @@ section AdviceHelpers
   def Advice.exp_middle (α): Advice α Bool := Advice.from_len_marker exp_middle_idx
 
   def Advice.shift_left_advice {adv: Advice α Γ} (extension: Word α): Advice α Γ :=
-    { f := fun w => (adv.f (w.append extension)).drop extension.length }
+    { f := fun w => (adv (w.append extension)).drop extension.length }
 
 end AdviceHelpers
 

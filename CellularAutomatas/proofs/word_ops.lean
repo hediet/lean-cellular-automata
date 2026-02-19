@@ -13,12 +13,12 @@ lemma Word.get'_eq {α} (w: Word α) (i: ℕ) (h: i < w.length) (val: α): (w.ge
 
 
 @[simp]
-lemma adv_empty {α} {Γ} (adv : Advice α Γ) : adv.f [] = [] := by
-  have h_len : (adv.f []).length = 0 := by simp [adv.len]
+lemma adv_empty {α} {Γ} (adv : Advice α Γ) : adv [] = [] := by
+  have h_len : (adv []).length = 0 := by simp [adv.len]
   simp [←List.length_eq_zero_iff]
 
 @[simp]
-lemma adv_empty_2 {α} {Γ} (adv : Advice α Γ) (w: Word α): adv.f w = [] ↔ w = [] := by
+lemma adv_empty_2 {α} {Γ} (adv : Advice α Γ) (w: Word α): adv w = [] ↔ w = [] := by
   simp [←List.length_eq_zero_iff]
 
 @[simp]

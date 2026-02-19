@@ -34,7 +34,7 @@ lemma tCellAutomatonWithAdvice.elem_L_iff {α} {C: tCellAutomaton (α × Γ)} {a
 
 
 def L_c (adv: Advice α Γ) (c: Γ) : Language α :=
-  { w | (adv.f w).getLast? = some c }
+  { w | (adv w).getLast? = some c }
 
 
 def CA_adv_L_c (α) [Alphabet α] (c : Γ) : CA_rt (α × Γ) :=
@@ -57,7 +57,7 @@ lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + a
 
   rw [←trace_rt_L (by simp_all)]
 
-  convert_to (((List.getLast ((adv.annotate w).map Prod.snd) (by simp_all))) = c ↔ List.getLast? (adv.f w) = some c)
+  convert_to (((List.getLast ((adv.annotate w).map Prod.snd) (by simp_all))) = c ↔ List.getLast? (adv w) = some c)
   · simp
 
   unfold Advice.annotate
@@ -119,11 +119,11 @@ namespace PrefixStableProof
 
     have w_len: i < w.length := by simp_all
 
-    calc ((ts_adv adv h1).advice.f w)[i]
+    calc ((ts_adv adv h1).advice w)[i]
       _ = (first_true_or_default fun b => decide (List.take (i + 1) w ∈ L_c adv b)) := by
         simp [TwoStageAdvice.advice, ts_adv, w_len, trace_rt_getElem_i_iff2]
 
-      _ = (first_true_or_default fun b => (adv.f w)[i] = b) := by
+      _ = (first_true_or_default fun b => (adv w)[i] = b) := by
         congr
         ext b
         congr
@@ -132,7 +132,7 @@ namespace PrefixStableProof
         rw [(h2 w).2]
         simp [List.getLast?_take, w_len]
 
-      _ = (adv.f w)[i] := by
+      _ = (adv w)[i] := by
         rw [first_true_or_default_spec]
 
 

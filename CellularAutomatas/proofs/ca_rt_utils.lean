@@ -126,7 +126,7 @@ def zip_two_stage [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice 
 
 @[simp]
 def zip_spec [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice α β) (a2: TwoStageAdvice α γ):
-    (zip_two_stage a1 a2).advice.f w = (a1.advice.f w ⨂ a2.advice.f w) := by
+    (zip_two_stage a1 a2).advice.f w = (a1.advice w ⨂ a2.advice w) := by
   simp [zip_two_stage, TwoStageAdvice.advice, TwoStageAdvice.from_transducers]
 
 infixl:65 " ⨂ " => zip_two_stage
@@ -207,7 +207,7 @@ end fix_empty
 
 
 lemma advice_rt_closed_iff (adv: Advice α Γ):
-    adv.rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv.f w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
+    adv.rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
   unfold Advice.rt_closed
   rw [subset_antisymm_iff]
   simp only [CA_rt_subseteq_CA_rt_with_advice adv, and_true]
@@ -234,7 +234,7 @@ lemma tCellAutomatonWithAdvice.exists_CA_rt_of_rt_closed {adv: Advice α Γ} (h:
 
 
 def TwoStageAdvice.L {α} [Alphabet α] (adv: TwoStageAdvice α Bool): Language α :=
-  { w: Word α | (adv.advice.f w).getLast? = true }
+  { w: Word α | (adv.advice w).getLast? = true }
 
 
 def TwoStageAdvice.to_CA_rt {α} [Alphabet α] (adv: TwoStageAdvice α Bool): CA_rt α :=

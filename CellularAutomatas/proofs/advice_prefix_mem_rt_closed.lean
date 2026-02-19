@@ -26,7 +26,7 @@ lemma ts_prefix_mem_spec (C: CA_rt α): (ts_prefix_mem C).advice = Advice.prefix
   apply advice_eq_iff
   funext w
 
-  suffices C.val.trace_rt w = (Advice.prefix_mem C.val.L).f w by
+  suffices C.val.trace_rt w = (Advice.prefix_mem C.val.L) w by
     unfold TwoStageAdvice.advice
     simp only [ts_prefix_mem, FiniteStateTransducer.M_id_scanr_eq, Function.comp_apply, id_eq, this]
 
