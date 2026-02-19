@@ -16,6 +16,8 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.finite_state_transducers
 import CellularAutomatas.proofs.constructions.composition.compose_two_stage
+import CellularAutomatas.proofs.constructions.basic_mark_border
+import CellularAutomatas.proofs.constructions.cart_fix_empty_word
 
 namespace CellularAutomatas
 
@@ -27,53 +29,6 @@ open CellAutomaton
 
 variable {α: Type} [Alphabet α]
 variable {Γ: Type} [Alphabet Γ]
-
-
-section CountUntil
-
-def some_fin (k: ℕ) (i: ℕ): Option (Fin k) :=
-  if h: i < k then
-    some (Fin.mk i (by simp [h]))
-  else
-    none
-
-lemma some_fin_succ: ((some_fin k v) >>= fun v => some_fin k (v + 1)) = some_fin k (v + 1) := by
-  unfold some_fin
-  grind
-
-def c_count_until {α} [Alphabet α] (k: ℕ) [NeZero k]: CellAutomaton α (Fin k)？ :=
-  {
-    Q := (Fin k)？
-    δ := fun _ q2 _ => q2 >>= fun v => some_fin k (v.val + 1)
-    embed := fun _ => some 0
-    project := id
-  }
-
-@[simp]
-lemma c_count_until_spec_config {α} [Alphabet α] (k: ℕ) [h: NeZero k] (c: Config α):
-    (c_count_until k).comp (embed_config c) t i = some_fin k t := by
-  rw [comp_config_eq_project_nextt]
-  change ((c_count_until k).nextt ⦋c⦌ t) i = some_fin k t
-
-  induction t generalizing i with
-  | zero =>
-    simp [c_count_until, embed_config, some_fin, h.out]
-  | succ t ih =>
-    rw [nextt_succ]
-    simp [CellAutomaton.next]
-    simp [ih]
-    simp [c_count_until]
-    exact some_fin_succ
-
-@[simp]
-def c_count_until_spec_word {α} [Alphabet α] (k: Nat) [NeZero k] (w: Word α):
-    (c_count_until k).comp (embed_word w) t i = some_fin k t := by
-  rw [embed_word]
-  rw [c_count_until_spec_config]
-
-end CountUntil
-
-
 
 
 @[simp]
@@ -130,74 +85,6 @@ def zip_spec [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice α β
   simp [zip_two_stage, TwoStageAdvice.advice, TwoStageAdvice.from_transducers]
 
 infixl:65 " ⨂ " => zip_two_stage
-
-
-
-
-
-
-
-
-lemma embed_word_p_eq {α} [Alphabet α] (w: Word α) {C: CellAutomaton α？ β} (p: ℤ):
-    (embed_word (C := C) w) p = C.embed (if h: p ≥ 0 ∧ p < w.length then w[p.toNat] else none) := by
-  unfold embed_word word_to_config embed_config
-  grind
-
-
-section CisBorder
-
-def c_is_border (α) [Alphabet α]: CellAutomaton α？ Bool :=
-  {
-    Q := Bool
-    δ := fun _ val _ => val
-    embed
-    | none => true
-    | some _ => false
-    project := id
-  }
-
-@[simp]
-lemma c_is_border_spec {α} [Alphabet α] (w: Word α):
-    (c_is_border α).comp w t 0 = (w == []) := by
-  unfold comp
-  erw [Function.id_comp]
-
-  induction t with
-  | zero =>
-    rw [nextt_zero]
-    rw [embed_word_p_eq]
-    unfold c_is_border
-    cases w
-    · simp
-    · simp
-  | succ t ih =>
-    rw [nextt_succ]
-    unfold CellAutomaton.next
-    rw [ih]
-    simp [c_is_border]
-
-end CisBorder
-
-
-
-section fix_empty
-
-variable {α: Type} [Alphabet α]
-
-
-def fix_empty (contains_empty: Bool) (C: CA_rt α): CA_rt α :=
-    toRtCa ((C.val.toCellAutomaton ⨂ c_is_border α).map_project (fun (a, b) => if b then contains_empty else a))
-
-@[simp]
-lemma fix_empty_spec (contains_empty: Bool) (C: CA_rt α)  (w: Word α):
-    w ∈ (fix_empty contains_empty C).val.L ↔ if w == [] then contains_empty else w ∈ C.val.L := by
-  rw [CA_rt_L_iff]
-  unfold embed_word
-  erw [comp_of_map_project]
-  rw [ca_zip_comp]
-  simp [CA_rt_L_iff]
-
-end fix_empty
 
 
 
