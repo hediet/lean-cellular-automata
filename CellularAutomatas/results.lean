@@ -184,15 +184,16 @@ theorem result_advice_prefix_mem_is_two_stage_advice:
   exact advice_prefix_mem_is_two_stage_advice ⟨ C, h ⟩
 
 /-!
-### Result 8: RT-Closed ∧ Prefix-Stable ⟹ Two-Stage (hence RT Transducer)
+### Result 8: RT-Closed ∧ Causal ⟹ CArt Advice (hence Two-Stage, hence RT-Closed)
 
-If an advice f is both RT-closed and prefix-stable, then f is two-stage.
+If an advice f is both RT-closed and causal, then f is a CArt advice,
+i.e. computable by a single CA RT transducer. This implies two-stage.
 -/
 
-theorem result_is_two_stage_of_rt_closed_and_causal:
-    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.causal → adv.is_two_stage_advice := by
+theorem result_is_cart_advice_of_rt_closed_and_causal:
+    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.causal → adv.is_cart_advice := by
   intro adv h
-  exact is_two_stage_of_rt_closed_and_causal adv h.1 h.2
+  exact is_cart_advice_of_rt_closed_and_causal adv h.1 h.2
 
 /-!
 ### Result 9: Two-Stage Advice is Closed Under Composition

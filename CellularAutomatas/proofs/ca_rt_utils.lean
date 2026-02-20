@@ -69,6 +69,14 @@ lemma ca_to_two_stage_spec (C: CArtTransducer α Γ):
   funext w
   simp [ca_to_two_stage, TwoStageAdvice.advice]
 
+lemma ca_to_two_stage_advice_eq (C: CArtTransducer α Γ):
+    (ca_to_two_stage C).advice = C.advice := by
+  apply advice_eq_iff
+  simp [CArtTransducer.advice]
+
+lemma Advice.is_cart_advice.is_two_stage {adv: Advice α Γ} (h: adv.is_cart_advice): adv.is_two_stage_advice :=
+  let ⟨C, hC⟩ := h
+  ⟨ca_to_two_stage C, ca_to_two_stage_advice_eq C ▸ hC⟩
 
 
 

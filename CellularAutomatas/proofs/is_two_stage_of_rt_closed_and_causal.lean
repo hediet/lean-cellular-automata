@@ -102,27 +102,24 @@ namespace PrefixStableProof
     rw [this]
     simp
 
-  noncomputable def ts_adv : TwoStageAdvice α Γ := {
-    C := (ProdCA (fun c => (CA_L_c adv h1 c).val.toCellAutomaton)).map_project first_true_or_default
-    β := Γ
-    M := FiniteStateTransducer.M_id Γ
-  }
+  noncomputable def cart_adv : CArtTransducer α Γ :=
+    (ProdCA (fun c => (CA_L_c adv h1 c).val.toCellAutomaton)).map_project first_true_or_default
 
   lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
     grind
 
-  lemma ts_adv_spec (h2: adv.causal): (ts_adv adv h1).advice = adv := by
+  lemma cart_adv_spec (h2: adv.causal): (cart_adv adv h1).advice = adv := by
     apply advice_eq_iff
     funext w
     apply List.ext_getElem
-    · simp
+    · simp [CArtTransducer.advice]
     intro i h_i1 h_i2
 
-    have w_len: i < w.length := by simp_all
+    have w_len: i < w.length := by simp [CArtTransducer.advice] at h_i1; exact h_i1
 
-    calc ((ts_adv adv h1).advice w)[i]
+    calc ((cart_adv adv h1).advice w)[i]
       _ = (first_true_or_default fun b => decide (List.take (i + 1) w ∈ L_c adv b)) := by
-        simp [TwoStageAdvice.advice, ts_adv, w_len, trace_rt_getElem_i_iff2]
+        simp [CArtTransducer.advice, cart_adv, w_len, trace_rt_getElem_i_iff2]
 
       _ = (first_true_or_default fun b => (adv w)[i] = b) := by
         congr
@@ -141,9 +138,10 @@ end PrefixStableProof
 
 
 
-theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
-    adv.is_two_stage_advice := by
+theorem is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
+    adv.is_cart_advice :=
+  ⟨_, PrefixStableProof.cart_adv_spec adv h1 h2⟩
 
-  unfold Advice.is_two_stage_advice
-  use PrefixStableProof.ts_adv adv h1
-  simp [PrefixStableProof.ts_adv_spec adv h1 h2]
+theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
+    adv.is_two_stage_advice :=
+  (is_cart_advice_of_rt_closed_and_causal adv h1 h2).is_two_stage

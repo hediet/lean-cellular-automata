@@ -449,6 +449,9 @@ section TwoStageAdvice
   def Advice.is_two_stage_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ): Prop :=
     ∃ ts_adv: TwoStageAdvice α Γ, ts_adv.advice = adv
 
+  def Advice.is_cart_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ): Prop :=
+    ∃ C: CArtTransducer α Γ, C.advice = adv
+
 end TwoStageAdvice
 
 section AdviceHelpers
