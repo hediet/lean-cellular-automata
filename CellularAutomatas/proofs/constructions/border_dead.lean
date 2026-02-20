@@ -565,14 +565,12 @@ namespace DeadBorder
       DeadBorderCoord.map_coord_p_lane e.toDeadBorderCoord c.length p cell_p lane_idx h_map
 
     split_ifs <;>
-    try simp [*] at * <;>
-    try simp [Cell.get_z, word_to_config, *] <;>
-    try split_ifs <;>
-    try simp [*] at * <;>
+    (try simp [*] at *) <;>
+    (try simp [Cell.get_z, word_to_config, *]) <;>
+    (try split_ifs) <;>
+    (try simp [*] at *) <;>
     try omega
-    grind
-    grind
-    grind
+    all_goals grind
 
   private lemma main_right (c: Word e.Cell) (p: ℤ) (cell_p: ℤ) (lane_idx: e.LaneIdx)
     (h_pos: c.length > 0)
@@ -593,15 +591,12 @@ namespace DeadBorder
       DeadBorderCoord.map_coord_p_lane e.toDeadBorderCoord c.length p cell_p lane_idx h_map
 
     split_ifs <;>
-    try simp [*] at * <;>
-    try simp [Cell.get_z, word_to_config, *] <;>
-    try split_ifs <;>
-    try simp [*] at * <;>
+    (try simp [*] at *) <;>
+    (try simp [Cell.get_z, word_to_config, *]) <;>
+    (try split_ifs) <;>
+    (try simp [*] at *) <;>
     try omega
-
-    grind
-    grind
-    grind
+    all_goals grind
 
   private lemma main (c: Word e.Cell) (p: ℤ)
     (h1: e.map_coord c.length p = some (cell_p, lane_idx)):
