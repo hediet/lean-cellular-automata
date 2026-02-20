@@ -67,18 +67,24 @@ lemma LCellAutomaton.scan_temporal_independence_at_0 {β} [Alphabet β] (C: Cell
     grind
 
 @[simp]
-theorem LCellAutomaton.scan_temporal_independence {β} [Alphabet β] (C: CellAutomaton α？ β) (p s: Word α):
-  (C.trace_rt (p ++ s)).take p.length = C.trace_rt p := by
-  unfold CellAutomaton.trace_rt
-  rw [← List.map_take, List.take_range, min_eq_left (by simp)]
-  apply List.map_congr_left
-  intro t ht
-  rw [List.mem_range] at ht
+lemma CellAutomaton.trace_rt_is_causal {α β: Type} [Alphabet β] (C: CellAutomaton α？ β): IsCausal C.trace_rt := by
+  intro w
+  refine ⟨trace_rt_len C w, fun i => ?_⟩
+  apply List.ext_getElem (by simp)
+  intro t h1 h2
+  simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range, List.getElem_take]
   unfold CellAutomaton.trace CellAutomaton.comp CellAutomaton.project_config
   simp only [Function.comp_apply]
   congr 1
-  apply LCellAutomaton.scan_temporal_independence_at_0
-  exact ht
+  have ht : t < (w.take i).length := by simpa using h1
+  conv_rhs => rw [show w = (w.take i) ++ (w.drop i) from (List.take_append_drop i w).symm]
+  exact (LCellAutomaton.scan_temporal_independence_at_0 C (w.take i) (w.drop i) t ht).symm
+
+@[simp]
+theorem LCellAutomaton.scan_temporal_independence {β} [Alphabet β] (C: CellAutomaton α？ β) (p s: Word α):
+  (C.trace_rt (p ++ s)).take p.length = C.trace_rt p := by
+  rw [← (CellAutomaton.trace_rt_is_causal C (p ++ s)).2 p.length]
+  simp
 
 @[simp]
 theorem CArtTransducer.scan_temporal_independence [Alphabet α] [Alphabet Γ] (C: CArtTransducer α Γ) (p s: Word α):
