@@ -66,7 +66,6 @@ namespace CompressToΛ
   lemma ca_zip_comp2 {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
       {C1: CellAutomaton α？ β1} {C2: CellAutomaton α？ β2} {w: Word α} {t: ℕ} {i: ℤ}:
       (C1 ⨂ C2).comp w t i = ((C1.comp w t i), (C2.comp w t i)) := by
-    unfold embed_word
     simp only [ca_zip_comp]
 
   theorem spec (w: Word e.α) (hw: w ≠ []) (t: ℕ) (p: ℤ):
@@ -151,7 +150,7 @@ namespace AddBorder
       intro c p
       unfold CellAutomaton.next
       simp [C_mark_border]
-    have h_nextt: ∀ t p, e.C_mark_border.nextt (embed_word w) t p = (embed_word w) (p + t) := by
+    have h_nextt: ∀ t p, e.C_mark_border.nextt w t p = (embed_config (word_to_config w)) (p + t) := by
       intro t
       induction t with
       | zero =>
@@ -165,7 +164,7 @@ namespace AddBorder
         apply congrArg
         grind
     rw [h_nextt]
-    dsimp [embed_word, word_to_config, CellAutomaton.embed_config]
+    dsimp [word_to_config, CellAutomaton.embed_config]
     dsimp [C_mark_border]
     split_ifs with h
     · simp_all
@@ -178,7 +177,6 @@ namespace AddBorder
   theorem spec_mark_border2 (w: Word e.α) (t: ℕ):
       e.C_mark_border.trace w t = (t < 0 || t ≥ w.length) := by
     unfold trace
-    rw [←embed_word]
     rw [spec_mark_border]
     simp
 

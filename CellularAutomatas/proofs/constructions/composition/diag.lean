@@ -54,10 +54,10 @@ section DiagLeft
       | _ => false
   }
 
-  -- Helper: embed_word for single-element word
+  -- Helper: embed_config (word_to_config _) for single-element word
   lemma embed_word_singleton (C: CellAutomaton α？ β) (a: α) (p: ℤ):
-      @CellAutomaton.embed_word α β C [a] p = if p = 0 then C.embed (some a) else C.embed none := by
-    simp only [CellAutomaton.embed_word, CellAutomaton.embed_config, word_to_config]
+      CellAutomaton.embed_config (C := C) (word_to_config [a]) p = if p = 0 then C.embed (some a) else C.embed none := by
+    simp only [CellAutomaton.embed_config, word_to_config]
     by_cases hp : p = 0
     · simp [hp]
     · simp only [hp, ↓reduceIte]
@@ -160,13 +160,13 @@ section DiagLeft
     unfold CellAutomaton.comp CellAutomaton.project_config
     simp only [Function.comp_apply]
     -- The empty word embeds to all-idle state
-    have embed_eq : ∀ q : ℤ, CellAutomaton.embed_word (C := diag_left) ([] : Word Unit) q = Q.idle := by
+    have embed_eq : ∀ q : ℤ, CellAutomaton.embed_config (C := diag_left) (word_to_config ([] : Word Unit)) q = Q.idle := by
       intro q
-      unfold CellAutomaton.embed_word CellAutomaton.embed_config diag_left word_to_config
+      unfold CellAutomaton.embed_config diag_left word_to_config
       have : ¬(0 ≤ q ∧ q < 0) := by omega
       simp [this]
     -- All states remain idle for empty input
-    have h : ∀ s : ℕ, ∀ q : ℤ, diag_left.nextt (CellAutomaton.embed_word ([] : Word Unit)) s q = Q.idle := by
+    have h : ∀ s : ℕ, ∀ q : ℤ, diag_left.nextt (CellAutomaton.embed_config (word_to_config ([] : Word Unit))) s q = Q.idle := by
       intro s
       induction s with
       | zero =>
@@ -202,18 +202,17 @@ namespace DiagLeftRight
       (@diag_left α _).comp w t p = decide (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs) := by
 
     unfold diag_left
-    unfold embed_word
     simp only [composeKSteps_comp]
     rw [leftEdgeCA.comp_spec w h]
 
     simp only [idCA.comp_spec]
-    unfold embed_config
+    unfold CellAutomaton.embed_config
     unfold idCA
     simp only
     simp only [id_eq]
 
     · split_ifs
-      · change CellularAutomatas.diag_left.comp (embed_config (⟬[()]⟭)) (t - 1 - 2) p
+      · change CellularAutomatas.diag_left.comp (CellAutomaton.embed_config (⟬[()]⟭)) (t - 1 - 2) p
           = decide (w ≠ [] ∧ p ≤ 0 ∧ t = 3 + 2 * p.natAbs)
         simp
         rw [diag_left_spec]
@@ -236,17 +235,15 @@ namespace DiagLeftRight
       (@diag_right α _).comp w t p = decide (w ≠ [] ∧ p ≥ 0 ∧ t = 3 + 2 * p.natAbs) := by
 
     unfold diag_right
-    unfold embed_word
     simp only [composeKSteps_comp]
 
-    have : (leftEdgeCA α).comp ⦋⟬w⟭⦌ 1 = [()] := by
+    have : (leftEdgeCA α).comp w 1 = [()] := by
       rw [leftEdgeCA.comp_spec]
       simp [h]
     rw [this]
 
     have : (idCA Unit？).comp ⦋⟬[()]⟭⦌ 2 = [()] := by
       rw [idCA.comp_spec]
-      simp
       rfl
 
     rw [this]
@@ -256,7 +253,7 @@ namespace DiagLeftRight
     · split_ifs
       · have : (⦋⟬[()]⟭⦌: Config CellularAutomatas.diag_left.flip.Q).flip = ([()]: Config CellularAutomatas.diag_left.Q) := by
           funext p
-          simp only [Config.flip, embed_config, word_to_config, CellAutomaton.flip, CellAutomaton.embed_word]
+          simp only [Config.flip, CellAutomaton.embed_config, word_to_config, CellAutomaton.flip, embed_config]
           by_cases hp : p = 0
           · simp [hp]
           · have h1 : ¬(p ≤ 0 ∧ -p < 1) := by omega

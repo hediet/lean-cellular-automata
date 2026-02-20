@@ -83,9 +83,9 @@ namespace CompressToDiag
 
   /-- Helper: at time t, the state at position i has form (history, rightHist) where history tracks speedup states -/
   private lemma C_embed_eq (w: Word e.α) (i: ℤ):
-      e.C.nextt (embed_word w) 0 i =
-      (fun _ => e.speedup.C.nextt (embed_word w) 0 i, fun _ => e.speedup.C.nextt (embed_word w) 0 i) := by
-    simp only [CellAutomaton.nextt_zero, embed_word, CellAutomaton.embed_config, C]
+      e.C.nextt (w) 0 i =
+      (fun _ => e.speedup.C.nextt (w) 0 i, fun _ => e.speedup.C.nextt (w) 0 i) := by
+    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config, word_to_config, C]
 
   /-- At time t and position i, self[k] = speedup.C.nextt at (t-3+k, i).
       Proof idea: By induction on t.
@@ -93,8 +93,8 @@ namespace CompressToDiag
       - Inductive step: The transition function shifts history, so self[k] = prev.self[k+1] for k<3,
         and self[3] = speedup.δ(prev neighbors). By IH, prev.self[k+1] = speedup.nextt(t-3+(k+1)) = speedup.nextt(t-2+k). -/
   private lemma C_self_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 3):
-      (e.C.nextt (embed_word w) t i).1 k =
-      e.speedup.C.nextt (embed_word w) (t - 3 + k) i := by
+      (e.C.nextt (w) t i).1 k =
+      e.speedup.C.nextt (w) (t - 3 + k) i := by
     -- Induction on t starting from t = 3
     match t with
     | 0 | 1 | 2 => omega
@@ -109,8 +109,8 @@ namespace CompressToDiag
     | t' + 4 =>
       -- Inductive case: t = t' + 4 ≥ 4, so t - 1 = t' + 3 ≥ 3
       have ht' : t' + 3 ≥ 3 := by omega
-      have step : e.C.nextt (embed_word w) (t' + 4) i =
-        e.C.next (e.C.nextt (embed_word w) (t' + 3)) i := by
+      have step : e.C.nextt (w) (t' + 4) i =
+        e.C.next (e.C.nextt (w) (t' + 3)) i := by
         rw [show t' + 4 = (t' + 3) + 1 by ring, CellAutomaton.nextt_succ]
       -- Unfold to C.next which is C.δ applied to neighbors
       simp only [step, CellAutomaton.next]
@@ -158,8 +158,8 @@ namespace CompressToDiag
   /-- At time t and position i, rightHist[k] = speedup.C.nextt at (t-4+k, i+1).
       Follows from C_self_tracks_speedup since rightHist copies the previous step's self from position i+1. -/
   private lemma C_right_tracks_speedup (w: Word e.α) (t: ℕ) (i: ℤ) (k: Fin 4) (ht: t ≥ 4):
-      (e.C.nextt (embed_word w) t i).2 k =
-      e.speedup.C.nextt (embed_word w) (t - 4 + k) (i + 1) := by
+      (e.C.nextt (w) t i).2 k =
+      e.speedup.C.nextt (w) (t - 4 + k) (i + 1) := by
     -- After transition, rightHist = c.self where c is at position i+1
     -- Use C_self_tracks_speedup at position i+1 and time t-1
     match t with
@@ -187,8 +187,8 @@ namespace CompressToDiag
     simp only [ht1] at h_self1
 
     -- rightHist[3]: for p ≥ 1, use C_right_tracks_speedup; for p = 0, compute directly
-    have h_right3 : (e.C.nextt (embed_word w) (2*p+3) p).2 ⟨3, by decide⟩ =
-        e.speedup.C.nextt (embed_word w) (2*p + 2) (p + 1) := by
+    have h_right3 : (e.C.nextt (w) (2*p+3) p).2 ⟨3, by decide⟩ =
+        e.speedup.C.nextt (w) (2*p + 2) (p + 1) := by
       by_cases hp : p = 0
       · subst hp; rfl
       · have hp' : p ≥ 1 := Nat.one_le_iff_ne_zero.mpr hp
@@ -201,8 +201,8 @@ namespace CompressToDiag
     match j with
     | ⟨0, _⟩ =>
       simp only [triple_at, Nat.add_zero, CellAutomaton.trace]
-      show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).1 ⟨0, _⟩))).2
-          = e.C_orig.comp (embed_word w) (3 * p) 0
+      show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).1 ⟨0, _⟩))).2
+          = e.C_orig.comp (w) (3 * p) 0
       rw [h_self0]
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
@@ -223,8 +223,8 @@ namespace CompressToDiag
     | ⟨1, _⟩ =>
       simp only [triple_at, CellAutomaton.trace]
       have hg1 := e.speedup.g1_spec w hw p
-      show (e.speedup.g1 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).1 ⟨1, _⟩)))
-          = e.C_orig.comp (embed_word w) (3 * p + 1) 0
+      show (e.speedup.g1 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).1 ⟨1, _⟩)))
+          = e.C_orig.comp (w) (3 * p + 1) 0
       rw [h_self1]
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg1 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
@@ -232,8 +232,8 @@ namespace CompressToDiag
     | ⟨2, _⟩ =>
       simp only [triple_at, CellAutomaton.trace]
       have hg2 := e.speedup.g2_spec w hw p
-      show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (embed_word w) (2 * p + 3) ↑p).2 ⟨3, _⟩))).1
-          = e.C_orig.comp (embed_word w) (3 * p + 2) 0
+      show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).2 ⟨3, _⟩))).1
+          = e.C_orig.comp (w) (3 * p + 2) 0
       rw [h_right3]
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl

@@ -19,7 +19,6 @@ def fix_empty (contains_empty: Bool) (C: CA_rt α): CA_rt α :=
 lemma fix_empty_spec (contains_empty: Bool) (C: CA_rt α)  (w: Word α):
     w ∈ (fix_empty contains_empty C).val.L ↔ if w == [] then contains_empty else w ∈ C.val.L := by
   rw [CA_rt_L_iff]
-  unfold embed_word
   erw [comp_of_map_project]
   rw [ca_zip_comp]
   simp [CA_rt_L_iff]

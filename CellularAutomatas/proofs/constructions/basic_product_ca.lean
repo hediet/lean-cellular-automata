@@ -86,7 +86,7 @@ namespace ProdCA
       (ProdCA f).trace_rt w = zipMany (fun b => (f b).trace_rt w) := by
     unfold CellAutomaton.trace_rt CellAutomaton.trace
     simp [zipMany]
-    unfold embed_word
+    unfold embed_config word_to_config
     intro t ht
     funext b
     grind

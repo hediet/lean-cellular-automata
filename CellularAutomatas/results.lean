@@ -79,8 +79,8 @@ theorem result_left_indep_speedup
     (w : Word α) (hw : w.length > 0) (t : ℕ) (i : ℤ)
     (hi2 : -(t : ℤ) ≤ i) (hi : i < 0) (j : Fin k) :
     let e := LeftIndepSpeedup.mk C k hk h_left_indep
-    (e.C.comp (CellAutomaton.embed_word w) t i) j =
-    C.comp (CellAutomaton.embed_word w) (t - ((k - 1) * i) - j).toNat (k * i + j) := by
+    (e.C.comp w t i) j =
+    C.comp w (t - ((k - 1) * i) - j).toNat (k * i + j) := by
   intro e
   exact LeftIndepSpeedup.spec e w hw t i hi2 hi j
 

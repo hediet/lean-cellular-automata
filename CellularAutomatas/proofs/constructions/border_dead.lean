@@ -474,14 +474,11 @@ namespace DeadBorder
       | some q => e.C_orig.project (Cell.get_z q 0)
     }
 
-
   def unfold (c: Config e.Cell？) (w_len: ℕ): Config e.C_orig.Q :=
     fun i =>
       match e.map_coord w_len i with
       | none => e.C_orig.border
       | some (p, lane_idx) => (c p).get! lane_idx
-
-
 
   lemma spec_left_border_dead: e.C.dead e.C.border := by
     dsimp [CellAutomaton.dead, CellAutomaton.dead]
@@ -501,17 +498,17 @@ namespace DeadBorder
 
   -- Shape preservation: outside word range → none (border)
   private lemma shape_outside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∉ w.range):
-      C.nextt (C.embed_word w) t p = C.border :=
+      e.C.nextt w t p = C.border :=
     dead_border_prop C spec_left_border_dead w t p h_p
 
   -- Shape preservation: inside word range → not none (not border)
   private lemma shape_inside (w: Word e.α) (t: ℕ) (p: ℤ) (h_p: p ∈ w.range):
-      C.nextt (C.embed_word w) t p ≠ C.border :=
+      e.C.nextt w t p ≠ C.border :=
     initial_border_prop C spec_initial_border spec_inj_embed_none w t p h_p
 
   -- Combined: configuration after t steps has the word shape
   lemma shape_preserved (w: Word e.α) (t: ℕ):
-      ∀ p: ℤ, (C.nextt (C.embed_word w) t p).isSome ↔ p ∈ w.range := by
+      ∀ p: ℤ, (e.C.nextt w t p).isSome ↔ p ∈ w.range := by
     intro p
     constructor
     · intro h
@@ -523,7 +520,7 @@ namespace DeadBorder
     · intro h
       have hin := shape_inside w t p h
       simp only [CellAutomaton.border, C] at hin
-      cases hval : C.nextt (C.embed_word w) t p
+      cases hval : e.C.nextt w t p
       · simp only [C] at hval
         exact absurd hval hin
       · simp
@@ -628,7 +625,7 @@ namespace DeadBorder
 
 
 
-  private lemma inv (w: Word e.α) (t: ℕ) (p: ℤ) (h: |p| < e.c * w.length - t): unfold (C.nextt w t) w.length p = e.C_orig.nextt w t p := by
+  private lemma inv (w: Word e.α) (t: ℕ) (p: ℤ) (h: |p| < e.c * w.length - t): unfold (e.C.nextt w t) w.length p = e.C_orig.nextt w t p := by
     induction t generalizing p with
     | zero =>
       dsimp [nextt0]
@@ -638,7 +635,7 @@ namespace DeadBorder
       · rw [e.map_coord_p_lane_0 w.length p (by simp_all [Word.range])]
         simp [h, C, embed_word_at_eq]
 
-      · have : e.C_orig.embed_word w p = e.C_orig.border := by
+      · have : CellAutomaton.embed_config (C := e.C_orig) (word_to_config w) p = e.C_orig.border := by
           simp [embed_word_at_eq, h, CellAutomaton.border]
         rw [this]
         split
@@ -670,7 +667,7 @@ namespace DeadBorder
       rw [next_eq]
 
       have h_neigh_eq : neighborhood_at (e.C_orig.nextt w t) p =
-            neighborhood_at (unfold (C.nextt w t) len) p := by
+            neighborhood_at (unfold (e.C.nextt w t) len) p := by
         -- Apply ih to p-1, p, p+1
         simp only [neighborhood_at]
         have h_abs : |p| < e.c * len - (t + 1) := h
@@ -688,7 +685,7 @@ namespace DeadBorder
 
       rw [←next_eq]
 
-      set c := C.nextt ⦋w⦌ t
+      set c := e.C.nextt w t
 
       rw [unfold]
       split
@@ -739,10 +736,10 @@ namespace DeadBorder
 
   -- Key observation 1: e.C.trace is e.C_orig.project of unfold at position 0
   private lemma trace_eq_project_unfold (w: Word e.α) (t: ℕ) (h: w.length > 0):
-      e.C.trace w t = e.C_orig.project (unfold (C.nextt ⦋w⦌ t) w.length 0) := by
+      e.C.trace w t = e.C_orig.project (unfold (e.C.nextt w t) w.length 0) := by
     simp only [CellAutomaton.trace, CellAutomaton.comp, Function.comp_apply,
-               CellAutomaton.project_config, embed_word_word_to_config_eq]
-    -- Goal: C.project (C.nextt ⦋w⦌ t 0) = e.C_orig.project (unfold (C.nextt ⦋w⦌ t) w.length 0)
+               CellAutomaton.project_config]
+    -- Goal: C.project (C.nextt w t 0) = e.C_orig.project (unfold (C.nextt w t) w.length 0)
 
     -- unfold at 0: (c 0).get! ⟨0, _⟩
     simp only [unfold, e.map_coord_p_lane_0 w.length 0 ⟨le_refl 0, Nat.cast_pos.mpr h⟩]
@@ -774,7 +771,7 @@ namespace DeadBorder
 
     -- e.C_orig.project (e.C_orig.nextt w t 0) = e.C_orig.trace w t
     simp only [CellAutomaton.trace, CellAutomaton.comp, Function.comp_apply,
-               CellAutomaton.project_config, embed_word_word_to_config_eq]
+               CellAutomaton.project_config]
 
 end DeadBorder
 end CellularAutomatas

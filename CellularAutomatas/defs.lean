@@ -202,21 +202,16 @@ section LCellAutomaton
 
   instance : Coe (Word α) (Config α？) := ⟨word_to_config⟩
 
-  def CellAutomaton.embed_word {α β: Type} {C: CellAutomaton α？ β} (w: Word α): Config C.Q :=
-    word_to_config w
+  @[app_unexpander CellAutomaton.embed_config]
+  def unexpand_embed_word : Lean.PrettyPrinter.Unexpander
+    | `($_ ⟬$w⟭) => `(⦋$w⦌)
+    | _ => throw ()
 
-  notation "⦋" w "⦌" => CellAutomaton.embed_word w
-
-  instance {C: CellAutomaton α？ β} : Coe (Word α) (Config C.Q) := ⟨CellAutomaton.embed_word⟩
+  instance {C: CellAutomaton α？ β} : Coe (Word α) (Config C.Q) := ⟨fun w => CellAutomaton.embed_config (word_to_config w)⟩
 
 
   def CellAutomaton.trace_rt {α β: Type} (C: CellAutomaton α？ β) (w: Word α): Word β :=
     (List.range w.length).map (C.trace ⟬w⟭)
-
-
-  @[simp]
-  lemma embed_word_word_to_config_eq {α β: Type} {C: CellAutomaton α？ β} (w: Word α):
-      C.embed_config (word_to_config w) = ⦋w⦌ := rfl
 
   @[simp]
   lemma trace_rt_len {α β: Type} (C: CellAutomaton α？ β) (w: Word α):

@@ -47,8 +47,7 @@ lemma LCellAutomaton.scan_temporal_independence_at_0 {β} [Alphabet β] (C: Cell
   apply nextt_congr
   intro j hj
   simp only [zero_sub, zero_add] at hj
-  delta CellAutomaton.embed_word word_to_config
-  unfold CellAutomaton.embed_config
+  unfold CellAutomaton.embed_config word_to_config
   by_cases h_if : j ≥ 0 ∧ j < ↑(List.length (p ++ s))
   · have h_if_p : j ≥ 0 ∧ j < ↑(List.length p) := by
       constructor
@@ -188,10 +187,8 @@ lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val
     lhs
     dsimp [CellAutomaton.comp, CellAutomaton.project_config]
     rw [hw]
-    rw [← embed_word_word_to_config_eq]
     rw [LCellAutomaton.scan_temporal_independence_at_0 (t := i) (ht := by simp [p]; omega)]
 
-  simp only [embed_word_word_to_config_eq]
   rfl
 
 lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
@@ -298,14 +295,14 @@ lemma c_map_embed_in_ca_rt_iff_c_in_ca_rt {α β} (C: tCellAutomaton α) (f: β 
 lemma map_embed_L {α} (C: tCellAutomaton α) (f: β → α) (w: Word β):
     w ∈ (C.map_embed f).L ↔ (w.map f) ∈ C.L := by
 
-  suffices @embed_word α Bool C.toCellAutomaton (w.map f)
-      = @embed_word β Bool (C.map_embed f).toCellAutomaton w by
+  suffices @CellAutomaton.embed_config _ _ C.toCellAutomaton (word_to_config (w.map f))
+      = @CellAutomaton.embed_config _ _ (C.map_embed f).toCellAutomaton (word_to_config w) by
     rw [tCellAutomaton.elem_L_iff]
     rw [tCellAutomaton.elem_L_iff]
     rw [this]
     simp
     rfl
-  unfold embed_word embed_config
+  unfold CellAutomaton.embed_config
   funext p
   unfold word_to_config
   simp [tCellAutomaton.map_embed, CellAutomaton.map_embed]
@@ -343,13 +340,13 @@ lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
 
   section
     lemma embed_word_at_eq {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ):
-        @embed_word α β C w p = C.embed (if h: p ∈ w.range then  (some (w.get' p h)) else none) := by rfl
+        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (if h: p ∈ w.range then  (some (w.get' p h)) else none) := by rfl
 
     lemma embed_word_at_eq1 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: p ∈ w.range):
-        @embed_word α β C w p = C.embed (some (w.get' p h)) := by simp [embed_word_at_eq, h]
+        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (some (w.get' p h)) := by simp [embed_word_at_eq, h]
 
     lemma embed_word_at_eq2 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: ¬(p ∈ w.range)):
-        @embed_word α β C w p = C.embed none := by simp [embed_word_at_eq, h]
+        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed none := by simp [embed_word_at_eq, h]
 
   end
 

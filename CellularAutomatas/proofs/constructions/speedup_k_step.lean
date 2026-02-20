@@ -39,7 +39,7 @@ section
       simp [Sp, φ, embed_word_at_eq]
     | succ t ih =>
       simp [CellAutomaton.next]
-      set c := (Sp C).nextt (CellAutomaton.embed_word w) t
+      set c := (Sp C).nextt w t
       simp [Sp, φ, ih]
 
 
@@ -50,7 +50,7 @@ section
     | zero =>
       rw [CellAutomaton.nextt_succ, nextt0, nextt0]
 
-      have cp1_border : (CellAutomaton.embed_word w) (i+1) = C.border := by
+      have cp1_border : (CellAutomaton.embed_config (⟬w⟭)) (i+1) = C.border := by
         have: i + 1 ∉ w.range := by simp [Word.range]; omega
         simp_all [CellAutomaton.border, embed_word_at_eq2]
 
@@ -342,7 +342,7 @@ namespace SpeedupKx
     intro t
     unfold CellAutomaton.comp CellAutomaton.project_config
     funext p
-    let c_orig : Config e.C_orig.Q := ⦋c⦌
+    let c_orig : Config e.C_orig.Q := c
     have h_comm : (⦋compress e.k c⦌: Config e.C.Q) = compress e.k c_orig := by
       funext p j
       simp [compress, CellAutomaton.embed_config, C]

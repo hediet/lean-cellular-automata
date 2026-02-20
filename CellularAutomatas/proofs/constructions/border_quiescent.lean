@@ -258,35 +258,35 @@ private lemma δ'_left_edge (c : e.C_orig.Q) (br : e.C_orig.Q) (a_orig : e.C_ori
 -/
 
 /-- Helper: embed_word matches for positions in the word range -/
-private lemma embed_word_in_range (w : Word e.α) (i : ℤ) (hi : i ∈ w.range) :
-    (CellAutomaton.embed_word (C := e.C) w) i =
-    Q'.state ((CellAutomaton.embed_word (C := e.C_orig) w) i) e.C_orig.border := by
+private lemma embed_config_in_range (w : Word e.α) (i : ℤ) (hi : i ∈ w.range) :
+    CellAutomaton.embed_config (C := e.C) (word_to_config w) i =
+    Q'.state (CellAutomaton.embed_config (C := e.C_orig) (word_to_config w) i) e.C_orig.border := by
   simp only [Word.range, ge_iff_le, Set.mem_setOf_eq] at hi
-  simp only [embed_word, embed_config, word_to_config, C, hi]
+  simp only [CellAutomaton.embed_config, word_to_config, C, hi]
   rfl
 
-/-- Helper: embed_word is border outside the word range -/
-private lemma embed_word_out_range (w : Word e.α) (i : ℤ) (hi : i ∉ w.range) :
-    (CellAutomaton.embed_word (C := e.C) w) i = Q'.border := by
+/-- Helper: embed_config is border outside the word range -/
+private lemma embed_config_out_range (w : Word e.α) (i : ℤ) (hi : i ∉ w.range) :
+    CellAutomaton.embed_config (C := e.C) (word_to_config w) i = Q'.border := by
   simp only [Word.range, ge_iff_le, Set.mem_setOf_eq, not_and, not_lt] at hi
-  simp only [embed_word, embed_config, word_to_config, C]
+  simp only [CellAutomaton.embed_config, word_to_config, C]
   split_ifs with h
   · exfalso; exact (hi h.1).not_gt h.2
   · rfl
 
 /-- Helper: border stays for positions ≥ w.length using left-independence -/
 lemma border_stays_right (w : Word e.α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
-    e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i = Q'.border := by
+    e.C.nextt w t i = Q'.border := by
   exact CellAutomaton.border_stays_right e.C e.C_left_indep e.C_border_quiescent w i hi t
 
 /-- For positions left of the cone, the original CA computes as δδt of the border -/
 private lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(t : ℤ)) :
-    e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i =
+    e.C_orig.nextt w t i =
     δδt e.C_orig e.C_orig.border t := by
   induction t generalizing i with
   | zero =>
     simp only [Nat.cast_zero, neg_zero] at hi
-    simp only [nextt_zero, δδt_zero, embed_word, embed_config, word_to_config,
+    simp only [nextt_zero, δδt_zero, CellAutomaton.embed_config, word_to_config,
       CellAutomaton.border]
     split_ifs with h
     · exfalso; omega
@@ -300,11 +300,11 @@ private lemma orig_left_of_cone (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i < -(
 
 /-- For positions right of the word (>= w.length), the original CA computes as δδt of the border -/
 private lemma orig_right_of_word (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i ≥ w.length) :
-    e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i =
+    e.C_orig.nextt w t i =
     δδt e.C_orig e.C_orig.border t := by
   induction t generalizing i with
   | zero =>
-    simp only [nextt_zero, δδt_zero, embed_word, embed_config, word_to_config,
+    simp only [nextt_zero, δδt_zero, CellAutomaton.embed_config, word_to_config,
       CellAutomaton.border]
     split_ifs with h
     · omega
@@ -333,17 +333,17 @@ private lemma orig_right_of_word (w : Word e.α) (t : ℕ) (i : ℤ) (hi : i ≥
 /-- Main specification: inside the cone we get the original computation,
     outside we get border -/
 private theorem spec_internal (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) :
-    e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i =
+    e.C.nextt w t i =
       if i ∈ WordConeLeftIndep w t
-      then Q'.state (e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i)
+      then Q'.state (e.C_orig.nextt w t i)
            (δδt e.C_orig e.C_orig.border t)
       else Q'.border := by
   induction t generalizing i with
   | zero =>
     simp only [nextt_zero, δδt_zero, WordConeLeftIndep_zero]
     split_ifs with hi
-    · exact embed_word_in_range e w i hi
-    · exact embed_word_out_range e w i hi
+    · exact embed_config_in_range e w i hi
+    · exact embed_config_out_range e w i hi
   | succ t ih =>
     by_cases hi_succ : i ∈ WordConeLeftIndep w (t + 1)
     · -- i is in cone at t+1
@@ -391,9 +391,9 @@ private theorem spec_internal (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i :
 /-- Corollary: the projected computation matches the original -/
 private theorem spec_unwrap (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ)
     (hi : i ∈ WordConeLeftIndep w t) :
-    e.unwrap (e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i)
+    e.unwrap (e.C.nextt w t i)
              (δδt e.C_orig e.C_orig.border t) =
-    e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i := by
+    e.C_orig.nextt w t i := by
   rw [spec_internal e w hw t i]
   simp only [hi, ↓reduceIte, unwrap]
 
@@ -401,8 +401,8 @@ private theorem spec_unwrap (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : �
 private theorem spec_quiescent_orig (w : Word e.α) (hw : w.length > 0)
     (h_quiescent : e.C_orig.quiescent e.C_orig.border) (t : ℕ) (i : ℤ)
     (hi : i ∈ WordConeLeftIndep w t) :
-    e.C.nextt (CellAutomaton.embed_word (C := e.C) w) t i =
-    Q'.state (e.C_orig.nextt (CellAutomaton.embed_word (C := e.C_orig) w) t i)
+    e.C.nextt w t i =
+    Q'.state (e.C_orig.nextt w t i)
              e.C_orig.border := by
   rw [spec_internal e w hw t i, δδt_quiescent e.C_orig e.C_orig.border h_quiescent t]
   simp only [hi, ↓reduceIte]

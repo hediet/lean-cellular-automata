@@ -39,16 +39,16 @@ lemma word_to_config_empty {α} [Alphabet α] :
 
 @[simp]
 lemma embed_word_p_not_in_range {α} [Alphabet α] (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: p ∉ w.range):
-    (embed_word (C := C) w) p = C.embed none := by
-  unfold embed_word word_to_config embed_config
+    C.embed_config w p = C.embed none := by
+  unfold CellAutomaton.embed_config word_to_config
   have :  ¬ (0 ≤ p ∧ p < ↑(List.length w)) := by grind [Word.range]
   simp [this]
 
 
 @[simp]
 lemma embed_word_p_in_range {α} [Alphabet α] (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: p ∈ w.range):
-    (embed_word (C := C) w) p = C.embed (w[p.toNat]'(by grind [Word.range])) := by
-  unfold embed_word word_to_config embed_config
+    C.embed_config w p = C.embed (w[p.toNat]'(by grind [Word.range])) := by
+  unfold CellAutomaton.embed_config word_to_config
   have :  (0 ≤ p ∧ p < ↑(List.length w)) := by grind [Word.range]
   simp [this]
 

@@ -10,7 +10,7 @@ section DeadBorder
   lemma dead_border_prop {α β : Type}
       (C: CellAutomaton (Option α) β) (h_dead: C.dead C.border)
       (w: Word α) (t: ℕ) (p: ℤ) (h_p: p ∉ w.range):
-      C.nextt (C.embed_word w) t p = C.border := by
+      C.nextt w t p = C.border := by
     induction t with
     | zero =>
       simp only [CellAutomaton.nextt_zero]
@@ -27,7 +27,7 @@ section DeadBorder
       (h_initial_border: C.initial C.border)
       (h: C.inj_embed none)
       (w: Word α) (t: ℕ) (p: ℤ) (h_p: p ∈ w.range):
-      C.nextt (C.embed_word w) t p ≠ C.border := by
+      C.nextt w t p ≠ C.border := by
       induction t with
       | zero =>
         simp only [CellAutomaton.nextt_zero]
@@ -113,10 +113,10 @@ section BorderStaysRight
   theorem CellAutomaton.border_stays_right (C : CellAutomaton α？ β)
       (h_left_indep : C.left_independent) (h_quiescent : C.quiescent C.border)
       (w : Word α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
-      C.nextt (CellAutomaton.embed_word w) t i = C.border := by
+      C.nextt w t i = C.border := by
     induction t generalizing i with
     | zero =>
-      simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_word, CellAutomaton.embed_config,
+      simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config,
                  word_to_config, CellAutomaton.border]
       split_ifs with h
       · omega

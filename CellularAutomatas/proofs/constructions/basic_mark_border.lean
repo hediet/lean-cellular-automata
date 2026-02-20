@@ -6,8 +6,8 @@ namespace CellularAutomatas
 open CellAutomaton
 
 lemma embed_word_p_eq {α} [Alphabet α] (w: Word α) {C: CellAutomaton α？ β} (p: ℤ):
-    (embed_word (C := C) w) p = C.embed (if h: p ≥ 0 ∧ p < w.length then w[p.toNat] else none) := by
-  unfold embed_word word_to_config embed_config
+    CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (if h: p ≥ 0 ∧ p < w.length then w[p.toNat] else none) := by
+  unfold CellAutomaton.embed_config word_to_config
   grind
 
 section CisBorder

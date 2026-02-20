@@ -22,7 +22,7 @@ namespace CellAutomaton.leftEdgeCA
 
   @[simp]
   theorem comp_spec (w: Word α) (hw: w ≠ []):
-      (leftEdgeCA α).comp ⟬w⟭ 1 = ⟬[()]⟭ := by
+      (leftEdgeCA α).comp w 1 = ⟬[()]⟭ := by
     have hw' : w.length > 0 := by cases w <;> simp_all
     funext p
     unfold CellAutomaton.comp CellAutomaton.project_config
@@ -33,7 +33,7 @@ namespace CellAutomaton.leftEdgeCA
 
   @[simp]
   theorem trace_spec (w: Word α) (hw: w ≠ []):
-      (leftEdgeCA α).trace ⟬w⟭ 1 = some () := by
+      (leftEdgeCA α).trace w 1 = some () := by
     unfold CellAutomaton.trace
     rw [comp_spec w hw]
     unfold word_to_config
@@ -42,12 +42,12 @@ namespace CellAutomaton.leftEdgeCA
   /-- For empty input, leftEdgeCA outputs empty at all times -/
   @[simp]
   theorem comp_empty (t: ℕ):
-      (leftEdgeCA α).comp ⟬([] : Word α)⟭ t = ⟬[]⟭ := by
+      (leftEdgeCA α).comp ([] : Word α) t = ⟬[]⟭ := by
     funext p
     unfold CellAutomaton.comp CellAutomaton.project_config
     simp only [Function.comp_apply]
     -- The empty word embeds to all-false state
-    have embed_eq : ∀ q : ℤ, (leftEdgeCA α).embed_config ⟬([] : Word α)⟭ q = false := by
+    have embed_eq : ∀ q : ℤ, (leftEdgeCA α).embed_config ([] : Word α) q = false := by
       intro q
       unfold CellAutomaton.embed_config leftEdgeCA word_to_config
       have : ¬(0 ≤ q ∧ q < 0) := by omega

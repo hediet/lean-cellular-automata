@@ -324,8 +324,8 @@ lemma phi_zero_lt_neg_psi (i : ℤ) (hi : i < 0) (j : Fin e.k) : e.φ 0 i j < -e
 
 -- At t=0, position i < 0 has border' state
 lemma nextt_zero_neg (w : Word e.α) (i : ℤ) (hi : i < 0) :
-    e.C.nextt (CellAutomaton.embed_word w) 0 i = e.border' := by
-  simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_word, CellAutomaton.embed_config,
+    e.C.nextt (w) 0 i = e.border' := by
+  simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config,
              word_to_config, C]
   split_ifs with h
   · omega
@@ -335,10 +335,10 @@ lemma nextt_zero_neg (w : Word e.α) (i : ℤ) (hi : i < 0) :
 -- For left-independent CAs, cell (p, t) depends on initial cells p..p+t.
 -- So if p + t < 0, all dependencies are in the border zone.
 lemma C_orig_neg_border (w : Word e.α) (p : ℤ) (hp : p < 0) (t : ℕ) (ht : t < -p) :
-    e.C_orig.nextt (CellAutomaton.embed_word w) t p = e.C_orig.border := by
+    e.C_orig.nextt (w) t p = e.C_orig.border := by
   induction t generalizing p with
   | zero =>
-    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_word, CellAutomaton.embed_config,
+    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config,
                word_to_config]
     split_ifs with h
     · omega
@@ -362,32 +362,32 @@ via ψ and φ. The embedding of the word automatically provides border condition
 
 -- asQ of the embedded configuration equals the original embedded configuration
 lemma asQ_embed_word (w : Word e.α) (p : ℤ) :
-    e.asQ (CellAutomaton.embed_word (C := e.C) w p) =
-    CellAutomaton.embed_word w p := by
-  simp only [CellAutomaton.embed_word, CellAutomaton.embed_config, word_to_config]
+    e.asQ (CellAutomaton.embed_config (C := e.C) (⟬w⟭) p) =
+    CellAutomaton.embed_config (C := e.C_orig) (⟬w⟭) p := by
+  simp only [CellAutomaton.embed_config, word_to_config]
   split_ifs with h
   · simp only [C, asQ]
   · simp only [C, asQ, border', CellAutomaton.border]
 
 -- C_orig.nextt at border position stays border (left-independence + quiescence)
 theorem C_orig_border_stays (w : Word e.α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
-    e.C_orig.nextt (CellAutomaton.embed_word w) t i = e.C_orig.border :=
+    e.C_orig.nextt (w) t i = e.C_orig.border :=
   CellAutomaton.border_stays_right e.C_orig e.h_left_indep e.h_quiescent w i hi t
 
 -- For i ≥ w.length: cell stays border' (compressed border)
 theorem spec_border (w : Word e.α) (i : ℤ) (hi : i ≥ w.length) (t : ℕ) :
-    e.C.nextt (CellAutomaton.embed_word w) t i = e.border' := by
+    e.C.nextt (w) t i = e.border' := by
   rw [← e.C_border]
   exact CellAutomaton.border_stays_right e.C e.C_left_indep e.C_quiescent w i hi t
 
 -- For 0 ≤ i < w.length: compressed automaton tracks original as single states
 -- Key: δ'(_, single q, c) = single (δ₂ q (asQ c)), so single propagates
 theorem spec_nonneg (w : Word e.α) (i : ℤ) (hi : 0 ≤ i) (hi' : i < w.length) (t : ℕ) :
-    e.C.nextt (CellAutomaton.embed_word w) t i =
-    Q'.single (e.C_orig.nextt (CellAutomaton.embed_word w) t i) := by
+    e.C.nextt (w) t i =
+    Q'.single (e.C_orig.nextt (w) t i) := by
   induction t generalizing i with
   | zero =>
-    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_word, CellAutomaton.embed_config,
+    simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config,
                word_to_config, C]
     split_ifs with h
     · rfl
@@ -415,8 +415,8 @@ theorem spec_nonneg (w : Word e.α) (i : ℤ) (hi : 0 ≤ i) (hi' : i < w.length
 -- asQ of nextt result equals C_orig.nextt for i ≥ 0
 -- Corollary: follows from spec_nonneg (single case) and spec_border (border case)
 theorem asQ_nextt (w : Word e.α) (i : ℤ) (hi : 0 ≤ i) (t : ℕ) :
-    e.asQ (e.C.nextt (CellAutomaton.embed_word w) t i) =
-    e.C_orig.nextt (CellAutomaton.embed_word w) t i := by
+    e.asQ (e.C.nextt (w) t i) =
+    e.C_orig.nextt (w) t i := by
   by_cases hi' : i < w.length
   · -- Within word: it's a single, so asQ extracts the value
     rw [e.spec_nonneg w i hi hi' t]
@@ -428,7 +428,7 @@ theorem asQ_nextt (w : Word e.α) (i : ℤ) (hi : 0 ≤ i) (t : ℕ) :
 
 -- Helper: at negative positions, the state is always compr
 lemma neg_is_compr (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) :
-    ∃ w', e.C.nextt (CellAutomaton.embed_word w) t i = Q'.compr w' := by
+    ∃ w', e.C.nextt (w) t i = Q'.compr w' := by
   induction t with
   | zero => rw [e.nextt_zero_neg w i hi]; exact ⟨_, rfl⟩
   | succ t' ih' =>
@@ -441,8 +441,8 @@ lemma neg_is_compr (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) :
 --
 -- Proof by outer induction on t, with inner descending induction on j for the inductive case.
 theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
-    e.compr_at (e.C.nextt (CellAutomaton.embed_word w) t i) j =
-    e.C_orig.nextt (CellAutomaton.embed_word w) (e.φ t i j).toNat (e.ψ i j) := by
+    e.compr_at (e.C.nextt (w) t i) j =
+    e.C_orig.nextt (w) (e.φ t i j).toNat (e.ψ i j) := by
   -- Outer induction on t
   induction t generalizing i j with
   | zero =>
@@ -466,7 +466,7 @@ theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k
     simp only [hw_a, C_δ_compr, compr_at_compr]
 
     -- By IH, w_a j' = C_orig.nextt (φ(t,i,j')).toNat (ψ(i,j'))
-    have h_wa : ∀ j', w_a j' = e.C_orig.nextt (CellAutomaton.embed_word w) (e.φ t i j').toNat (e.ψ i j') := by
+    have h_wa : ∀ j', w_a j' = e.C_orig.nextt (w) (e.φ t i j').toNat (e.ψ i j') := by
       intro j'
       have h_ih := iht i hi j'
       rw [hw_a] at h_ih
@@ -474,10 +474,10 @@ theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k
       exact h_ih
 
     -- Get q = asQ (nextt t (i+1))
-    set q := e.asQ (e.C.nextt (CellAutomaton.embed_word w) t (i + 1)) with hq_def
+    set q := e.asQ (e.C.nextt (w) t (i + 1)) with hq_def
 
     -- Key: q = C_orig.nextt (φ(t,i,k-1)).toNat (ψ(i,k-1)+1)
-    have hq : q = e.C_orig.nextt (CellAutomaton.embed_word w) (e.φ t i ⟨e.k - 1, by have := e.hk; omega⟩).toNat (e.ψ i ⟨e.k - 1, by have := e.hk; omega⟩ + 1) := by
+    have hq : q = e.C_orig.nextt (w) (e.φ t i ⟨e.k - 1, by have := e.hk; omega⟩).toNat (e.ψ i ⟨e.k - 1, by have := e.hk; omega⟩ + 1) := by
       by_cases hi1 : i + 1 < 0
       · -- i+1 < 0: Use helper lemma and main IH
         obtain ⟨w_b, hw_b⟩ := e.neg_is_compr w (i + 1) hi1 t
@@ -519,7 +519,7 @@ theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k
     -- Use descending induction: prove for all m from k-1 down to 0
     suffices h : ∀ m : ℕ, (hm : m < e.k) →
       e.fold w_a q ⟨m, hm⟩ =
-      e.C_orig.nextt (CellAutomaton.embed_word w) (e.φ (t + 1) i ⟨m, hm⟩).toNat (e.ψ i ⟨m, hm⟩) by
+      e.C_orig.nextt (w) (e.φ (t + 1) i ⟨m, hm⟩).toNat (e.ψ i ⟨m, hm⟩) by
       exact h j_val hj_lt
     intro m hm
     -- Induction on (k-1-m)
@@ -571,12 +571,12 @@ theorem spec_nextt (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k
 /-- Specification using comp: for i < 0, component j of the projected output
     equals the original CA's output at position ψ(i,j) after φ(t,i,j) steps. -/
 theorem spec' (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
-    (e.C.comp (CellAutomaton.embed_word w) t i) j = e.C_orig.comp (CellAutomaton.embed_word w) (e.φ t i j).toNat (e.ψ i j) := by
+    (e.C.comp (w) t i) j = e.C_orig.comp (w) (e.φ t i j).toNat (e.ψ i j) := by
   obtain ⟨w', hw'⟩ := e.neg_is_compr w i hi t
   have h := e.spec_nextt w i hi t j
   rw [hw', compr_at_compr] at h
   simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C]
-  show e.projectQ' (e.C.nextt (CellAutomaton.embed_word w) t i) j = _
+  show e.projectQ' (e.C.nextt (w) t i) j = _
   rw [hw']
   simp only [projectQ']
   exact congrArg e.C_orig.project h
@@ -588,8 +588,8 @@ theorem spec' (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
 /-- Main specification with inlined φ and ψ: for i < 0, component j of the projected output
     equals the original CA's output at position (k*i + j) after (t - (k-1)*i - j) steps. -/
 theorem spec (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
-    (e.C.comp (CellAutomaton.embed_word w) t i) j =
-    e.C_orig.comp (CellAutomaton.embed_word w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
+    (e.C.comp (w) t i) j =
+    e.C_orig.comp (w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
   have hk1 : ((e.k - 1 : ℕ) : ℤ) = (e.k : ℤ) - 1 := by have := e.hk1; omega
   have h := e.spec' w i hi t j
   simp only [φ, ψ, hk1] at h
@@ -647,8 +647,8 @@ lemma C_left_indep : e.C.left_independent := e.speedup.C_left_indep
     The constraint i ≥ -t ensures the position is within the light cone. -/
 theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) (hi2 : -(t : ℤ) ≤ i) (hi : i < 0)
     (j : Fin e.k) :
-    (e.C.comp (CellAutomaton.embed_word w) t i) j =
-    e.C_orig.comp (CellAutomaton.embed_word w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
+    (e.C.comp (w) t i) j =
+    e.C_orig.comp (w) (t - ((e.k - 1) * i) - j).toNat (e.k * i + j) := by
   -- Key definitional equalities
   have hk_eq : e.speedup.k = e.k := rfl
   have hC_orig_eq : e.speedup.C_orig = e.pb.C := rfl

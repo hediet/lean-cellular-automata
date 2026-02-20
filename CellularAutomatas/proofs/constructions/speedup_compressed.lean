@@ -42,14 +42,11 @@ def g1 (q: Fin 3 → e.step2.β): e.β := match q 2 with
 lemma g1_spec (w: Word e.α) (h: w.length > 0) (p: ℕ):
     e.g1 (e.C.comp w (2 * p + 1) (p)) = e.C_orig.comp w (3 * p + 1) 0 := by
   rw [C]
-  unfold embed_word
   rw [e.step3.spec]
 
   have : e.step3.C_orig = e.step2.C := by rfl
   rw [this]
 
-  rw [<-embed_word]
-  rw [<-embed_word]
   unfold g1
   rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
 
@@ -85,14 +82,11 @@ def g2 (q: Fin 3 → e.step2.β): e.β × e.β :=
 lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
     e.g2 (e.C.comp w (2 * p + 2) (p + 1)) = (e.C_orig.comp w (3 * p + 2) 0, e.C_orig.comp w (3 * p + 3) 0) := by
   rw [C]
-  unfold embed_word
   rw [e.step3.spec]
 
   have : e.step3.C_orig = e.step2.C := by rfl
   rw [this]
 
-  rw [<-embed_word]
-  rw [<-embed_word]
   unfold g2
   rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
   rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
@@ -132,16 +126,15 @@ lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
   -- First establish that C.comp w 0 0 = fun _ => BetaUnionSq.single(C_orig.comp w 0 0)
   have key : e.C.comp w 0 0 = fun _ => BetaUnionSq.single (e.C_orig.comp w 0 0) := by
     rw [C]
-    unfold embed_word
     rw [e.step3.spec]
     have : e.step3.C_orig = e.step2.C := by rfl
-    rw [this, <-embed_word, <-embed_word]
+    rw [this]
     simp only [mul_zero, zero_sub, CellAutomaton.comp, CellAutomaton.project_config,
       CellAutomaton.nextt_zero, Function.comp_apply]
     have h0 : (-↑(0:ℕ) : ℤ) = 0 := by norm_num
     rw [h0]
     funext j
-    simp only [embed_word, CellAutomaton.embed_config, word_to_config]
+    simp only [CellAutomaton.embed_config, word_to_config]
     have hw0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < ↑w.length := ⟨le_refl 0, by omega⟩
     simp only [hw0, dite_true, and_self]
     -- Goal: step2.C.project(step2.C.embed(some w[0])) j = BetaUnionSq.single(C_orig.project(C_orig.embed(some w[0])))
