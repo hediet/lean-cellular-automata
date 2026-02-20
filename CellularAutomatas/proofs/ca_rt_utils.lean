@@ -128,55 +128,6 @@ lemma tCellAutomatonWithAdvice.exists_CA_rt_of_rt_closed {adv: Advice α Γ} (h:
 
 
 
-def TwoStageAdvice.L {α} [Alphabet α] (adv: TwoStageAdvice α Bool): Language α :=
-  { w: Word α | (adv.advice w).getLast? = true }
-
-
-def TwoStageAdvice.to_CA_rt {α} [Alphabet α] (adv: TwoStageAdvice α Bool): CA_rt α :=
-  fix_empty false (toRtCa $ adv.C.map_project (fun q => adv.M.f (adv.M.δ adv.M.q0 q)))
-
-
-
-@[simp]
-lemma TwoStageAdvice.to_CA_rt_L {α} [Alphabet α] (adv: TwoStageAdvice α Bool):
-    adv.to_CA_rt.val.L = adv.L := by
-  ext w
-
-  unfold TwoStageAdvice.to_CA_rt
-
-  by_cases h: w = []
-  · unfold TwoStageAdvice.L
-    rw [Set.mem_setOf_eq]
-    simp [h]
-
-  unfold TwoStageAdvice.L
-  rw [Set.mem_setOf_eq]
-
-  simp [h]
-  rw [←trace_rt_L h]
-  unfold TwoStageAdvice.advice
-  simp
-
-  erw [←FiniteStateTransducer.getLast?_of_scanr]
-  grind
-
-
-
-
-def TwoStageAdvice.from_CA_rt {α} [Alphabet α] (C: CA_rt α): TwoStageAdvice α Bool :=
-  {
-    β := Bool
-    C := C.val.toCellAutomaton
-    M := FiniteStateTransducer.M_id Bool
-  }
-
-@[simp]
-lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
-    (TwoStageAdvice.from_CA_rt C).advice = C.val.trace_rt := by
-  funext w
-  simp [TwoStageAdvice.from_CA_rt, TwoStageAdvice.advice]
-
-
 @[simp]
 lemma zip_left_empty {α} {v: Word β}: ([]: Word α) ⨂ v = [] := by simp [List.zip]
 
