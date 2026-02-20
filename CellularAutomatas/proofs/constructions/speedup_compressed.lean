@@ -1,148 +1,179 @@
 import CellularAutomatas.defs
-import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.constructions.speedup_left_independent
-import CellularAutomatas.proofs.constructions.border_quiescent
-import CellularAutomatas.proofs.constructions.left_indep_to_regular
-import CellularAutomatas.proofs.constructions.left_indep_from_regular
+import Mathlib.Data.Fin.Basic
+import Mathlib.Tactic.Ring
 namespace CellularAutomatas
 
 open CellAutomaton
 
+lemma intCastEq {k: ℕ} [NeZero k] (p: ℤ): ((Fin.intCast p: Fin k) : ℤ) = p % k := by
+  unfold Fin.intCast
+  split_ifs with h
+  · lift p to ℕ using h
+    simp
+  · push_neg at h
+    rw [Fin.val_neg]
+    simp only [Fin.val_ofNat]
+    have hp : p = -↑(p.natAbs) := by
+      rw [←neg_neg p, ←Int.ofNat_natAbs_of_nonpos (le_of_lt h)]
+      simp
+    rw [hp]
+    rw [Int.neg_emod]
+    simp only [Int.natAbs_neg, Int.natAbs_natCast]
+    by_cases hk : k ∣ p.natAbs
+    · simp only [Fin.ofNat_eq_cast, Fin.natCast_eq_zero, hk, ↓reduceIte, Nat.cast_zero,
+      Int.ofNat_dvd.mpr hk]
+    · have h_not_dvd : ¬ (↑k : ℤ) ∣ ↑p.natAbs := mt Int.ofNat_dvd.mp hk
+      simp only [Fin.ofNat_eq_cast, Fin.natCast_eq_zero, hk, ↓reduceIte, h_not_dvd]
+      rw [Int.ofNat_sub]
+      · simp only [Int.natCast_emod]
+      · apply le_of_lt
+        apply Nat.mod_lt
+        exact NeZero.pos k
 
-def cast α (x: α := by rfl) := x
+structure SpeedupKx where
+  k: ℕ
+  α: Type
+  β: Type
+  [_inst_α: Alphabet α]
+  [_inst_β: Alphabet β]
+  [inst: NeZero k]
+  C_orig: CellAutomaton α β
 
+attribute [instance] SpeedupKx.inst
+attribute [instance] SpeedupKx._inst_α
+attribute [instance] SpeedupKx._inst_β
 
-structure CAgfSpeedup where
-  {α : Type}
-  {β : Type}
-  [_inst_α : Alphabet α]
-  [_inst_β : Alphabet β]
-  C_orig : CellAutomaton α？ β  -- Takes optional alphabet for finite words
+namespace SpeedupKx
+  section
+    variable {Q: Type}
+    variable (k: ℕ) [NeZero k]
 
-attribute [instance] CAgfSpeedup._inst_α
-attribute [instance] CAgfSpeedup._inst_β
+    def compress (c: Config Q): Config (Fin k → Q) :=
+      fun p => fun j => c (p * k + j)
 
-namespace CAgfSpeedup
+    def decompress (c: Config (Fin k → Q)): Config Q :=
+      fun p => c (p / k) (Fin.intCast p)
 
-variable (e : CAgfSpeedup)
+    lemma compress_decompress (c: Config Q):
+      decompress k (compress k c) = c := by
+        funext p
+        unfold decompress compress
+        congr
+        rw [intCastEq]
+        rw [Int.emod_def]
+        grind only
 
-private def step1 := RegularToLeftIndep.mk e.C_orig
+  end
 
-private def step2 := LeftIndepSpeedup.mk e.step1.C 3 (by decide) e.step1.C_left_independent
+  variable (e: SpeedupKx)
 
-private def step3 := LeftIndepToRegular.mk e.step2.C e.step2.C_left_indep
+  def Q' := Fin e.k → e.C_orig.Q
 
-def C := e.step3.C
+  def local_config (a b c: e.Q'): Config e.C_orig.Q :=
+      fun p => if p <= -e.k then a (Fin.intCast 0) else
+        if p < 0 then a (Fin.intCast (p + e.k))
+        else if p < e.k then b (Fin.intCast p)
+        else c (Fin.intCast (p - e.k))
 
-def g1 (q: Fin 3 → e.step2.β): e.β := match q 2 with
-  | BetaUnionSq.single s => s
-  | BetaUnionSq.pair _ _ => default
+  def to_local_config (c: Config (e.C_orig.Q)): e.Q' := fun j => c j
 
-lemma g1_spec (w: Word e.α) (h: w.length > 0) (p: ℕ):
-    e.g1 (e.C.comp w (2 * p + 1) (p)) = e.C_orig.comp w (3 * p + 1) 0 := by
-  rw [C]
-  rw [e.step3.spec]
-
-  have : e.step3.C_orig = e.step2.C := by rfl
-  rw [this]
-
-  unfold g1
-  rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
-
-  rw [cast $ e.step2.C_orig = e.step1.C]
-
-  simp only [cast $ e.step2.k = 3]
-
-  erw [e.step1.spec]
-  simp [cast $ e.step2.k = 3]
-  ring_nf
-
-  have : (2 + (p: ℤ) * 6).toNat % 2 = 0 := by grind
-  simp only [this, ↓reduceIte]
-
-  rw [cast $ e.step1.C_orig = e.C_orig]
-  congr
-  grind
-  grind
-
-
-
-def g2 (q: Fin 3 → e.step2.β): e.β × e.β :=
-  (
-    match q 1 with
-    | BetaUnionSq.single _ => default
-    | BetaUnionSq.pair s _ => s,
-    match q 0 with
-    | BetaUnionSq.single s => s
-    | BetaUnionSq.pair _ _ => default
-  )
-
-
-lemma g2_spec (w: Word e.α) (h: w.length > 0) (p: ℕ) :
-    e.g2 (e.C.comp w (2 * p + 2) (p + 1)) = (e.C_orig.comp w (3 * p + 2) 0, e.C_orig.comp w (3 * p + 3) 0) := by
-  rw [C]
-  rw [e.step3.spec]
-
-  have : e.step3.C_orig = e.step2.C := by rfl
-  rw [this]
-
-  unfold g2
-  rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
-  rw [e.step2.spec (hi := by ring_nf; grind) (hw := h) (hi2 := by grind)]
+  def C: CellAutomaton (Fin e.k → e.α) (Fin e.k → e.β) := {
+    Q := Fin e.k → e.C_orig.Q
+    δ := fun a b c =>
+      e.to_local_config (e.C_orig.nextt (e.local_config a b c) e.k)
+    embed q := e.C_orig.embed ∘ q
+    project q := e.C_orig.project ∘ q
+  }
 
 
-  rw [cast $ e.step2.C_orig = e.step1.C]
+  lemma compression_k_step (c: Config e.C_orig.Q):
+      e.C.next (compress e.k c) = compress e.k (e.C_orig.nextt c e.k) := by
+    funext p j
+    simp [CellAutomaton.next, C, compress, to_local_config]
+    rw [add_comm (p * e.k) j]
+    rw [nextt_shift]
+    apply nextt_locality
+    intro y hy
+    have hk : (e.k : ℤ) ≥ 1 := by
+      have : e.k ≠ 0 := NeZero.ne e.k
+      omega
+    have hj : 0 ≤ (j : ℤ) ∧ (j : ℤ) < e.k := by
+      constructor
+      · simp
+      · simp
+    unfold local_config
+    split_ifs with h1 h2 h3
+    · -- y <= -k
+      have : y = -e.k := by omega
+      subst y
+      unfold compress
+      rw [intCastEq]
+      simp
+      apply congrArg
+      ring
+    · -- -k < y < 0
+      unfold compress
+      rw [intCastEq]
+      have h_pos : 0 ≤ y + ↑e.k := by omega
+      have h_lt : y + ↑e.k < ↑e.k := by omega
+      rw [Int.emod_eq_of_lt h_pos h_lt]
+      apply congrArg
+      ring
+    · -- 0 <= y < k
+      unfold compress
+      rw [intCastEq]
+      have h_pos : 0 ≤ y := by omega
+      have h_lt : y < ↑e.k := by omega
+      rw [Int.emod_eq_of_lt h_pos h_lt]
+      apply congrArg
+      ring
+    · -- k <= y
+      unfold compress
+      rw [intCastEq]
+      have h_pos : 0 ≤ y - ↑e.k := by omega
+      have h_lt : y - ↑e.k < ↑e.k := by omega
+      rw [Int.emod_eq_of_lt h_pos h_lt]
+      apply congrArg
+      ring
 
-  simp only [cast $ e.step2.k = 3]
-
-  erw [e.step1.spec]
-  erw [e.step1.spec]
-  simp [cast $ e.step2.k = 3]
-  ring_nf
-
-  have : ((6 + (p: ℤ) * 6).toNat - 1) % 2 = 1 := by grind
-  simp only [this, one_ne_zero, ↓reduceIte]
-
-  have : ((6 + (p: ℤ) * 6).toNat) % 2 = 0 := by grind
-  simp only [this, ↓reduceIte]
-
-  rw [cast $ e.step1.C_orig = e.C_orig]
-
-  constructor
-
-  congr
-  grind
-  grind
-
-  congr
-  grind
-  grind
-
--- At time 0, the speedup gives the initial state.
--- After the projectQ' change, g2 on the initial projected output gives trace(0).
-lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
-    (e.g2 (e.C.comp w 0 0)).2 = e.C_orig.comp w 0 0 := by
-  -- First establish that C.comp w 0 0 = fun _ => BetaUnionSq.single(C_orig.comp w 0 0)
-  have key : e.C.comp w 0 0 = fun _ => BetaUnionSq.single (e.C_orig.comp w 0 0) := by
-    rw [C]
-    rw [e.step3.spec]
-    have : e.step3.C_orig = e.step2.C := by rfl
-    rw [this]
-    simp only [mul_zero, zero_sub, CellAutomaton.comp, CellAutomaton.project_config,
-      CellAutomaton.nextt_zero, Function.comp_apply]
-    have h0 : (-↑(0:ℕ) : ℤ) = 0 := by norm_num
-    rw [h0]
-    funext j
-    simp only [CellAutomaton.embed_config, word_to_config]
-    have hw0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < ↑w.length := ⟨le_refl 0, by omega⟩
-    simp only [hw0, dite_true, and_self]
-    -- Goal: step2.C.project(step2.C.embed(some w[0])) j = BetaUnionSq.single(C_orig.project(C_orig.embed(some w[0])))
+  theorem spec {c: Config e.α}:
+      ∀ t, e.C.comp ⦋(compress e.k c)⦌ t = compress e.k (e.C_orig.comp c (e.k * t)) := by
+    intro t
+    unfold CellAutomaton.comp CellAutomaton.project_config
+    funext p
+    let c_orig : Config e.C_orig.Q := c
+    have h_comm : (⦋compress e.k c⦌: Config e.C.Q) = compress e.k c_orig := by
+      funext p j
+      simp [compress, CellAutomaton.embed_config, C]
+      rfl
+    dsimp [CellAutomaton.embed_config] at h_comm ⊢
+    change e.C.project ((e.C.nextt (e.C.embed_config (compress e.k c)) t) p) = _
+    have h_eq : e.C.nextt ⦋compress e.k c⦌ t = e.C.nextt (compress e.k c_orig) t := by
+      congr 1
+    rw [h_eq]
+    have h_state : e.C.nextt (compress e.k c_orig) t = compress e.k (e.C_orig.nextt c_orig (e.k * t)) := by
+      induction t with
+      | zero => simp
+      | succ t ih =>
+        rw [CellAutomaton.nextt_succ]
+        rw [ih]
+        rw [compression_k_step]
+        rw [mul_add, mul_one]
+        rw [nextt_add]
+        grind
+    rw [h_state]
+    unfold compress
+    simp [C]
     rfl
-  -- Now rewrite using key and simplify g2
-  unfold g2
-  rw [key]
 
-end CAgfSpeedup
+  theorem spec1 {c: Config e.α} {t1: ℕ}:
+      e.C.trace (compress e.k c) t1 0 = e.C_orig.trace c (e.k * t1) := by
+    unfold trace
+    rw [e.spec]
+    unfold compress
+    simp
+
+end SpeedupKx
 
 end CellularAutomatas
