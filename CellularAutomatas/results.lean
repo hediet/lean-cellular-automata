@@ -169,7 +169,7 @@ If f is two-stage, then ℒ(CA_rt(Σ × Γ) / f) = ℒ(CA_rt(Σ)).
 theorem result_two_stage_is_rt_closed
     (adv : TwoStageAdvice α Γ) :
     adv.advice.rt_closed :=
-  two_stage_rt_closed adv
+  two_stage_is_rt_closed adv
 
 /-!
 ### Result 7: Prefix-Membership Advice is Two-Stage (hence RT-Closed)

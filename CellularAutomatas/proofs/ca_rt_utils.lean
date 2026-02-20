@@ -65,7 +65,7 @@ def ca_to_two_stage (C: CArtTransducer α Γ): TwoStageAdvice α Γ :=
 
 @[simp]
 lemma ca_to_two_stage_spec (C: CArtTransducer α Γ):
-    (ca_to_two_stage C).advice.f = C.trace_rt := by
+    (ca_to_two_stage C).advice = C.trace_rt := by
   funext w
   simp [ca_to_two_stage, TwoStageAdvice.advice]
 
@@ -164,7 +164,7 @@ def TwoStageAdvice.from_CA_rt {α} [Alphabet α] (C: CA_rt α): TwoStageAdvice �
 
 @[simp]
 lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
-    (TwoStageAdvice.from_CA_rt C).advice.f = C.val.trace_rt := by
+    (TwoStageAdvice.from_CA_rt C).advice = C.val.trace_rt := by
   funext w
   simp [TwoStageAdvice.from_CA_rt, TwoStageAdvice.advice]
 

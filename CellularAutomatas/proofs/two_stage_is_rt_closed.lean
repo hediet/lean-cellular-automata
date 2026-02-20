@@ -10,36 +10,37 @@ variable {α Γ : Type} [Alphabet α] [Alphabet Γ]
 open CellAutomaton
 
 
-theorem two_stage_rt_closed (adv: TwoStageAdvice α Γ):
+theorem two_stage_is_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.rt_closed := by
   rw [advice_rt_closed_iff]
+
   intro C
   rw [ℒ_CA_rt_iff]
 
-  let x := ((TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv))
-  let C' := fix_empty ([] ∈ C.val.L) x.to_CA_rt
+  let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
+  let C' := fix_empty ([] ∈ C.val.L) combined.to_CA_rt
 
   use C'
-
   constructor
-  · simp [C']
 
-  ext w
+  · show C'.val ∈ CA_rt α
+    simp [C']
 
+  · show C'.val.L = {w | w ⨂ adv.advice.f w ∈ C.val.L}
+    ext w
+    show w ∈ C'.val.L ↔ w ⨂ adv.advice.f w ∈ C.val.L
 
-  simp [C']
-  rw [Set.mem_setOf_eq]
+    by_cases h_empty: w = []
+    · unfold C'
+      simp [h_empty]
 
-  by_cases h_empty: w = []
-  · simp [h_empty]
-
-  simp [h_empty]
-  simp [x]
-
-  unfold TwoStageAdvice.L
-  rw [Set.mem_setOf_eq]
-
-  have : ↑C ∈ CA_rt (α ⨉ Γ) := by simp
-  rw [elemL_iff_trace_rt this]
-
-  simp [h_empty]
+    · calc
+        w ∈ C'.val.L
+        _ ↔ w ∈ (fix_empty (decide ([] ∈ C.val.L)) combined.to_CA_rt).val.L := by simp [C']
+        _ ↔ w ∈ combined.L := by simp [h_empty]
+        _ ↔ List.getLast? (combined.advice w) = some true := by
+          unfold TwoStageAdvice.L
+          rw [Set.mem_setOf_eq]
+        _ ↔ w ⨂ adv.advice w ∈ C.val.L := by
+          rw [elemL_iff_trace_rt (by simp)]
+          simp [combined, h_empty]
