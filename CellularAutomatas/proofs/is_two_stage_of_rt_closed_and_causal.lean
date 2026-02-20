@@ -13,7 +13,7 @@ import Mathlib.Tactic.Linarith
 import Mathlib.Logic.Function.Iterate
 import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.constructions.composition.composition
+import CellularAutomatas.proofs.constructions.composition.compose_cart
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.trace_id
 import CellularAutomatas.proofs.finite_state_transducers

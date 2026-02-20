@@ -15,7 +15,7 @@ import CellularAutomatas.proofs.constructions.left_indep_from_regular
 import CellularAutomatas.proofs.constructions.speedup_left_independent
 import CellularAutomatas.proofs.constructions.border_quiescent
 import CellularAutomatas.proofs.constructions.border_dead
-import CellularAutomatas.proofs.constructions.composition.composition
+import CellularAutomatas.proofs.constructions.composition.compose_cart
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 
