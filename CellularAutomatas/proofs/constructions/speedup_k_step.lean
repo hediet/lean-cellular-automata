@@ -126,9 +126,9 @@ lemma withDeadBorder_trace_eq [Alphabet α] (c_val: ℕ) (C: CellAutomaton α？
   let db : DeadBorder := { c := c_val, C_orig := C }
   exact @DeadBorder.spec_comp_trace db w t h_bound
 
--- SpB applied to DeadBorder.C then wrapped again - one step of speedup
+-- SpB applied to DeadBorder.C - one step of speedup
 def SpBD [Alphabet α] (c_val: ℕ) (C: CellAutomaton α？ β): CellAutomaton α？ β :=
-  withDeadBorder c_val (SpB (withDeadBorder c_val C))
+  SpB (withDeadBorder c_val C)
 
 -- k iterations of SpBD
 def SpBDk [Alphabet α] (c_val k: ℕ) (C: CellAutomaton α？ β): CellAutomaton α？ β :=
@@ -139,25 +139,12 @@ lemma SpBD_trace_eq [Alphabet α] (c_val: ℕ) (C: CellAutomaton α？ β) (w: W
     (ht: t + 1 ≥ w.length) (h_bound: t + 1 < c_val * w.length):
     (SpBD c_val C).trace w t = C.trace w (t + 1) := by
   unfold SpBD
-  -- withDeadBorder c_val (SpB (withDeadBorder c_val C)).trace w t
-  -- = C.trace w (t + 1)
-
-  -- Step 1: inner DeadBorder has left_dead border
   set C1 := withDeadBorder c_val C
   have h_C1_left_dead : C1.left_dead C1.border := withDeadBorder_left_dead c_val C
-
-  -- Step 2: SpB of C1 speeds up by 1
   have h_spb : (SpB C1).trace w t = C1.trace w (t + 1) := SpB_trace_eq h_C1_left_dead w t ht
-
-  -- Step 3: relate C1.trace to C.trace using DeadBorder preservation
   have h_db_trace : C1.trace w (t + 1) = C.trace w (t + 1) :=
     withDeadBorder_trace_eq c_val C w (t + 1) h_bound
-
-  -- Step 4: outer DeadBorder doesn't change trace within bounds
-  have h_outer : (withDeadBorder c_val (SpB C1)).trace w t = (SpB C1).trace w t :=
-    withDeadBorder_trace_eq c_val (SpB C1) w t (by omega)
-
-  rw [h_outer, h_spb, h_db_trace]
+  rw [h_spb, h_db_trace]
 
 -- k-step speedup using DeadBorder at each iteration
 lemma SpBDk_trace_eq [Alphabet α] (c_val k: ℕ) (C: CellAutomaton α？ β) (w: Word α) (t: ℕ)

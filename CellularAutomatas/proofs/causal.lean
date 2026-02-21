@@ -64,8 +64,6 @@ lemma IsCausal.eq_iff {α β: Type} (f g: Word α → Word β) (h1: IsCausal f) 
     rw [List.getLast?_eq_getLast_of_ne_nil ne_nil, List.getLast?_eq_getLast_of_ne_nil ne_nil_g] at h_last
     simp_all
 
-lemma Advice.causal_iff {α Γ: Type} (adv: Advice α Γ): adv.causal ↔ IsCausal adv.f := by rfl
-
 end Causal
 
 end CellularAutomatas
