@@ -64,11 +64,6 @@ namespace CompressToΛ
   lemma map_project_comp2 {α β γ: Type} (C: CellAutomaton α？ β) (f: β → γ) (w: Word α) (t: ℕ):
     (C.map_project f).comp w t p = f (C.comp w t p) := by rfl
 
-  @[simp]
-  lemma ca_zip_comp2 {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
-      {C1: CellAutomaton α？ β1} {C2: CellAutomaton α？ β2} {w: Word α} {t: ℕ} {i: ℤ}:
-      (C1 ⨂ C2).comp w t i = ((C1.comp w t i), (C2.comp w t i)) := by
-    simp only [ca_zip_comp]
 
   theorem spec (w: Word e.α) (hw: w ≠ []) (t: ℕ) (p: ℤ):
       e.C.comp w t p =
@@ -78,7 +73,7 @@ namespace CompressToΛ
         := by
     -- Step 1: Unfold C and use composition lemmas
     unfold C
-    simp only [map_project_comp2, ca_zip_comp2]
+    simp only [map_project_comp2, ca_zip_comp]
 
     -- Step 2: Get the specs for diag signals
     rw [DiagLeftRight.diag_right_spec w hw, DiagLeftRight.diag_left_spec2 w hw]
@@ -327,15 +322,8 @@ namespace Composition
 
       _ = (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial) t₂ := by
         have h := e.C_sim.spec ⟬w⟭ c_inr x (t₁ + 1)
-        -- The issue is dependent types. Let's work with the values directly.
-        -- Both `.get _ t₂` and the RHS are function applications to t₂
-        -- Show they evaluate to the same thing by showing the options are equal
-        -- and thus their `.get`s are the same
         have h2 : (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)) =
                   some (e.C2_3x.C.trace c_inr (t₁ + 1)) := h
-        -- Now the goal is: opt.get _ t₂ = (some v).get _ t₂
-        -- where opt = some v by h2
-        -- This is true because get extracts the value
         rw [show (e.C_sim.C.trace ⟬w⟭ (3 * (t₁ + 1) + 3)).get _ =
                (some (e.C2_3x.C.trace c_inr (t₁ + 1))).get (by trivial)
             from by simp only [h2, Option.get_some]]
