@@ -17,7 +17,7 @@ These are well-known results from the cellular automata literature (see e.g. Kut
 | 3 | **General k-step RT speedup** — constant additive speedup via dead/quiescent border chaining | `SpeedupKSteps.spec` |
 | 4 | **Quiescent border** — left-independent CAs can be given a quiescent border without changing computation | `result_quiescent_border_left_indep` |
 | 5 | **Dead border** — any CA can be given a dead (absorbing) border, preserving the trace for linear time | `result_dead_border` |
-| 6 | **Exponential word length is RT-recognizable** — {w : |w| = 2^n} ∈ L(CA_rt) via signal bouncing | `exp_word_length_rt` |
+| 6 | **Exponential word length is RT-recognizable** — {w : \|w\| = 2^n} ∈ L(CA_rt) via signal bouncing | `exp_word_length_rt` |
 
 ### Part II — Advice Theory (likely novel, sorry-free)
 
