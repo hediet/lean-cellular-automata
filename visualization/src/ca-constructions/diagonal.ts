@@ -6,7 +6,7 @@
 //
 // These are used as control signals in the composition pipeline.
 
-import { CA, Unit, unit, Config, next } from './types';
+import { CA, Unit, unit } from './types';
 
 // ============================================================================
 // DiagLeft: Diagonal signal propagating to the left

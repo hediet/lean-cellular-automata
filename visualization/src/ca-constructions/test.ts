@@ -2,18 +2,16 @@
 // Run with: npx ts-node --esm src/ca-constructions/test.ts
 
 import {
-	// Core
-	CA, Config, runCA, trace, traceRt,
-	// Basic
-	flip, product, mapProject,
-	// Conversions
-	regularToLeftIndep, leftIndepToRegular, BetaUnionSq,
-	// Diagonal
-	diagLeftCore, diagRightCore, diagLeft, diagRight, diagFiringTime,
-	// Composition
-	simpleInnerCA,
-	// Pipeline
-	simulateComposition,
+    // Core
+    CA, Config, runCA, traceRt,
+    // Basic
+    flip, product,
+    // Conversions
+    regularToLeftIndep, diagFiringTime,
+    // Composition
+    simpleInnerCA,
+    // Pipeline
+    simulateComposition
 } from './index';
 
 // ============================================================================

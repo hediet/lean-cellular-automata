@@ -11,9 +11,8 @@
 // 4. C_sim = simFromLambda(C1_Λ, C2_3x)    : α? → (γ³)?
 // 5. C_decomp = decompressTriple(C_sim)    : α? → γ
 
-import { CA, Config, Triple, triple, trace, traceRt, next } from './types';
-import { addBorder, compressToLambda, simFromLambda, decompressTriple, simpleInnerCA, SimFromLambdaState, DecompressTripleState, CompressToLambdaState } from './composition';
-import { CompressToDiagState, CAgfSpeedupState, speedupAndTraceKx } from './compression';
+import { CA, Triple, triple, traceRt } from './types';
+import { SimFromLambdaState } from './composition';
 
 // ============================================================================
 // Simplified Composition (for visualization / testing)

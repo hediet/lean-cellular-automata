@@ -1,6 +1,6 @@
 // Basic CA combinators: flip, product, mapProject
 
-import { CA, eqState } from './types';
+import { CA } from './types';
 
 // Flip: swap left and right neighbors
 export function flip<Q, A, B>(ca: CA<Q, A, B>): CA<Q, A, B> {

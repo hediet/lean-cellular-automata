@@ -1,18 +1,15 @@
 import { observableValue, IDisposable, derived } from "@vscode/observables";
 import { viewWithModel } from "@vscode/observables-react";
 import {
-	Construction,
-	CONSTRUCTIONS,
-	getConstructionById,
-	HoverState,
-	ConstructionParams,
-	isDependency,
-	getDependencies,
-	isTransformedDependency,
-	IntermediateState,
-	SecondSimulation,
-	SimStateInfo,
-	FullSimStateInfo,
+    Construction,
+    CONSTRUCTIONS,
+    getConstructionById,
+    HoverState,
+    ConstructionParams,
+    isDependency,
+    getDependencies, SecondSimulation,
+    SimStateInfo,
+    FullSimStateInfo
 } from "./constructions";
 
 // ============================================================================

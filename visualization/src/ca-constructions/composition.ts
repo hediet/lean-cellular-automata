@@ -3,8 +3,7 @@
 //         CellularAutomatas/proofs/constructions/composition/sim_from_lambda.lean
 //         CellularAutomatas/proofs/constructions/composition/decompress_triple.lean
 
-import { CA, Config, Triple, triple, eqState, next } from './types';
-import { product, mapProject } from './basic';
+import { CA, Triple, triple } from './types';
 import { makeDiagLeftGeneric, makeDiagRightGeneric, DiagState } from './diagonal';
 import { compressToDiag, CompressToDiagState, CAgfSpeedupState } from './compression';
 
