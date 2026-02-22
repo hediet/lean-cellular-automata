@@ -72,21 +72,24 @@ def exp_ca : tCellAutomaton Unit := {
     | ExpState.Collision => ExpState.Empty
     | ExpState.Collision_Pos1 => ExpState.Empty_Pos1
     | ExpState.Dead => ExpState.Dead,
-  border := ExpState.Dead,
-  p := fun n => 0,
+  embed
+  | none => ExpState.Dead
+  | some _ => ExpState.Init,
+  p := fun _ => 0,
   t := fun n => n - 1,
-  embed := fun _ => ExpState.Init,
-  F_pos := fun q =>
+  project := fun q =>
     match q with
     | ExpState.Init => true
     | ExpState.FirstStep => true
     | ExpState.SignalLeft => true
-    | _ => false
+    | _ => false,
 }
 
 
-#eval ((List.range 12).map (fun i => List.replicate i ())).map (fun w => decide (exp_ca.L w))
-  = [false, true, true, false, true, false, false, false, true, false, false, false]
+#eval ((List.range 17).map (fun i => List.replicate i ())).map (fun w => decide (exp_ca.L w))
+  = [false, true, true, false, true, false, false, false, true, false, false, false, false, false, false, false, false
+
+  ]
 
 theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
   use ⟨ exp_ca, by simp [CA_rt, t_rt, CA, exp_ca, tCellAutomatons] ⟩

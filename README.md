@@ -1,5 +1,7 @@
 # Cellular Automata in Lean 4
 
+**[Read the full summary (PDF)](https://hediet.github.io/lean-cellular-automata/summary.pdf)**
+
 A formalization of one-dimensional cellular automata theory in Lean 4 + Mathlib4, covering real-time language recognition, one-way (left-independent) CAs, and a structural theory of *advice* for cellular automata.
 
 ## What's Formalized

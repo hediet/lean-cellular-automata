@@ -7,6 +7,7 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
+import CellularAutomatas.proofs.constructions.basic_exp_word
 
 namespace CellularAutomatas.results_unproven
 
@@ -14,8 +15,8 @@ variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]
 
 
-theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
-  sorry
+theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } :=
+  CellularAutomatas.exp_word_length_rt
 
 
 -- TODO: Define tCellAutomaton.similar
@@ -39,28 +40,6 @@ theorem ca_rt_equals_lt_of_closure_under_reversal: ℒ (CA α) = ℒ (CAr α) �
 
 
 section advice_theorems
-
-  theorem compose_two_stage {O'} [Alphabet O'] (a1: TwoStageAdvice α O') (a2: TwoStageAdvice O' Γ):
-      ∃ a: TwoStageAdvice α Γ, a.advice.f = a2.advice.f ∘ a1.advice.f := by
-    sorry
-
-
-
-
-  theorem advice_prefix_mem_rt_closed (C: CA_rt α):
-      (Advice.prefix_mem C.val.L).rt_closed := by
-    sorry
-
-  theorem advice_exp_middle_rt_closed: (Advice.exp_middle α).rt_closed := by
-    sorry
-
-  -- For some c ∈ Γ, consider L_c = { w | adv(w)_|w| = c }. Since adv is rt_closed, we have L_c ∈ L(RT)!
-  -- w[0..i+1] ∈ L_c <-> adv(w)_i = c (because adv is prefix-stable).
-  -- Because advice_prefix_mem is rt_closed, we have adv = advice_prefix_mem(L_c1) + advice_prefix_mem(L_c2) + ...
-
-  theorem causal_of_rt_closed (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal) :
-      adv.is_two_stage_advice := by
-    sorry
 
   theorem exp_middle_two_stage_advice: (Advice.exp_middle α).is_two_stage_advice := by
     sorry
