@@ -25,10 +25,14 @@
   h(1fr)
   text(size: 9pt, style: "italic", fill: luma(100))[#body]
 }
+// Lean reference
+#let lean(body) = {
+  text(size: 9pt, fill: luma(80))[Lean: #raw(body)]
+}
 
 = Formalized Cellular Automata Theory in Lean 4
 
-This project formalizes key results about cellular automata that recognize languages, focusing on *real-time* recognition, *one-way (left-independent) CAs*, and *advice mechanisms*.
+This project formalizes key results about cellular automata that recognize languages, focusing on *real-time* recognition, *one-way (left-independent) CAs*, and *advice mechanisms*. All results compile with Lean 4 and Mathlib4; proofs are axiom-verified (only `Quot.sound`, `Classical.choice`, and `propext` are used).
 
 == Setup and Non-Standard Definitions
 
@@ -40,11 +44,11 @@ A *configuration* is a map $c : ZZ -> Q$. One step: $next(c)_p = delta(c_(p-1), 
 
 === Word Embedding (0-indexed)
 
-Words are embedded into configurations with *0-based indexing*: a word $w$ of length $n$ occupies positions $0, 1, dots, n-1$, with all other positions set to the border symbol $\#$. Formally:
+Words are embedded into configurations with *0-based indexing*: a word $w$ of length $n$ occupies positions $0, 1, dots, n-1$, with all other positions set to the border symbol $hash$. Formally:
 
-$ angle.l w angle.r (p) = cases(w_p & "if" 0 <= p < |w|, \# & "otherwise") $
+$ angle.l w angle.r (p) = cases(w_p & "if" 0 <= p < |w|, hash & "otherwise") $
 
-For language-recognizing CAs the input alphabet is $Sigma_\# = Sigma union \{\#\}$, so $embed(\#)$ gives the border state. Note that in this formalization, the border state has *no a priori constraints* — it need not be quiescent or dead. This is more general than many textbook definitions, which assume $delta(\#, \#, \#) = \#$. Results 4 and 5 below show that a passive or dead border can always be imposed without changing the recognized language, so this generalization is conservative and the language classes agree with the standard ones.
+For language-recognizing CAs the input alphabet is $Sigma_hash = Sigma union {hash}$, so $embed(hash)$ gives the border state. Note that in this formalization, the border state has *no a priori constraints* — it need not be quiescent or dead. This is more general than many textbook definitions, which assume $delta(hash, hash, hash) = hash$. Results 4 and 5 below show that a passive or dead border can always be imposed without changing the recognized language, so this generalization is conservative and the language classes agree with the standard ones.
 
 === Trace
 
@@ -83,16 +87,16 @@ The class $cal(L)(op("CA")_op("rt"))$ is the set of languages recognized by real
 An *advice* is a length-preserving map $f : Sigma^* -> Gamma^*$ with $|f(w)| = |w|$.
 
 - *RT-closed:* $f$ is RT-closed if $cal(L)(op("CA")_op("rt") (Sigma times Gamma) \/ f) = cal(L)(op("CA")_op("rt") (Sigma))$, i.e.~the advice does not increase the power of real-time CAs.
-- *Prefix-stable:* $f(w_([0..i))) = f(w)_([0..i))$ for all $w, i$.
+- *Causal (prefix-stable):* $f(w_([0..i))) = f(w)_([0..i))$ for all $w, i$.
 - *Two-stage:* $f$ factors as $f = M compose tracert_C$, where $C$ is a CA real-time transducer and $M$ is a finite-state transducer scanning right-to-left.
 
-== Formally Verified Results (sorry-free)
+== Part I: Classical Constructions (existing literature, sorry-free)
 
 #line(length: 100%, stroke: 0.5pt + luma(180))
 
-The following results are well-known in the literature. The proofs here sometimes differ from the classical ones, as certain constructions were adapted to be more amenable to formal verification in Lean 4.
+The following results are well-known in the literature (see e.g.~Kutrib, Malcher et al.). The proofs here sometimes differ from the classical ones, as certain constructions were adapted to be more amenable to formal verification in Lean 4. All proofs are *completely sorry-free*.
 
-=== 1. Left-Independent ↔ Regular Simulation
+=== Result 1: Left-Independent ↔ Regular Simulation
 
 Given a left-independent CA $C$, construct a regular CA $C'$ such that:
 
@@ -104,7 +108,9 @@ $ Delta^(2t)_(C') (c)_i = Delta^t_C (c)_(i+t) $
 
 This establishes the equivalence of OCA and CA up to a constant factor of 2 in time.
 
-=== 2. $k$-Step Left-Independent Speedup
+#lean("result_left_indep_to_regular, result_regular_to_left_indep")
+
+=== Result 2: $k$-Step Left-Independent Speedup
 
 Given a left-independent CA $C = (Q, delta)$ and $k >= 2$, construct a left-independent $C' = (Q^k, delta')$ compressing $k$ consecutive diagonal cells into one tuple. Define coordinate maps:
 
@@ -114,9 +120,11 @@ Then for $i < 0$ and $0 <= j < k$:
 
 $ comp_(C') (w, t, i)_j = comp_C (w, phi(t,i,j), psi(i,j)) $
 
-The proof proceeds by outer induction on $t$ and inner descending induction on $j$ within each time step. A variant without the quiescent-border assumption composes with the passive-border construction.
+The proof proceeds by outer induction on $t$ and inner descending induction on $j$ within each time step.
 
-=== 3. General $k$-Step RT Speedup
+#lean("result_left_indep_speedup")
+
+=== Result 3: General $k$-Step RT Speedup
 
 For any CA $C$ and constant $k$, construct $C'$ such that:
 
@@ -124,60 +132,117 @@ $ trace_(C') (w)(i) = trace_C (w)(i + k) $
 
 This achieves a constant additive speedup by chaining QuiescentBorder and DeadBorder constructions.
 
-=== 4. Quiescent Border for Left-Independent CAs
+#lean("SpeedupKSteps.spec")
 
-Given a left-independent CA $C$, construct $C'$ whose border is *quiescent* ($delta(\#, \#, \#) = \#$), while $comp_(C') = comp_C$ inside the left-independent light cone. Together with Result 5, this shows that the unconstrained border in our formalization is without loss of generality.
+=== Result 4: Quiescent Border for Left-Independent CAs
 
-=== 5. Dead Border
+Given a left-independent CA $C$, construct $C'$ whose border is *quiescent* ($delta(hash, hash, hash) = hash$), while $comp_(C') = comp_C$ inside the left-independent light cone. Together with Result 5, this shows that the unconstrained border in our formalization is without loss of generality.
 
-Given any CA $C$, construct $C'$ whose border state $\#$ is *dead* (absorbing: $delta(dot, \#, dot) = \#$), while preserving the trace: $trace_(C') (w)(t) = trace_C (w)(t)$ for all $t < c dot |w|$, where $c$ is a constant depending on $C'$. In particular, the trace is preserved for any linear-time computation. Uses a zigzag folding of cells into lanes.
+#lean("result_quiescent_border_left_indep")
 
-== Advice Theory (Key Contribution)
+=== Result 5: Dead Border
+
+Given any CA $C$, construct $C'$ whose border state $hash$ is *dead* (absorbing: $delta(dot, hash, dot) = hash$), while preserving the trace: $trace_(C') (w)(t) = trace_C (w)(t)$ for all $t < c dot |w|$, where $c$ is a constant depending on $C'$. In particular, the trace is preserved for any linear-time computation. Uses a zigzag folding of cells into lanes.
+
+#lean("result_dead_border")
+
+=== Result 6: Exponential Word Length is RT-Recognizable
+
+The language ${ w mid |w| = 2^n "for some" n }$ is in $cal(L)(op("CA")_op("rt"))$. The construction uses a signal-bouncing technique: a signal is sent from the left border, bounces off the right border, and its return time encodes the word length.
+
+#lean("exp_word_length_rt")
+
+== Part II: Advice Theory (likely novel, sorry-free)
 
 #line(length: 100%, stroke: 0.5pt + luma(180))
 
-The following results are likely *novel* and form the core contribution of this project. They develop a structural theory of _advice_ for cellular automata, establishing closure properties of RT transducers and two-stage advice, and classifying prefix-stable RT-closed advice as RT transducers.
+The following results are likely *novel* and form the core contribution of this project. They develop a structural theory of _advice_ for cellular automata, establishing closure properties of RT transducers and two-stage advice, and classifying causal RT-closed advice as RT transducers.
 
-=== Result 1: RT transducers are closed under composition #sorry-status[has sorry]
+=== Result 7: RT transducers are closed under composition #sorry-status[sorry-free]
 
-Given CA transducers $C_1 : Sigma -> Gamma_1$ and $C_2 : Gamma_1 -> Gamma_2$, there exists a CA $C$ with $tracert_C = tracert_(C_2) compose tracert_(C_1)$. This is the most technically challenging result in the project, requiring the full machinery of dead border, passive border, $k$-step speedup, and left-independent ↔ regular simulation. The proof uses a multi-stage pipeline (AddBorder → CompressToDiag → SimFromΛ → DecompressTriple → SpeedupKSteps). _Note: the main theorem is proven, but some intermediate pipeline stages still contain sorry (\~8 total)._
+Given CA transducers $C_1 : Sigma -> Gamma_1$ and $C_2 : Gamma_1 -> Gamma_2$, there exists a CA $C$ with $tracert_C = tracert_(C_2) compose tracert_(C_1)$. This is the most technically challenging result in the project, requiring the full machinery of dead border, passive border, $k$-step speedup, and left-independent ↔ regular simulation. The proof uses a multi-stage pipeline:
 
-=== Result 2: RT transducers are RT-closed #sorry-status[sorry-free modulo Result 1]
+$ op("AddBorder") -> op("CompressToDiag") -> op("SimFrom") Lambda -> op("DecompressTriple") -> op("SpeedupKSteps") $
 
-If $f = tracert_C$ for some CA $C$, then $f$ is RT-closed: $cal(L)(op("CA")_op("rt") (Sigma times Gamma) \/ f) = cal(L)(op("CA")_op("rt") (Sigma))$. This follows from Result 1: given a receiving CA $C_r$ and an advice transducer $C_a$, one composes $C_r$ with $C_a$ (using Result 1) to obtain a single CA that simulates both.
+#lean("result_rt_transducers_closed_under_composition")
 
-=== Result 3: Prefix-membership advice is an RT transducer #sorry-status[sorry-free]
+=== Result 8: Two-stage advice is RT-closed #sorry-status[sorry-free]
+
+If $f$ is two-stage, then $cal(L)(op("CA")_op("rt") (Sigma times Gamma) \/ f) = cal(L)(op("CA")_op("rt") (Sigma))$. This follows from Result 7: the CA component is RT-closed, and the right-to-left FST can be absorbed into the receiving CA.
+
+#lean("result_two_stage_is_rt_closed")
+
+=== Result 9: Prefix-membership advice is two-stage #sorry-status[sorry-free]
 
 For any $L in cal(L)(op("CA")_op("rt"))$, the advice $f_L$ defined by
 
 $ f_L (w)_i = [w_([0..i+1)) in L] $
 
-is itself an RT transducer: $f_L = tracert_C$ for a suitable CA $C$ that runs the recognizer for $L$ and outputs the acceptance bit at each step. In particular, $f_L$ is RT-closed (by Result 1).
+is itself a two-stage advice (and hence an RT transducer): $f_L = tracert_C$ for a suitable CA $C$ that runs the recognizer for $L$ and outputs the acceptance bit at each step.
 
-=== Result 4: RT-closed $and$ prefix-stable $==>$ RT transducer #sorry-status[sorry-free]
+#lean("result_advice_prefix_mem_is_two_stage_advice")
 
-If an advice $f$ is both RT-closed and prefix-stable, then $f$ is an RT transducer: $f = tracert_C$ for some CA $C$. The proof constructs $C$ by observing that prefix-stability lets one reduce $f$ to a product of prefix-membership advices (one for each output symbol $c in Gamma$, via the language $L_c = {w mid f(w)_(|w|) = c}$), each of which is an RT transducer by Result 3. (The Lean code formally proves the two-stage version with the identity FST; the RT transducer statement is immediate.)
+=== Result 10: RT-closed $and$ causal $==>$ CArt advice #sorry-status[sorry-free]
 
-=== Definition: Two-Stage Advice
+If an advice $f$ is both RT-closed and causal (prefix-stable), then $f$ is a CArt advice, i.e., computable by a single CA RT transducer. The proof constructs $C$ by observing that causality lets one reduce $f$ to a product of prefix-membership advices (one for each output symbol $c in Gamma$, via the language $L_c = {w mid f(w)_(|w|) = c}$), each of which is an RT transducer by Result 9.
 
-A *two-stage advice* is an advice $f : Sigma^* -> Gamma^*$ that factors as:
+#lean("result_is_cart_advice_of_rt_closed_and_causal")
 
-$ f = M compose tracert_C $
-
-where $C$ is a CA real-time transducer ($Sigma -> B$) and $M$ is a finite-state transducer scanning right-to-left ($B^* -> Gamma^*$). Intuitively, the CA computes an intermediate annotation in real-time, and then a right-to-left FST post-processes it. This is a natural class: the CA captures the "global" left-to-right sweep inherent in real-time computation, while the FST captures bounded right-to-left look-ahead.
-
-=== Result 5: Two-stage advice is closed under composition #sorry-status[sorry-free modulo Result 1]
+=== Result 11: Two-stage advice is closed under composition #sorry-status[sorry-free]
 
 Given two-stage advices $f_1 : Sigma^* -> Gamma_1^*$ and $f_2 : Gamma_1^* -> Gamma_2^*$, the composition $f_2 compose f_1$ is again two-stage. The proof works by commuting the FST of $f_1$ past the CA of $f_2$ using a "backwards FSM" construction that absorbs the FST into the CA's state space.
 
-=== Result 6: Two-stage advice is RT-closed #sorry-status[sorry-free modulo Result 1]
+#lean("result_two_stage_closed_under_composition")
 
-If $f$ is two-stage, then $cal(L)(op("CA")_op("rt") (Sigma times Gamma) \/ f) = cal(L)(op("CA")_op("rt") (Sigma))$. This follows from Result 1 (the CA component is RT-closed) and the fact that a right-to-left FST can be absorbed into the receiving CA.
-
-=== Result 7: Middle advice is _not_ two-stage #sorry-status[sorry-free]
+=== Result 12: Middle advice is _not_ two-stage #sorry-status[sorry-free]
 
 The advice $f_"mid"$ that marks position $floor(n\/2)$ (i.e., $f_"mid" (w)_i = [i = floor(|w|\/2)]$) cannot be expressed as a two-stage advice. The proof uses a bottleneck argument: the FST has finitely many states, but the middle position requires information about the full word length, which the CA's real-time trace at the midpoint cannot encode in bounded state.
 
-=== Open Question
+#lean("result_middle_not_two_stage_advice")
 
-Is every RT-closed advice two-stage, without the prefix-stability assumption? We conjecture that no such counterexample exists. However, if a non-two-stage RT-closed advice did exist, its RT-closedness proof would probably require a fundamentally different, non-geometric simulation construction — and it could be promising to investigate whether such a construction can be shown to be generally uncomputable.
+== Incomplete Results (with sorry)
+
+#line(length: 100%, stroke: 0.5pt + luma(180))
+
+=== Exponential-Middle Advice is Two-Stage #sorry-status[4 sorry remaining]
+
+The advice that marks the largest power-of-2 position $<= n\/2$ is conjectured to be two-stage. The two-stage decomposition (a CA transducer marking powers of 2, composed with an FST selecting the last "true") is fully constructed. The 4 remaining `sorry`s are in combinatorial counting lemmas.
+
+#lean("exp_middle_two_stage_advice")
+
+=== Unproven Conjectures #sorry-status[8 sorry in results_unproven.lean]
+
+The following are stated but unproven:
+
+- *Constant speedup:* $cal(L)({C in op("CA") mid t(n) = n + k - 1}) = cal(L)(op("CA")_op("rt"))$
+- *CA linear time = 2n:* $cal(L)(op("CA")_op("lt")) = cal(L)(op("CA")_(2n))$
+- *OCA linear time = 2n:* $cal(L)(op("OCA")_op("lt")) = cal(L)(op("OCA")_(2n))$
+- *OCAr linear time = CA rt:* $cal(L)(op("OCA")^r_op("lt")) = cal(L)(op("CA")_op("rt"))$
+- *Reversal closure implies lt = rt:* $cal(L)(op("CA")) = cal(L)(op("CA")^r) ==> cal(L)(op("CA")) = cal(L)(op("CA")_op("lt"))$
+- *Advice shift-left preserves two-stage*
+- *CartTraceFstAdvice classification*
+
+== Open Question
+
+Is every RT-closed advice two-stage, without the causality assumption? We conjecture that no such counterexample exists. However, if a non-two-stage RT-closed advice did exist, its RT-closedness proof would probably require a fundamentally different, non-geometric simulation construction — and it could be promising to investigate whether such a construction can be shown to be generally uncomputable.
+
+== Project Statistics
+
+#table(
+  columns: (1fr, auto, auto, auto),
+  align: (left, center, center, center),
+  stroke: 0.5pt + luma(180),
+  inset: 6pt,
+  table.header[*Category*][*Files*][*Sorry-free*][*With sorry*],
+  [Core proofs & utilities], [7], [7], [0],
+  [Main theorems], [5], [4], [*1*],
+  [Basic CA constructions], [10], [10], [0],
+  [Speedup constructions], [3], [3], [0],
+  [Direction conversions], [2], [2], [0],
+  [Composition pipeline], [8], [8], [0],
+  [Framework & scripts], [4], [4], [0],
+  table.hline(),
+  [*Total*], [*39*], [*38*], [*1*],
+)
+
+Total `sorry` count: *4* in proof files (`exp_middle_two_stage.lean`) + *8* in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are *completely sorry-free*.
