@@ -38,9 +38,15 @@ This project formalizes key results about cellular automata that recognize langu
 
 === Cellular Automaton
 
-A CA is a one-dimensional cellular automaton with radius-1 neighborhood, given as a tuple $C = (Q, Sigma, Gamma, delta, embed, project)$ with state set $Q$, input alphabet $Sigma$, output alphabet $Gamma$, local transition $delta : Q^3 -> Q$, and maps $embed: Sigma -> Q$, $project: Q -> Gamma$. The split into input/output types lets CAs act as transducers.
+A CA is a one-dimensional cellular automaton with radius-1 neighborhood, given as a tuple $C = (Q, Sigma, Gamma, delta, embed, project)$ with state set $Q$, input alphabet $Sigma$, output alphabet $Gamma$, local transition $delta : Q^3 -> Q$, and maps $embed: Sigma -> Q$, $project: Q -> Gamma$. The split into input/output types lets CAs act as transducers ($Sigma -> Gamma$), not just language recognizers. Acceptance becomes a special case where $Gamma = op("Bool")$.
 
 A *configuration* is a map $c : ZZ -> Q$. One step: $next(c)_p = delta(c_(p-1), c_p, c_(p+1))$. We write $Delta^t_C (c)$ for the $t$-fold iterate, and $comp_C (c, t, i) = project(Delta^t_C (embed compose c)_i)$.
+
+*Relation to the standard definition.* In the literature (e.g.~Kutrib, Malcher, Worsch), a language-recognizing CA is typically $C = (Q, Sigma, hash, delta, F_+)$ with $Sigma subset Q$ (the input alphabet is a subset of the state set), a quiescent border $hash$ with $delta(hash, hash, hash) = hash$, and an accepting set $F_+ subset Q$. Our formalization differs as follows:
+
++ *Separate input/output types* via $embed$ and $project$, enabling the transducer viewpoint. The standard definition is recovered by setting $embed = id$, $Gamma = op("Bool")$, and $project = 1_(F_+)$.
++ *No border constraints.* The border state $embed(hash)$ is not assumed quiescent or dead. Results 4 and 5 below show this is without loss of generality.
++ *Timed acceptance.* Instead of a fixed $F_+$, a timed CA specifies functions $t(n), p(n)$ and accepts via $project(Delta^(t(n))_C (angle.l w angle.r)_(p(n))) = op("true")$. Real-time is the special case $t(n) = n - 1$, $p(n) = 0$.
 
 === Word Embedding (0-indexed)
 
@@ -48,7 +54,7 @@ Words are embedded into configurations with *0-based indexing*: a word $w$ of le
 
 $ angle.l w angle.r (p) = cases(w_p & "if" 0 <= p < |w|, hash & "otherwise") $
 
-For language-recognizing CAs the input alphabet is $Sigma_hash = Sigma union {hash}$, so $embed(hash)$ gives the border state. Note that in this formalization, the border state has *no a priori constraints* — it need not be quiescent or dead. This is more general than many textbook definitions, which assume $delta(hash, hash, hash) = hash$. Results 4 and 5 below show that a passive or dead border can always be imposed without changing the recognized language, so this generalization is conservative and the language classes agree with the standard ones.
+For language-recognizing CAs the input alphabet is $Sigma_hash = Sigma union {hash}$, so $embed(hash)$ gives the border state.
 
 === Trace
 
