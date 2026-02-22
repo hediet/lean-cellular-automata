@@ -57,7 +57,6 @@ lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
   simp [TwoStageAdvice.from_CA_rt, TwoStageAdvice.advice]
 
 
-
 theorem two_stage_is_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.rt_closed := by
   rw [advice_rt_closed_iff]

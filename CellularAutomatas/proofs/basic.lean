@@ -104,6 +104,32 @@ lemma trace_rt_length {α β: Type} {C: CellAutomaton α？ β} {w: Word α}:
 lemma trace_rt_empty {α β: Type} {C: CellAutomaton α？ β}:
   (C.trace_rt []) = [] := by simp [trace_rt]
 
+@[simp]
+lemma map_embed_trace_rt {α β γ: Type} (C: CellAutomaton β？ γ) (f: α → β) (w: Word α):
+    (C.map_embed (Option.map f)).trace_rt w = C.trace_rt (w.map f) := by
+  apply List.ext_getElem
+  · simp
+  intro i hi1 hi2
+  simp only [trace_rt, List.getElem_map, List.getElem_range, trace, comp]
+  -- Show that nextt is the same for all positions
+  have h_embed_eq : ∀ p : ℤ, @embed_config _ _ (C.map_embed (Option.map f)) (word_to_config w) p =
+                            @embed_config _ _ C (word_to_config (w.map f)) p := by
+    intro p
+    simp [embed_config, word_to_config, map_embed]
+  -- The nextt values are the same because δ is the same and embed_config is the same
+  have h_nextt_eq : ∀ t : ℕ, ∀ p : ℤ,
+      (C.map_embed (Option.map f)).nextt ⦋w⦌ t p = C.nextt ⦋w.map f⦌ t p := by
+    intro t
+    induction t with
+    | zero => intro p; exact h_embed_eq p
+    | succ t ih =>
+      intro p
+      simp only [nextt, Function.iterate_succ_apply', next, map_embed]
+      congr 1 <;> exact ih _
+  -- project is the same for map_embed
+  simp only [project_config, map_embed]
+  exact congrArg C.project (h_nextt_eq i 0)
+
 
 
 @[grind =]
@@ -290,6 +316,12 @@ def tCellAutomaton.map_embed {α β} (C: tCellAutomaton α) (f: β → α): tCel
 @[simp]
 lemma c_map_embed_in_ca_rt_iff_c_in_ca_rt {α β} (C: tCellAutomaton α) (f: β → α):
     C.map_embed f ∈ CA_rt β ↔ C ∈ CA_rt α := by rfl
+
+@[simp]
+lemma tCellAutomaton.map_embed_trace_rt {α β} (C: tCellAutomaton α) (f: β → α) (w: Word β):
+    (C.map_embed f).trace_rt w = C.trace_rt (w.map f) := by
+  unfold tCellAutomaton.map_embed
+  simp
 
 @[simp]
 lemma map_embed_L {α} (C: tCellAutomaton α) (f: β → α) (w: Word β):

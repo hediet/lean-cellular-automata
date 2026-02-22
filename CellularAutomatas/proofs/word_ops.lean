@@ -2,6 +2,9 @@ import CellularAutomatas.defs
 
 namespace CellularAutomatas
 
+@[simp]
+lemma map_const_replicate {α : Type} (w : List α) (c: α) : w.map (fun _ => c) = List.replicate w.length c := by
+  apply List.ext_getElem <;> simp
 
 @[simp]
 lemma Word.get'_eq {α} (w: Word α) (i: ℕ) (h: i < w.length) (val: α): (w.get'? ↑i).getD val = w[i] := by
