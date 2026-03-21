@@ -1,0 +1,5 @@
+packages:
+  - visualization
+  - presentation
+  - external/vscode-observables/observables
+  - external/vscode-observables/observables-react

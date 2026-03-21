@@ -1,0 +1,27 @@
+{
+  "name": "ca-presentation",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "katex": "^0.16.32",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "spectacle": "^10.2.3"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "@vscode/component-explorer": "0.1.1-12",
+    "@vscode/component-explorer-cli": "0.1.1-8",
+    "@vscode/component-explorer-vite-plugin": "0.1.1-12",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

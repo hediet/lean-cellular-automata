@@ -1,0 +1,1 @@
+{"root":["./src/AcceptanceGrid.tsx","./src/AutoScale.tsx","./src/ConfigPreview.tsx","./src/ConfigurationStrip.tsx","./src/DeltaAnnotation.tsx","./src/EmbeddingViz.tsx","./src/ExpCoreGrid.tsx","./src/ExpWordGrid.tsx","./src/Latex.tsx","./src/Presentation.fixture.tsx","./src/Presentation.tsx","./src/TransitionConnectors.tsx","./src/main.tsx"],"errors":true,"version":"5.9.3"}

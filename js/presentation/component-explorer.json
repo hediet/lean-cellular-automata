@@ -1,0 +1,10 @@
+{
+  "screenshotDir": ".screenshots",
+  "sessions": [
+    { "name": "current" }
+  ],
+  "redirection": {
+    "port": 5337
+  },
+  "viteConfig": "./vite.config.ts"
+}
