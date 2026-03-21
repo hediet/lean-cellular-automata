@@ -54,7 +54,7 @@ section advice_theorems
 
 /-
   theorem CartTraceAdvice_classification (adv: Advice α Γ) :
-    adv.is_CartTraceAdvice ↔ adv.rt_closed ∧ adv.causal :=
+    adv.is_CartTraceAdvice ↔ adv.weak_rt_closed ∧ adv.causal :=
     by sorry
 -/
 
@@ -64,8 +64,8 @@ section advice_theorems
 
   theorem CartTraceFstAdvice_classification (adv: Advice α Γ) :
     adv.is_two_stage_advice ↔
-      adv.rt_closed ∧
-      ∃ as: List { a: Advice α Γ // a.rt_closed ∧ a.causal },
+      adv.weak_rt_closed ∧
+      ∃ as: List { a: Advice α Γ // a.weak_rt_closed ∧ a.causal },
         ∀ w, adv w ∈ { a.val w | a ∈ as } :=
     by
 
@@ -83,6 +83,6 @@ advice a(w)_i :=
   then a1(w)_i
   else 0
 
-Then a is probably rt_closed?
+Then a is probably weak_rt_closed?
 
 -/

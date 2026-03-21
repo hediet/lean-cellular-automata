@@ -115,18 +115,18 @@ namespace CompressToΛ
 
 end CompressToΛ
 
-structure AddBorder where
+structure TraceToTraceRtAndBorder where
   {α: Type}
   {β: Type}
   [_inst_α: Alphabet α]
   [_inst_β: Alphabet β]
   C_orig: CellAutomaton α？ β
 
-attribute [instance] AddBorder._inst_α
-attribute [instance] AddBorder._inst_β
+attribute [instance] TraceToTraceRtAndBorder._inst_α
+attribute [instance] TraceToTraceRtAndBorder._inst_β
 
-namespace AddBorder
-  variable (e: AddBorder)
+namespace TraceToTraceRtAndBorder
+  variable (e: TraceToTraceRtAndBorder)
 
   def b := e.C_orig.embed none
 
@@ -189,7 +189,7 @@ namespace AddBorder
     simp [word_to_config]
     grind
 
-end AddBorder
+end TraceToTraceRtAndBorder
 
 
 
@@ -211,7 +211,7 @@ attribute [instance] Composition._inst_γ
 namespace Composition
   variable (e: Composition)
 
-  def C1': AddBorder := { C_orig := e.C1 }
+  def C1': TraceToTraceRtAndBorder := { C_orig := e.C1 }
   example : (CellAutomaton e.α？ e.β？) := e.C1'.C
 
   abbrev C1_Λ: CompressToΛ := {
@@ -269,7 +269,7 @@ namespace Composition
       congr
       unfold CompressToΛ.decode_cfg
       dsimp [C1_Λ]
-      rw [AddBorder.spec]
+      rw [TraceToTraceRtAndBorder.spec]
       dsimp [C1']
       dsimp [c_inr]
 

@@ -101,9 +101,9 @@ infixl:65 " ⨂ " => zip_two_stage
 
 
 
-lemma advice_rt_closed_iff (adv: Advice α Γ):
-    adv.rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
-  unfold Advice.rt_closed
+lemma advice_weak_rt_closed_iff (adv: Advice α Γ):
+    adv.weak_rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
+  unfold Advice.weak_rt_closed
   rw [subset_antisymm_iff]
   simp only [CA_rt_subseteq_CA_rt_with_advice adv, and_true]
   rw [Set.subset_def]
@@ -116,10 +116,10 @@ lemma tCellAutomatonWithAdvice.L_mem_ℒ (C: CA_rt (α × Γ)) (adv: Advice α �
   use C
   simp
 
-lemma tCellAutomatonWithAdvice.exists_CA_rt_of_rt_closed {adv: Advice α Γ} (h: adv.rt_closed) (C: CA_rt (α ⨉ Γ)):
+lemma tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed {adv: Advice α Γ} (h: adv.weak_rt_closed) (C: CA_rt (α ⨉ Γ)):
     ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L := by
   have : (C.val + adv).L ∈ ℒ (CA_rt α) := by
-    unfold Advice.rt_closed at h
+    unfold Advice.weak_rt_closed at h
     rw [←h]
     exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
 

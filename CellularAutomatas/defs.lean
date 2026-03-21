@@ -320,7 +320,10 @@ section Advice
     end
 
     def compose {Γ₁: Type} {Γ₂: Type} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
-      ⟨ fun w => adv2 (adv1 w), by simp [adv1.len, adv2.len] ⟩
+      ⟨ adv2 ∘ adv1, by simp [adv1.len, adv2.len] ⟩
+
+    def lift (adv: Advice α Γ) (S: Type) [Alphabet S]: Advice (α × S) Γ :=
+      ⟨ fun w => adv (w.map Prod.fst), by simp ⟩
 
   end Advice
 
@@ -343,8 +346,11 @@ section Advice
   instance [Alphabet α] : DefinesLanguage (tCellAutomatonWithAdvice α) α where
     L ca := tCellAutomatonWithAdvice.L ca
 
-  def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+  def Advice.weak_rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
+
+  def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+    ∀ (S: Type) [Alphabet S], (f.lift S).weak_rt_closed
 
 end Advice
 

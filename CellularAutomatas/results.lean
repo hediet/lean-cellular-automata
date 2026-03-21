@@ -18,6 +18,7 @@ import CellularAutomatas.proofs.constructions.border_dead
 import CellularAutomatas.proofs.constructions.composition.compose_cart
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.constructions.composition.compose_two_stage
+import CellularAutomatas.proofs.rt_closed
 
 open CellularAutomatas
 
@@ -161,15 +162,16 @@ theorem result_rt_transducers_closed_under_composition
   CellAutomaton.compose_trace_rt_spec C2 C1
 
 /-!
-### Result 6: Two-Stage Advice is RT-Closed
+### Result 6: Two-Stage Advice is RT-Closed (Strong)
 
-If f is two-stage, then ℒ(CA_rt(Σ × Γ) / f) = ℒ(CA_rt(Σ)).
+If f is two-stage, then for any Σ, ℒ(CA_rt((α×Σ) × Γ) / f^Σ) = ℒ(CA_rt(α×Σ)).
 -/
 
 theorem result_two_stage_is_rt_closed
     (adv : TwoStageAdvice α Γ) :
     adv.advice.rt_closed :=
   two_stage_is_rt_closed adv
+
 
 /-!
 ### Result 7: Prefix-Membership Advice is Two-Stage (hence RT-Closed)
@@ -184,16 +186,28 @@ theorem result_advice_prefix_mem_is_two_stage_advice:
   exact advice_prefix_mem_is_two_stage_advice ⟨ C, h ⟩
 
 /-!
-### Result 8: RT-Closed ∧ Causal ⟹ CArt Advice (hence Two-Stage, hence RT-Closed)
+### Result 8: Weak-RT-Closed ∧ Causal ⟹ CArt Advice (hence Two-Stage, hence RT-Closed)
 
-If an advice f is both RT-closed and causal, then f is a CArt advice,
+If an advice f is both weak-RT-closed and causal, then f is a CArt advice,
 i.e. computable by a single CA RT transducer. This implies two-stage.
 -/
 
 theorem result_is_cart_advice_of_rt_closed_and_causal:
-    ∀ adv: Advice α Γ, adv.rt_closed ∧ adv.causal → adv.is_cart_advice := by
+    ∀ adv: Advice α Γ, adv.weak_rt_closed ∧ adv.causal → adv.is_cart_advice := by
   intro adv h
   exact is_cart_advice_of_rt_closed_and_causal adv h.1 h.2
+
+/-!
+### Result 8b: Weak-RT-Closed ∧ Causal ⟹ RT-Closed (Strong)
+
+If an advice f is both weak-RT-closed and causal, then f is (strong) rt_closed.
+Proof: weak + causal → two-stage → strong.
+-/
+
+theorem result_rt_closed_of_weak_rt_closed_and_causal:
+    ∀ adv: Advice α Γ, adv.weak_rt_closed ∧ adv.causal → adv.rt_closed := by
+  intro adv h
+  exact rt_closed_of_weak_rt_closed_and_causal adv h.1 h.2
 
 /-!
 ### Result 9: Two-Stage Advice is Closed Under Composition
@@ -217,5 +231,29 @@ The advice f_mid that marks position ⌊n/2⌋ cannot be expressed as a two-stag
 theorem result_middle_not_two_stage_advice:
     ¬ Advice.is_two_stage_advice (Advice.middle α) := by
   exact middle_not_two_stage_advice
+
+/-!
+### Result 11: RT-Closed Advices are Closed Under Composition
+
+Given f₁ : Advice α Γ₁ (weak_rt_closed) and f₂ : Advice Γ₁ Γ₂ (rt_closed),
+the composition f₁.compose f₂ is weak_rt_closed.
+
+Given f₁ : Advice α Γ₁ (rt_closed) and f₂ : Advice Γ₁ Γ₂ (rt_closed),
+the composition f₁.compose f₂ is rt_closed.
+-/
+
+theorem result_weak_rt_closed_compose_rt_closed
+    {Γ' : Type} [Alphabet Γ']
+    (f₁: Advice α Γ') (f₂: Advice Γ' Γ)
+    (h₁: f₁.weak_rt_closed) (h₂: f₂.rt_closed):
+    (f₁.compose f₂).weak_rt_closed :=
+  Advice.weak_rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
+
+theorem result_rt_closed_compose_rt_closed
+    {Γ' : Type} [Alphabet Γ']
+    (f₁: Advice α Γ') (f₂: Advice Γ' Γ)
+    (h₁: f₁.rt_closed) (h₂: f₂.rt_closed):
+    (f₁.compose f₂).rt_closed :=
+  Advice.rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
 
 end AdviceResults

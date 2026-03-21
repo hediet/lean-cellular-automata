@@ -68,18 +68,18 @@ lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + a
 
 
 
-lemma L_c_in_rt (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+lemma L_c_in_rt (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
     ∃ C : CA_rt α, C.val.L = L_c adv c := by
-  have := tCellAutomatonWithAdvice.exists_CA_rt_of_rt_closed h (CA_adv_L_c α c)
+  have := tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed h (CA_adv_L_c α c)
   rw [CA_adv_L_c_spec] at this
   exact this
 
 
-noncomputable def CA_L_c (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) : CA_rt α :=
+noncomputable def CA_L_c (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) : CA_rt α :=
   Classical.choose (L_c_in_rt adv h c)
 
 @[simp]
-lemma CA_L_c_spec (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
+lemma CA_L_c_spec (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
     (CA_L_c adv h c).val.L = L_c adv c :=
   Classical.choose_spec (L_c_in_rt adv h c)
 
@@ -87,7 +87,7 @@ lemma CA_L_c_spec (adv: Advice α Γ) (h: adv.rt_closed) (c: Γ) :
 
 namespace PrefixStableProof
 
-  variable (adv: Advice α Γ) (h1: adv.rt_closed)
+  variable (adv: Advice α Γ) (h1: adv.weak_rt_closed)
 
 
   noncomputable def first_true_or_default (q: Γ → Bool) : Γ :=
@@ -138,10 +138,14 @@ end PrefixStableProof
 
 
 
-theorem is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
+theorem is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_cart_advice :=
   ⟨_, PrefixStableProof.cart_adv_spec adv h1 h2⟩
 
-theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.rt_closed) (h2: adv.causal):
+theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_two_stage_advice :=
   (is_cart_advice_of_rt_closed_and_causal adv h1 h2).is_two_stage
+
+theorem rt_closed_of_weak_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+    adv.rt_closed :=
+  PrefixStableProof.cart_adv_spec adv h1 h2 ▸ cart_is_rt_closed (PrefixStableProof.cart_adv adv h1)
