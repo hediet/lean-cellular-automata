@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Launch Component Explorer",
+      "type": "shell",
+      "command": "pnpm exec component-explorer serve -c ./component-explorer.json",
+      "isBackground": true,
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/js/presentation"
+      }
+    }
+  ]
+}

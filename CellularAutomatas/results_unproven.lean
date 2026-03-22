@@ -7,16 +7,12 @@ import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.constructions.basic_exp_word
 
 namespace CellularAutomatas.results_unproven
 
 variable {α} [Alphabet α]
 variable {Γ} [Alphabet Γ]
 
-
-theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } :=
-  CellularAutomatas.exp_word_length_rt
 
 
 -- TODO: Define tCellAutomaton.similar

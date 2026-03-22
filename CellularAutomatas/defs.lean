@@ -322,8 +322,8 @@ section Advice
     def compose {Γ₁: Type} {Γ₂: Type} (adv1: Advice α Γ₁) (adv2: Advice Γ₁ Γ₂): Advice α Γ₂ :=
       ⟨ adv2 ∘ adv1, by simp [adv1.len, adv2.len] ⟩
 
-    def lift (adv: Advice α Γ) (S: Type) [Alphabet S]: Advice (α × S) Γ :=
-      ⟨ fun w => adv (w.map Prod.fst), by simp ⟩
+    def lift {β} (adv: Advice α Γ) [Alphabet β] (f: β → α): Advice β Γ :=
+      ⟨ fun w => adv (w.map f), by simp ⟩
 
   end Advice
 
@@ -350,7 +350,7 @@ section Advice
     ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
 
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-    ∀ (S: Type) [Alphabet S], (f.lift S).weak_rt_closed
+    ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_rt_closed
 
 end Advice
 
@@ -465,14 +465,14 @@ section AdviceHelpers
     { f := fun w => (List.range w.length).map fun i => i == 2 ^ (Nat.log2 i) }
 
 
-
-  def Advice.from_len_marker (f: ℕ → Option ℕ): Advice α Bool :=
+  def Advice.from_marker (f: Word α → Option ℕ): Advice α Bool :=
     { f := fun w =>
-        let idx := f w.length
+        let idx := f w
         (List.range w.length).map fun i => some (i + 1) == idx
     }
 
-
+  def Advice.from_len_marker (f: ℕ → Option ℕ): Advice α Bool :=
+    Advice.from_marker (f ∘ List.length)
 
   def middle_idx (n: ℕ) := n / 2
 

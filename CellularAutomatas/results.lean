@@ -19,6 +19,7 @@ import CellularAutomatas.proofs.constructions.composition.compose_cart
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 import CellularAutomatas.proofs.rt_closed
+import CellularAutomatas.proofs.constructions.basic_exp_word
 
 open CellularAutomatas
 
@@ -136,6 +137,11 @@ theorem result_dead_border_is_dead
     e.C.dead e.C.border := by
   intro e
   exact @DeadBorder.spec_left_border_dead e
+
+
+
+theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } :=
+  CellularAutomatas.exp_word_length_rt
 
 end BaseResults
 

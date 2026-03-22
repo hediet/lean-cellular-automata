@@ -70,8 +70,8 @@ theorem Advice.weak_rt_closed_compose_rt_closed
     simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
   let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
 
-  -- Step 2: Use f₂.rt_closed with Σ = α to get (f₂.lift α).weak_rt_closed
-  have h_f2_α : (f₂.lift α).weak_rt_closed := h₂ α
+  -- Step 2: Use f₂.rt_closed to get (f₂.lift Prod.fst).weak_rt_closed
+  have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
   rw [advice_weak_rt_closed_iff] at h_f2_α
   have step2 := h_f2_α D
   rw [ℒ_CA_rt_iff] at step2
@@ -99,12 +99,12 @@ theorem Advice.weak_rt_closed_compose_rt_closed
   show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
   rw [map_embed_L, hD₁_L, Set.mem_setOf_eq]
   show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔
-    ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift α).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L
+    ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift Prod.fst).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L
   rw [map_embed_L]
 
   -- Both sides are membership in C.val.L, so show the words are equal
   suffices word_eq :
-      List.map proj (List.map Prod.swap (w ⨂ f₁.f w) ⨂ (f₂.lift α).f (List.map Prod.swap (w ⨂ f₁.f w)))
+      List.map proj (List.map Prod.swap (w ⨂ f₁.f w) ⨂ (f₂.lift Prod.fst).f (List.map Prod.swap (w ⨂ f₁.f w)))
       = w ⨂ f₂.f (f₁.f w) by
     constructor
     · intro h; rwa [word_eq]
@@ -121,10 +121,10 @@ theorem Advice.weak_rt_closed_compose_rt_closed
     simp [List.map_fst_zip]
 
 
--- Lift preserves composition: (f₁.compose f₂).lift S = (f₁.lift S).compose f₂
+-- Lift preserves composition: (f₁.compose f₂).lift π = (f₁.lift π).compose f₂
 omit [Alphabet α] [Alphabet Γ₁] [Alphabet Γ₂] in
-private lemma Advice.compose_lift_eq (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂) (S: Type) [Alphabet S]:
-    (f₁.compose f₂).lift S = (f₁.lift S).compose f₂ := by
+private lemma Advice.compose_lift_eq (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂) {S: Type} [Alphabet S] (π: S → α):
+    (f₁.compose f₂).lift π = (f₁.lift π).compose f₂ := by
   apply advice_eq_iff
   rfl
 
@@ -133,9 +133,9 @@ theorem Advice.rt_closed_compose_rt_closed
     (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂)
     (h₁: f₁.rt_closed) (h₂: f₂.rt_closed):
     (f₁.compose f₂).rt_closed := by
-  intro S _inst
+  intro S _inst π
   rw [Advice.compose_lift_eq]
-  exact Advice.weak_rt_closed_compose_rt_closed (f₁.lift S) f₂ (h₁ S) h₂
+  exact Advice.weak_rt_closed_compose_rt_closed (f₁.lift π) f₂ (h₁ S π) h₂
 
 
 end CellularAutomatas
