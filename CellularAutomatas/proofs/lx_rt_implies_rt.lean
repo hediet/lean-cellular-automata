@@ -362,9 +362,12 @@ namespace LxPipeline
   theorem stage2_left_indep : e.C₂.left_independent :=
     BroadcastOCA.C_left_independent e.stage2_data
 
-  theorem stage2_spec (c : Config e.α？) (T r : ℕ) :
+  theorem stage2_spec (c : Config e.α？) (T r : ℕ)
+      (hborder : ∀ p : ℤ, p < 0 → c p = none)
+      (h0 : (c 0).isSome)
+      (hT : T ≥ 1) :
       e.C₂.comp c (2*T + r) (-(T : ℤ) - r) = e.C₁'.comp c (2*T) (-(T : ℤ)) :=
-    BroadcastOCA.spec e.stage2_data c T r
+    BroadcastOCA.spec e.stage2_data c T r hborder h0 hT
 
   /-- Stage 2 full spec: For word w with m = nextPow2(|w|), n = |w|:
       C₂.comp(⟬x^m w⟭, 9(n-1), m - 8(n-1)) = C_orig.comp(⟬x^m w⟭, m+n-1, 0)
@@ -378,7 +381,24 @@ namespace LxPipeline
     -- Time: 2T + r = 2(m+n-1) + 7(n-1) - 2m = 9(n-1)
     -- Position: -T - r = -(m+n-1) - (7(n-1) - 2m) = m - 8(n-1)
     have hm_pos : e.m w ≥ 1 := nextPow2_pos w.length
-    have h := e.stage2_spec ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) (7*(e.n w - 1) - 2*(e.m w))
+    -- Border condition: word_to_config returns none for negative positions
+    have hborder : ∀ p : ℤ, p < 0 → (⟬e.x_prefix w ++ w⟭ : Config e.α？) p = none := by
+      intro p hp
+      simp [word_to_config, show ¬(p ≥ 0) from by omega]
+    -- Position 0 is inside the word (word is non-empty since m ≥ 1)
+    have h_len : (e.x_prefix w ++ w).length = e.m w + e.n w := by
+      simp [x_prefix, List.length_append, List.length_replicate]
+    have h0 : ((⟬e.x_prefix w ++ w⟭ : Config e.α？) 0).isSome = true := by
+      show (word_to_config (e.x_prefix w ++ w) 0).isSome = true
+      unfold word_to_config
+      split
+      · simp
+      · exfalso; omega
+    -- T = m+n-1 ≥ 1 since m ≥ 1
+    have hT : e.m w + e.n w - 1 ≥ 1 := by
+      have : e.m w ≥ 1 := hm_pos
+      omega
+    have h := e.stage2_spec ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) (7*(e.n w - 1) - 2*(e.m w)) hborder h0 hT
     -- h : C₂.comp(⟬x^m w⟭, 2(m+n-1) + r, -(m+n-1) - r) = C₁'.comp(⟬x^m w⟭, 2(m+n-1), -(m+n-1))
     -- RHS of h = C_orig.comp(..., m+n-1, 0) by stage1_full_spec
     calc e.C₂.comp ⟬e.x_prefix w ++ w⟭ (9*(e.n w - 1)) ((e.m w : ℤ) - 8*(e.n w - 1))

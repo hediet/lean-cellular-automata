@@ -48,10 +48,6 @@ variable {σ : Type} [Fintype σ] [DecidableEq σ]
     - some (q, a) = accumulated DFA state q with symbol a preserved -/
 abbrev DFAtoCA.Q (σ α : Type) := Option (σ × α)
 
-instance [Fintype σ] [Fintype α] : Fintype (DFAtoCA.Q σ α) := inferInstance
-instance [DecidableEq σ] [DecidableEq α] : DecidableEq (DFAtoCA.Q σ α) := inferInstance
-instance [Fintype σ] [Fintype α] [Inhabited σ] [Inhabited α] : Inhabited (DFAtoCA.Q σ α) := ⟨none⟩
-
 /-- Transition function: left-independent by construction (ignores first argument).
     Propagates DFA computation from left to right. -/
 def DFAtoCA.δ (M : DFA α σ) : DFAtoCA.Q σ α → DFAtoCA.Q σ α → DFAtoCA.Q σ α → DFAtoCA.Q σ α :=

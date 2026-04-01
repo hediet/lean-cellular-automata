@@ -9,6 +9,8 @@
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.basic_product_ca
 import CellularAutomatas.proofs.constructions.cart_fix_empty_word
+import CellularAutomatas.proofs.dfa_to_left_indep_ca
+import CellularAutomatas.proofs.finite_language_regular
 
 namespace CellularAutomatas
 
@@ -61,57 +63,31 @@ private theorem ca_rt_diff_two {α : Type} [Alphabet α]
 
 /-! ## Finite Language Recognition -/
 
-/-- The empty language is recognized by a constant-false CA.  -/
-private theorem empty_language_in_ca_rt {α : Type} [Alphabet α] :
-    (∅ : Set (Word α)) ∈ ℒ (CA_rt α) := by
-  rw [ℒ_CA_rt_iff]
-  let C : CellAutomaton α？ Bool := {
-    Q := Unit
-    δ := fun _ _ _ => ()
-    embed := fun _ => ()
-    project := fun _ => false
-  }
-  refine ⟨(toRtCa C).val, (toRtCa C).property, ?_⟩
-  ext w
-  rw [Set.mem_empty_iff_false, iff_false]
-  intro hw
-  -- `hw : w ∈ (toRtCa C).val.L` means `(toRtCa C).val.accepts w = true`
-  -- which unfolds to `C.comp ... = true`, but C.project always returns false
-  have h := (CA_rt_L_iff (C := toRtCa C)).mp hw
-  -- h : (toRtCa C).val.comp ⦋w⦌ (w.length - 1) 0 = true
-  -- In this CA: comp c t i = project (nextt c t i) = false
-  -- So h is: false = true, which is a contradiction
-  rw [CellAutomaton.comp, Function.comp_apply, CellAutomaton.project_config] at h
-  -- h now has: (↑(toRtCa C)).project ... = true
-  -- But (↑(toRtCa C)).project = C.project = fun _ => false
-  -- So h is: false = true
-  exact Bool.noConfusion h
-
-/-- A singleton language {w} is recognized by CA_rt.
-
-    Construction: Use fix_empty to handle the case w = [], otherwise
-    the empty language CA suffices since we combine via union.
-
-    TODO: This requires constructing a CA that compares input position-by-position
-    with a fixed word w. The state tracks (match_status, distance_from_border).
-    Key insight: cells at distance i from the border compare input[|input|-1-i] with w[|w|-1-i].
-    If |input| ≠ |w| or any mismatch, reject. -/
-private theorem singleton_in_ca_rt {α : Type} [Alphabet α]
-    (w : Word α) : ({w} : Set (Word α)) ∈ ℒ (CA_rt α) := by
-  sorry
+/-- ℒ(OCA_rt α) ⊆ ℒ(CA_rt α): every OCA_rt language is a CA_rt language. -/
+private theorem ℒ_OCA_rt_sub_CA_rt {α : Type} [Alphabet α] :
+    ℒ (OCA_rt α) ⊆ ℒ (CA_rt α) := by
+  intro L ⟨C, hC, hL⟩
+  exact ⟨C, ⟨hC.1.1, hC.2⟩, hL⟩
 
 /-- Any finite language is in ℒ(CA_rt α).
 
-    Proved by finite induction: ∅ is in ℒ(CA_rt α), and if F is in ℒ(CA_rt α),
-    then F ∪ {w} is also in ℒ(CA_rt α) (by binary union). -/
+    Proof: finite → regular (DFA) → ℒ(OCA_rt α) → ℒ(CA_rt α). -/
 theorem finite_language_in_ca_rt {α : Type} [Alphabet α]
     (F : Set (Word α)) (hF : F.Finite) :
     F ∈ ℒ (CA_rt α) := by
-  refine Set.Finite.induction_on (motive := fun S _ => S ∈ ℒ (CA_rt α)) F hF ?_ ?_
-  · exact empty_language_in_ca_rt
-  · intro w S _ _ hS_ca
-    rw [Set.insert_eq]
-    exact ca_rt_union_two {w} S (singleton_in_ca_rt w) hS_ca
+  -- Step 1: F is regular, so there exists a DFA recognizing F
+  have hReg := Language.finite_isRegular hF
+  obtain ⟨σ, hFin, M, hM⟩ := hReg
+  -- Manufacture missing instances from classical logic and M.start
+  letI : DecidableEq σ := Classical.typeDecidableEq σ
+  haveI : Inhabited σ := ⟨M.start⟩
+  haveI : DecidablePred (· ∈ M.accept) := Classical.decPred _
+  -- Step 2: DFA language is in ℒ(OCA_rt α)
+  have hOCA := dfa_language_in_OCA_rt M
+  -- Step 3: ℒ(OCA_rt α) ⊆ ℒ(CA_rt α)
+  have hCA := ℒ_OCA_rt_sub_CA_rt hOCA
+  -- Step 4: Rewrite M.accepts = F
+  rwa [hM] at hCA
 
 /-! ## Closure Under Finite Operations -/
 
