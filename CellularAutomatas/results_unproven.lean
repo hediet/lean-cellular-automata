@@ -22,8 +22,8 @@ variable {Γ} [Alphabet Γ]
 theorem const_speed_up: ℒ ({ C ∈ CA α | ∃ k, ∀ n, C.t n = n + k - 1 }) = ℒ (CA_rt α) := by
   sorry
 
-theorem ca_linear_time_eq_2n: ℒ (CA_lt α) = ℒ (CA_2n α) := by
-  sorry
+-- Moved to CellularAutomatas/proofs/rt_rev_implies_lt_eq_rt.lean
+-- theorem ca_linear_time_eq_2n: ℒ (CA_lt α) = ℒ (CA_2n α)
 
 theorem oca_linear_time_eq_2n: ℒ (OCA_lt α) = ℒ (OCA_2n α) := by
   sorry

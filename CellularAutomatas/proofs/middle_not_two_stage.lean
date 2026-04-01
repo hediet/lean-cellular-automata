@@ -104,7 +104,7 @@ lemma marker_list_take {n m k : ℕ} (h_le : m ≤ n) :
 
 lemma from_len_marker_eq_marker_list {α} (f : ℕ → Option ℕ) (w : Word α) (k : ℕ) (h : f w.length = some k) :
   (Advice.from_len_marker f) w = marker_list w.length k := by
-  dsimp [Advice.from_len_marker]
+  dsimp [Advice.from_len_marker, Advice.from_marker]
   simp [h, marker_list]
 
 -- 2. The Marker Counting Lemma

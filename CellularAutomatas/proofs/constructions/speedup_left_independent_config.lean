@@ -31,34 +31,76 @@ leaving the right (i ≥ 0) uncompressed.
 -/
 
 /-!
+## Free-standing compression types and functions
+
+These are independent of any CA structure — pure spatial operations on configurations.
+-/
+
+/-- A cell in a compressed configuration: either a single value (for i ≥ 0)
+    or a k-tuple of values (for i < 0). -/
+inductive SingleOrCompressed (k : ℕ) (α : Type) where
+  | single (a : α)
+  | compressed (w : Fin k → α)
+deriving DecidableEq
+
+instance {k : ℕ} {α : Type} [Fintype α] : Fintype (SingleOrCompressed k α) :=
+  Fintype.ofEquiv (α ⊕ (Fin k → α))
+    { toFun := fun
+        | .inl a => .single a
+        | .inr w => .compressed w
+      invFun := fun
+        | .single a => .inl a
+        | .compressed w => .inr w
+      left_inv := fun | .inl _ => rfl | .inr _ => rfl
+      right_inv := fun | .single _ => rfl | .compressed _ => rfl }
+
+instance {k : ℕ} {α : Type} [Inhabited α] : Inhabited (SingleOrCompressed k α) :=
+  ⟨.single default⟩
+
+instance {k : ℕ} {α : Type} [DecidableEq α] [Fintype α] [Inhabited α] :
+    Alphabet (SingleOrCompressed k α) := {}
+
+/-- Compress a configuration spatially: positions i ≥ 0 stay as singles,
+    positions i < 0 become k-tuples of consecutive original positions. -/
+def compressSpatial (k : ℕ) (c : Config α) : Config (SingleOrCompressed k α) :=
+  fun i => if i ≥ 0 then .single (c i)
+           else .compressed (fun j => c (k * i + j))
+
+/-!
 ## Structure and state space
 -/
 
 structure LeftIndepSpeedupConfig where
-  {Q : Type}
-  [_inst_Q : Alphabet Q]
-  δ : Q → Q → Q → Q
+  {α : Type}
+  {β : Type}
+  [_inst_α : Alphabet α]
+  [_inst_β : Alphabet β]
+  C_orig : CellAutomaton α β
   k : ℕ
   hk : k ≥ 2
-  h_left_indep : ∀ (q1 q2 q3 q1'), δ q1 q2 q3 = δ q1' q2 q3
+  h_left_indep : C_orig.left_independent
 
-attribute [instance] LeftIndepSpeedupConfig._inst_Q
+attribute [instance] LeftIndepSpeedupConfig._inst_α
+attribute [instance] LeftIndepSpeedupConfig._inst_β
 
 namespace LeftIndepSpeedupConfig
 
 variable (e : LeftIndepSpeedupConfig)
 
+/-- Abbreviation for the internal state type -/
+abbrev Q := e.C_orig.Q
+
 lemma hk1 : e.k ≥ 1 := Nat.one_le_of_lt e.hk
 
--- Since δ is left-independent, we define a two-argument version
-def δ₂ (b c : e.Q) : e.Q := e.δ default b c
+-- Since C_orig.δ is left-independent, we define a two-argument version
+def δ₂ (b c : e.Q) : e.Q := e.C_orig.δ default b c
 
-lemma δ₂_eq (a b c : e.Q) : e.δ a b c = e.δ₂ b c := by
-  show e.δ a b c = e.δ default b c
+lemma δ₂_eq (a b c : e.Q) : e.C_orig.δ a b c = e.δ₂ b c := by
+  show e.C_orig.δ a b c = e.C_orig.δ default b c
   exact e.h_left_indep a b c default
 
 /-!
-## State space Q' with three constructors
+## Internal state space Q' with three constructors
 -/
 
 inductive Q' where
@@ -275,8 +317,11 @@ lemma δ'_left_indep : ∀ (a b c a' : e.Q'), e.δ' a b c = e.δ' a' b c := by
 ## Compressed initial configuration
 -/
 
--- Compress a configuration: spatial tuples on the left, singles on the right
-def compress (c : Config e.Q) : Config e.Q' :=
+-- Compress a configuration using the free-standing compressSpatial
+def compress (c : Config e.α) : Config (SingleOrCompressed e.k e.α) := compressSpatial e.k c
+
+-- Internal version for proofs (maps to Q')
+def compress' (c : Config e.Q) : Config e.Q' :=
   fun i => if i ≥ 0 then Q'.single (c i)
            else Q'.spatial (fun j => c (e.k * i + j))
 
@@ -305,17 +350,19 @@ For `i ≥ 0`:
     nextt(compress c, t, i) = single(nextt(c, t, i))
 -/
 
--- The compressed CA (without embed/project — we work at the Q level)
--- For the generalized version, we don't need embed/project.
--- We define it as a raw transition system.
-noncomputable def C' : CellAutomaton e.Q (Fin e.k → e.Q) := {
+-- The compressed CA
+-- Input: either a single α (for i ≥ 0) or a spatial tuple (for i < 0)
+-- Output: k-tuple of projected outputs (β)
+def C' : CellAutomaton (SingleOrCompressed e.k e.α) (Fin e.k → e.β) := {
   Q := e.Q'
   δ := e.δ'
-  embed := fun q => Q'.single q   -- identity embedding for raw Q
+  embed := fun
+    | .single a => Q'.single (e.C_orig.embed a)
+    | .compressed w => Q'.spatial (fun j => e.C_orig.embed (w j))
   project := fun
-    | Q'.single q => fun _ => q
-    | Q'.spatial w => w
-    | Q'.diagonal w => w
+    | Q'.single _ => fun _ => default  -- uncompressed: return default (not meaningful in compressed regime)
+    | Q'.spatial w => fun j => e.C_orig.project (w j)
+    | Q'.diagonal w => fun j => e.C_orig.project (w j)
 }
 
 -- Simp lemmas for C' transitions
@@ -335,33 +382,34 @@ noncomputable def C' : CellAutomaton e.Q (Fin e.k → e.Q) := {
     e.C'.δ a (Q'.spatial w_b) (Q'.diagonal w_c) =
     Q'.diagonal (e.foldSwitch w_b (w_c ⟨0, by have := e.hk; omega⟩)) := rfl
 
+-- C' is left-independent
+lemma C'_left_independent : e.C'.left_independent := e.δ'_left_indep
+
+-- embed_config of compress equals compress' of embedded config
+lemma embed_compress (c : Config e.α) : e.C'.embed_config (e.compress c) = e.compress' ⦋c⦌ := by
+  funext i
+  simp only [CellAutomaton.embed_config, compress, compressSpatial, compress', C']
+  split_ifs <;> rfl
+
 /-!
 ## Main theorem
 
 The specification relates the compressed CA's evolution to the original CA's evolution.
 -/
 
--- Helper: build the original CA from the stored δ
-noncomputable def C_orig : CellAutomaton e.Q e.Q := {
-  Q := e.Q
-  δ := e.δ
-  embed := id
-  project := id
-}
-
 -- Invariant for non-negative positions
 theorem spec_nonneg (c : Config e.Q) (i : ℤ) (hi : i ≥ 0) (t : ℕ) :
-    e.C'.nextt (e.compress c) t i = Q'.single (e.C_orig.nextt c t i) := by
+    e.C'.nextt (e.compress' c) t i = Q'.single (e.C_orig.nextt c t i) := by
   induction t generalizing i with
   | zero =>
-    show e.compress c i = Q'.single (c i)
-    simp only [compress, if_pos hi]
+    show e.compress' c i = Q'.single (c i)
+    simp only [compress', if_pos hi]
   | succ t iht =>
     simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
     rw [iht i hi, iht (i + 1) (by omega)]
     -- Goal: δ'(_, single(nextt c t i), single(nextt c t (i+1))) = single(δ(nextt c t (i-1), ...))
     simp only [C'_δ_single, asQ_single]
-    show Q'.single (e.δ₂ _ _) = Q'.single (e.δ _ _ _)
+    show Q'.single (e.δ₂ _ _) = Q'.single (e.C_orig.δ _ _ _)
     congr 1
     exact (e.δ₂_eq _ _ _).symm
 
@@ -376,7 +424,7 @@ private lemma cast_fin_fun_apply {α : Type} {a b : ℕ} (h : a = b) (f : Fin a 
 -- One step of a left-independent CA only depends on center and right neighbor
 private lemma nextt_succ_left_indep (c : Config e.Q) (t : ℕ) (p : ℤ) :
     e.C_orig.nextt c (t + 1) p = e.δ₂ (e.C_orig.nextt c t p) (e.C_orig.nextt c t (p + 1)) := by
-  simp only [CellAutomaton.nextt_succ, CellAutomaton.next, C_orig]
+  simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
   exact e.δ₂_eq _ _ _
 
 -- stepWindow on a window of size ≥ 2 computes δ₂ of consecutive entries
@@ -513,19 +561,19 @@ private lemma foldSwitch_correct (c : Config e.Q) (T : ℕ) (P : ℤ)
 
 -- At negative positions, the state is always spatial or diagonal
 private lemma neg_is_spatial_or_diagonal (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) :
-    (∃ w, e.C'.nextt (e.compress c) t i = Q'.spatial w) ∨
-    (∃ w, e.C'.nextt (e.compress c) t i = Q'.diagonal w) := by
+    (∃ w, e.C'.nextt (e.compress' c) t i = Q'.spatial w) ∨
+    (∃ w, e.C'.nextt (e.compress' c) t i = Q'.diagonal w) := by
   induction t with
   | zero =>
     left
     exact ⟨fun j => c (e.k * i + ↑↑j),
-      by simp only [CellAutomaton.nextt_zero, compress, show ¬(i ≥ 0) from by omega, ite_false]⟩
+      by simp only [CellAutomaton.nextt_zero, compress', show ¬(i ≥ 0) from by omega, ite_false]⟩
   | succ t ih =>
     simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
     rcases ih with ⟨w, hw⟩ | ⟨w, hw⟩
     · -- center is spatial
       rw [hw]
-      rcases (e.C'.nextt (e.compress c) t (i + 1)) with q' | w_c | w_c
+      rcases (e.C'.nextt (e.compress' c) t (i + 1)) with q' | w_c | w_c
       · right; exact ⟨_, rfl⟩   -- spatial + single → diagonal
       · left; exact ⟨_, rfl⟩    -- spatial + spatial → spatial
       · right; exact ⟨_, rfl⟩   -- spatial + diagonal → diagonal
@@ -538,12 +586,12 @@ private lemma neg_is_spatial_or_diagonal (c : Config e.Q) (i : ℤ) (hi : i < 0)
 
 -- Invariant for negative positions, spatial regime
 theorem spec_spatial (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) < -i) :
-    e.C'.nextt (e.compress c) t i =
+    e.C'.nextt (e.compress' c) t i =
     Q'.spatial (fun j => e.C_orig.nextt c (e.k * t) (e.k * i + j)) := by
   induction t generalizing i with
   | zero =>
     simp only [CellAutomaton.nextt_zero, Nat.mul_zero, CellAutomaton.nextt_zero]
-    simp only [compress, show ¬(i ≥ 0) from by omega, ite_false]
+    simp only [compress', show ¬(i ≥ 0) from by omega, ite_false]
   | succ t iht =>
     -- (t+1 : ℤ) < -i means t < -(i+1), so i+1 < 0 (since i ≤ -2)
     have hi1 : i + 1 < 0 := by omega
@@ -651,7 +699,7 @@ private lemma foldDiag_diagonal_step (c : Config e.Q) (i : ℤ) (hi : i < 0) (t 
 
 -- Invariant for negative positions, diagonal regime
 theorem spec_diagonal (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) ≥ -i) :
-    e.C'.nextt (e.compress c) t i =
+    e.C'.nextt (e.compress' c) t i =
     Q'.diagonal (fun j => e.C_orig.nextt c ((t - (e.k - 1 : ℕ) * i - j).toNat) (e.k * i + j)) := by
   have hk1 : ((e.k - 1 : ℕ) : ℤ) = (e.k : ℤ) - 1 := by have := e.hk1; omega
   induction t generalizing i with
@@ -762,16 +810,24 @@ theorem spec_diagonal (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t
         exact e.foldDiag_diagonal_step c (-1) (by omega) t (by omega) _ _
           (fun j => rfl) rfl m.val m.isLt
 
--- Main specification: combines both regimes
--- For i < 0 and t ≥ -i (diagonal regime), the compressed CA tracks the original:
---   component j at compressed position i, time t
---   = original CA at time (t - (k-1)·i - j) and position (k·i + j)
-theorem spec (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) ≥ -i) (j : Fin e.k) :
-    e.C'.comp (e.compress c) t i j =
+-- Internal specification using compress' (Q'-valued config)
+private theorem spec' (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) ≥ -i) (j : Fin e.k) :
+    e.C'.comp (e.compress' c) t i j =
     e.C_orig.comp c ((t - (e.k - 1 : ℕ) * i - j).toNat) (e.k * i + j) := by
   simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
   rw [e.spec_diagonal c i hi t ht]
-  simp only [C', C_orig, id]
+  simp only [C']
+
+-- Main specification: combines both regimes
+-- For i < 0 and t ≥ -i (diagonal regime), the compressed CA tracks the original:
+--   component j at compressed position i, time t
+--   = project(original CA at time (t - (k-1)·i - j) and position (k·i + j))
+theorem spec (c : Config e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) ≥ -i) (j : Fin e.k) :
+    e.C'.comp (compressSpatial e.k c) t i j =
+    e.C_orig.comp c ((t - (e.k - 1 : ℕ) * i - j).toNat) (e.k * i + j) := by
+  show e.C'.comp (e.compress c) t i j = _
+  rw [e.embed_compress]
+  exact e.spec' ⦋c⦌ i hi t ht j
 
 end LeftIndepSpeedupConfig
 

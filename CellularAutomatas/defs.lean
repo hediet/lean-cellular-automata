@@ -220,6 +220,40 @@ section LCellAutomaton
 
 end LCellAutomaton
 
+section BorderedConfig
+
+/--
+Bordered configuration `[#₁, v | w, #₂]`:
+- Position `i ∈ [0, |w|)`: holds `wᵢ`
+- Position `i ∈ [-|v|, 0)`: holds `v_{-i-1}` (so position -1 has v₀, position -2 has v₁, etc.)
+- Position `i ≥ |w|`: holds `#₂`
+- Position `i < -|v|`: holds `#₁`
+
+Requires `|v| = |w|` for the mirror construction.
+-/
+def BorderedConfig {α : Type} (borderLeft : α) (v w : Word α) (borderRight : α) : Config α :=
+  fun p =>
+    if h : 0 ≤ p ∧ p < w.length then
+      w[p.toNat]
+    else if h2 : -v.length ≤ p ∧ p < 0 then
+      v[(-p - 1).toNat]  -- position -1 → v[0], position -2 → v[1], etc.
+    else if p ≥ w.length then
+      borderRight
+    else
+      borderLeft
+
+/-- Notation for bordered configurations: `[#₁ | v ‖ w | #₂]` -/
+-- Using ‖ to separate v and w since | is reserved
+notation:max "[" b₁ " | " v " ‖ " w " | " b₂ "]" => BorderedConfig b₁ v w b₂
+
+/-- Simplified notation when borders are the same -/
+def BorderedConfigSame {α : Type} (border : α) (v w : Word α) : Config α :=
+  BorderedConfig border v w border
+
+notation:max "[" b " | " v " ‖ " w "]" => BorderedConfigSame b v w
+
+end BorderedConfig
+
 section tCellAutomaton
 
   structure tCellAutomaton (α: Type) extends LCellAutomaton α where
@@ -256,8 +290,8 @@ section CAClasses
     variable (α: Type)
 
     def t_rt (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = n - 1 }
-    def t_2n (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = 2 * n }
-    def t_lt (S: Set (tCellAutomaton α)) := { C ∈ S | ∃ c: ℕ, ∀ n, C.t n = c * n }
+    def t_2n (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = 2 * (n - 1) }
+    def t_lt (S: Set (tCellAutomaton α)) := { C ∈ S | ∃ c: ℕ, ∀ n, C.t n = c * (n - 1) }
 
     def CA   := { C ∈ tCellAutomata α | C.p = fun _ => 0 }
     def CA_rt := CA α |> t_rt α

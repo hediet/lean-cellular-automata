@@ -140,10 +140,12 @@ section LTRTEquivalence
     exact lt_closed_under_rev α
 
   /-- (B) ⟹ (A): The classical hard direction.
-      Depends on `ca_linear_time_eq_2n`. -/
-  axiom rt_closed_under_rev_implies_lt_eq_rt :
-      ∀ (β : Type) [Alphabet β],
-      ℒ (CA_rt β) = ℒ_rev (CA_rt β) → ℒ (CA_lt β) = ℒ (CA_rt β)
+      By double reversal over Option β: lift L to Option β, pad with none^m,
+      apply reversal closure twice (over Option β) and lx_rt_implies_rt, project back.
+      See `proofs/rt_rev_implies_lt_eq_rt.lean` for the detailed proof. -/
+  theorem rt_closed_under_rev_implies_lt_eq_rt (β : Type) [Alphabet β]
+      (h : ℒ (CA_rt β) = ℒ_rev (CA_rt β)) : ℒ (CA_lt β) = ℒ (CA_rt β) := by
+    sorry
 
   /-- (C) ⟹ (B): From weak-RT-closure of rev,
       derive closure of ℒ(CA_rt) under reversal. -/
@@ -189,7 +191,7 @@ section LTRTEquivalence
       ℒ (CA_lt α) = ℒ (CA_rt α) ↔ ℒ (CA_rt α) = ℒ_rev (CA_rt α) := by
     constructor
     · exact lt_eq_rt_implies_rt_closed_under_rev α
-    · exact rt_closed_under_rev_implies_lt_eq_rt α α
+    · exact rt_closed_under_rev_implies_lt_eq_rt α
 
   /-- The full equivalence: (B) ⟺ (C). -/
   theorem rt_rev_equivalence :
