@@ -161,10 +161,10 @@ lemma signal_ready_to_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
   simp only [nextt_succ, next, C, δ', signalStep]
   have h_ne2 : (e.C.nextt ⦋c⦌ t p).2.1 ≠ 2 := by
     simp only [C] at h ⊢
-    intro heq; rw [heq] at h; exact absurd h (by decide : (2 : Fin 3) ≠ 1)
+    intro heq; rw [heq] at h; exact absurd h (by intro hc; exact absurd (Fin.ext_iff.mp hc) (by omega))
   simp only [C] at h h_ne2 ⊢
   simp only [h_ne2, ite_false, h, ite_true]
-  decide
+  rfl
 
 /-- Signal at position -k before time 2k-1 is 0 (only needs hborder) -/
 lemma signal_before_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1) (t : ℕ) (ht : t < 2 * k - 1)
@@ -194,7 +194,7 @@ lemma signal_before_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1) (t : ℕ
         by_cases ht'_lt : t' < 2 * (k - 1) - 1
         · have h := signal_before_ready c (k - 1) hkm1 t' ht'_lt hborder
           simp only [nextt_s, C] at h heq
-          rw [h] at heq; exact absurd heq (by decide)
+          rw [h] at heq; exact absurd heq (by intro hc; exact absurd (Fin.ext_iff.mp hc) (by omega))
         · have ht'_eq : t' = 2 * (k - 1) - 1 := by omega
           subst ht'_eq
           have h_prev : 2 * (k - 1) - 1 - 1 < 2 * (k - 1) - 1 := by omega
@@ -227,7 +227,7 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
     match k' with
     | 0 =>
       -- k = 1
-      have h_pos : -(((0 : ℕ) + 1 : ℕ) : ℤ) = -1 := by norm_num
+      have h_pos : -(((0 : ℕ) + 1 : ℕ) : ℤ) = -1 := by omega
       have h_neg1 : c (-1) = none := hborder (-1) (by omega)
       constructor
       · -- signal at -1 at time 1 is 1
@@ -239,8 +239,8 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
         simp only [nextt_zero, embed_config, embed', h_neg1]
         -- Unfold C to expose δ', then unfold signalStep
         unfold C δ' signalStep
-        -- norm_num to simplify -1 + 1 = 0
-        norm_num
+        -- simplify -1 + 1 = 0
+        simp only [show (-1 : ℤ) + 1 = 0 from by omega]
         cases hc0 : c 0 with
         | none => simp [hc0] at h0
         | some x => rfl
@@ -253,7 +253,7 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
           rw [nextt_succ, next]
           simp only [nextt_zero, embed_config, h_neg1]
           unfold C δ' signalStep
-          norm_num
+          simp only [show (-1 : ℤ) + 1 = 0 from by omega]
           cases hc0 : c 0 with
           | none => simp [hc0] at h0
           | some x => rfl
@@ -273,7 +273,7 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
         -- Express goal and hypotheses in same expanded form
         simp only [nextt_s, nextt_succ, next, C, δ', signalStep] at h_before h_fires ⊢
         rw [h_before, h_pos, h_fires]
-        native_decide
+        simp [signalStep]
       · -- signal at -(k''+2) at time 2(k''+2) is 2
         show e.nextt_s ⦋c⦌ (2 * (k'' + 1 + 1)) (-(((k'' + 1 + 1) : ℕ) : ℤ)) = 2
         have h_time2 : 2 * (k'' + 1 + 1) = (2 * (k'' + 2) - 1) + 1 := by omega
@@ -284,7 +284,7 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
           rw [h_time]
           simp only [nextt_s, nextt_succ, next, C, δ', signalStep] at h_before h_fires ⊢
           rw [h_before, h_pos, h_fires]
-          native_decide
+          simp [signalStep]
         exact e.signal_ready_to_fired c (2 * (k'' + 2) - 1) (-((k'' + 2 : ℕ) : ℤ)) h_ready
 
 /-- Signal at position -k (k ≥ 1) is 1 at time 2k-1 -/

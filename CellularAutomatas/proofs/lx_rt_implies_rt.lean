@@ -9,6 +9,8 @@ import CellularAutomatas.proofs.constructions.basic_fold
 import CellularAutomatas.proofs.constructions.basic_border_normalization
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.ca_rt_finite_closure
+import CellularAutomatas.proofs.nextpow2
+import CellularAutomatas.proofs.x_prefix_advice_two_stage_step1
 import Mathlib.Data.Set.Finite.List
 
 /-!
@@ -39,10 +41,6 @@ namespace CellularAutomatas
 open CellAutomaton
 
 /-! ## Part I: Definitions -/
-
-/-- Compute m = 2^⌈log₂ n⌉, the smallest power of 2 ≥ n. -/
-def nextPow2 (n : ℕ) : ℕ :=
-  if n ≤ 1 then 1 else 2 ^ (Nat.log2 (n - 1) + 1)
 
 /-- Key property: nextPow2 n ≤ 2 * (n - 1) for n ≥ 2. -/
 lemma nextPow2_le_two_pred (n : ℕ) (hn : n ≥ 2) : nextPow2 n ≤ 2 * (n - 1) := by
@@ -147,7 +145,7 @@ lemma hr_from_n_ge_2 (n : ℕ) (hn : n ≥ 2) : 7*(n - 1) ≥ 2*(nextPow2 n) := 
 -- The compression factor (must be ≥ 2, we use 8 for divisibility reasons)
 @[reducible] def k_factor : ℕ := 8
 
-lemma k_factor_ge_2 : k_factor ≥ 2 := by decide
+lemma k_factor_ge_2 : k_factor ≥ 2 := by simp [k_factor]
 
 /-- For n ≥ k_factor + 1 = 9, we have nextPow2(n) ≤ k_factor * (n + 1 - k_factor).
     Uses: nextPow2(n) ≤ 2*(n-1) = 2n - 2, and we need 2n - 2 ≤ 8n - 56,
@@ -217,9 +215,42 @@ def xPrefixAdvice (x : α) (k : ℕ) : Advice α (Fin k → α？) :=
         else fun _ => none
   }
 
-/-- The x-prefix advice is two-stage (hence RT-closed). -/
-axiom xPrefixAdvice_is_two_stage (x : α) (k : ℕ) (hk : k ≥ 2) :
-    (xPrefixAdvice x k).is_two_stage_advice
+/-- Maps Bool to xPrefixAdvice output: true → constant x, false → constant none. -/
+private def to_x_output (x : α) : Bool → (Fin k_factor → α？) :=
+  fun b => if b then (fun _ => some x) else (fun _ => none)
+
+/-- The x-prefix advice is two-stage for k = k_factor = 8.
+    CA stage: `exp_prefix_CA` marks positions where i+1 is a power of 2.
+    FST stage: `bFST` counts 3 marks (excluding last) then fills. -/
+theorem xPrefixAdvice_is_two_stage (x : α) :
+    (xPrefixAdvice x k_factor).is_two_stage_advice := by
+  -- Construct the two-stage advice
+  refine ⟨⟨Bool, exp_prefix_CA, bFST.map_output (to_x_output x)⟩, ?_⟩
+  -- Show ts.advice = xPrefixAdvice x k_factor
+  apply advice_eq_iff
+  funext w
+  simp only [TwoStageAdvice.advice, Function.comp_apply]
+  -- Use map_output_spec: (bFST.map_output g).scanr = List.map g ∘ bFST.scanr
+  rw [show (bFST.map_output (to_x_output x)).scanr =
+        List.map (to_x_output x) ∘ bFST.scanr from FiniteStateTransducer.map_output_spec]
+  simp only [Function.comp_apply]
+  -- Step 1: exp_prefix_CA.trace_rt w = mark_pow2_v w.length
+  have h_trace : exp_prefix_CA.trace_rt w = mark_pow2_v w.length := by
+    apply List.ext_getElem
+    · simp [mark_pow2_v, CellAutomaton.trace_rt]
+    intro i hi1 hi2
+    have hi : i < w.length := by
+      simp [CellAutomaton.trace_rt] at hi1; exact hi1
+    rw [exp_prefix_CA_trace_spec w i hi]
+    simp [mark_pow2_v]
+  rw [h_trace]
+  -- Step 2: bFST.scanr (mark_pow2_v n) = threshold_v n
+  rw [bFST_scanr_mark_pow2_eq_threshold]
+  -- Step 3: (threshold_v n).map (to_x_output x) = xPrefixAdvice x k_factor w
+  simp only [threshold_v, xPrefixAdvice, to_x_output, List.map_map, k_factor]
+  congr 1; funext i
+  -- to_x_output x (decide (i < nextPow2 n / 8)) = if i < nextPow2 n / 8 then ... else ...
+  by_cases h : i < nextPow2 w.length / 8 <;> simp [h, to_x_output]
 
 end Advice
 
@@ -855,7 +886,7 @@ namespace LxPipeline
         have hj_int : (↑↑j : ℤ) ≥ 0 := Int.natCast_nonneg _
         have hj_bound : (↑↑j : ℤ) < ↑k_factor := by exact_mod_cast hj_lt
         have hi_nonneg : (↑i : ℤ) ≥ 0 := Int.natCast_nonneg _
-        have hk_pos : (↑k_factor : ℤ) > 0 := by norm_num [k_factor]
+        have hk_pos : (↑k_factor : ℤ) > 0 := by simp [k_factor]
         -- i + 1 ≥ 1, so k * (i + 1) ≥ k > j
         have hi1_ge : (↑i : ℤ) + 1 ≥ 1 := by omega
         have hki_ge_k : (↑k_factor : ℤ) * (↑i + 1) ≥ ↑k_factor := by nlinarith
@@ -909,7 +940,7 @@ namespace LxPipeline
         have hkdiv_le : (↑k_factor : ℤ) * ↑(e.m w / k_factor) ≤ ↑(e.m w) := by
           exact_mod_cast Nat.mul_div_le (e.m w) k_factor
         have hki_ge_m : (↑k_factor : ℤ) * ↑i ≥ ↑k_factor * ↑(e.m w / k_factor) := by
-          have hk_pos : (↑k_factor : ℤ) > 0 := by norm_num [k_factor]
+          have hk_pos : (↑k_factor : ℤ) > 0 := by simp [k_factor]
           nlinarith
         -- So k*i ≥ k*(m/k) ≥ m (roughly)
         -- We have k - j > 0 (since j < k)
@@ -917,7 +948,7 @@ namespace LxPipeline
         -- Actually: m - k*i - k + j. If k*i ≥ m then m - k*i ≤ 0.
         -- So m - k*i - k + j ≤ 0 - k + j = j - k < 0 since j < k.
         have h_pos_neg : (↑(e.m w) : ℤ) - ↑k_factor * (↑i + 1) + ↑↑j < 0 := by
-          have hk_pos : (↑k_factor : ℤ) > 0 := by norm_num [k_factor]
+          have hk_pos : (↑k_factor : ℤ) > 0 := by simp [k_factor]
           -- Key: k | m, so m = k * (m/k) exactly (no remainder)
           have h_m_eq : e.m w = k_factor * (e.m w / k_factor) := Nat.eq_mul_of_div_eq_right hm_div rfl
           have h_m_eq_int : (↑(e.m w) : ℤ) = ↑k_factor * ↑(e.m w / k_factor) := by exact_mod_cast h_m_eq
@@ -937,7 +968,7 @@ namespace LxPipeline
             linarith
           -- Since j < k, we have j ≤ k - 1, so m - k*(i+1) + j ≤ -k + (k-1) = -1 < 0
           have hj_le : (↑↑j : ℤ) ≤ ↑k_factor - 1 := by
-            have hk_ge : k_factor ≥ 1 := by norm_num [k_factor]
+            have hk_ge : k_factor ≥ 1 := by omega
             have hj_add : (j : ℕ) + 1 ≤ k_factor := Nat.lt_iff_add_one_le.mp hj_lt
             have hj_nat : (j : ℕ) ≤ k_factor - 1 := by omega
             omega
@@ -950,7 +981,7 @@ namespace LxPipeline
   /-- The fold advice is two-stage (RT transducer marks powers of 2,
       then FST computes compressed cells). -/
   theorem foldAdvice_is_two_stage : e.foldAdvice.is_two_stage_advice :=
-    xPrefixAdvice_is_two_stage e.x k_factor k_factor_ge_2
+    xPrefixAdvice_is_two_stage e.x
 
   /-- The fold advice is RT-closed (two-stage ⟹ RT-closed). -/
   theorem foldAdvice_rt_closed : e.foldAdvice.rt_closed := by
@@ -1230,7 +1261,7 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (x : α) (L : Language α) :
                 · simp only [Nat.not_le, Nat.lt_one_iff] at hw
                   rw [hw]
                   -- Need nextPow2 0 ≥ 0, i.e., 1 ≥ 0
-                  decide
+                  exact Nat.le_of_succ_le (nextPow2_pos 0)
               -- Gap between powers of 2: if m < m' then m' ≥ 2*m
               -- This is because nextPow2 outputs 1 or powers of 2 = 2^k for k ≥ 0
               -- If m = 2^j < 2^k = m' then k ≥ j+1 so m' = 2^k ≥ 2^(j+1) = 2m
@@ -1261,7 +1292,7 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (x : α) (L : Language α) :
                 · simp only [Nat.not_le, Nat.lt_one_iff] at hv
                   rw [hv]
                   -- Need nextPow2 0 ≥ 0, i.e., 1 ≥ 0
-                  decide
+                  exact Nat.le_of_succ_le (nextPow2_pos 0)
               have h_gap : nextPow2 w.length ≥ 2 * nextPow2 v.length :=
                 nextPow2_gap v.length w.length h_gt
               have h_wlen_zero : w.length = 0 := by omega

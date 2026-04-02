@@ -60,6 +60,21 @@ The inductive step has deeply nested case splits on whether `i-1, i, i+1` are in
 
 ---
 
+## 7. Refactor `rt_closed`/`weak_rt_closed` to use `Σ` instead of `∃`
+
+**Files:** `CellularAutomatas/defs.lean`, `CellularAutomatas/proofs/ca_rt_utils.lean`, `CellularAutomatas/proofs/lx_rt_implies_rt.lean`
+
+Currently `weak_rt_closed` is `ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)`, a `Prop`-level set equality. Extracting a witness CA from it requires `Classical.choice`. But proofs of rt-closedness (e.g., `two_stage_is_rt_closed`) already construct the witnessing CA explicitly — the existential wrapper discards that data.
+
+**Idea:** Redefine as:
+```lean
+def Advice.weak_rt_closed (f: Advice α Γ) :=
+    ∀ (C : CA_rt (α × Γ)), Σ (C' : CA_rt α), C'.val.L = (C.val + f).L
+```
+This makes the definition `Type`-valued, so downstream code can pattern-match on the witness directly without choice. The reverse inclusion `ℒ (CA_rt α) ⊆ ℒ (CA_rt (α × Γ) + f)` already holds for any advice (`CA_rt_subseteq_CA_rt_with_advice`), so only the interesting direction is needed. Nonconstructive proofs of rt-closedness can still use `Classical.indefiniteDescription` to lift `∃` into `Σ`.
+
+---
+
 ## 7. Factor generic `state_track` lemma
 
 **Files:** `sim_from_lambda.lean`, `decompress_triple.lean`, `compress_to_diag.lean`

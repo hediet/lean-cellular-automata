@@ -187,25 +187,25 @@ section Stage2
 
   private lemma TrueCount_inc_eq (tc : TrueCount) :
       tc.inc = TrueCount.fromCount (min (TrueCount_toNat tc + 1) 2) := by
-    cases tc <;> native_decide
+    cases tc <;> decide
 
   private lemma TrueCount_toNat_fromCount_min (n : ℕ) :
       TrueCount_toNat (TrueCount.fromCount (min n 2)) = min n 2 := by
     match n with
-    | 0 => native_decide
-    | 1 => native_decide
+    | 0 => decide
+    | 1 => decide
     | n+2 => simp [TrueCount.fromCount, TrueCount_toNat]
 
   private lemma TrueCount_fromCount_eq_one_iff (n : ℕ) :
       (TrueCount.fromCount (min n 2) == TrueCount.one) = (n == 1) := by
     match n with
-    | 0 => native_decide
-    | 1 => native_decide
+    | 0 => decide
+    | 1 => decide
     | n+2 => simp [TrueCount.fromCount]
 
   private lemma TrueCount_fromCount_roundtrip (tc : TrueCount) :
       TrueCount.fromCount (min (TrueCount_toNat tc) 2) = tc := by
-    cases tc <;> native_decide
+    cases tc <;> decide
 
   private lemma scanr_reduce_q_count (q : TrueCount × Bool) (w : Word Bool) :
       (select_second_FST.scanr_reduce_q q w).1 =
@@ -542,7 +542,7 @@ section Composition
       refine ⟨by omega, k, by omega⟩
 
   /-- The true positions for exp1 are [0, 1, 3, 7, ...] up to 2^(log2 n) - 1. -/
-  private lemma truePos_eq_map_pow2 (n : ℕ) (hn : n ≥ 1) :
+  lemma truePos_eq_map_pow2 (n : ℕ) (hn : n ≥ 1) :
       (List.range n).filter (fun i => isPowerOfTwo (i + 1)) =
       (List.range (Nat.log2 n + 1)).map (fun k => 2^k - 1) := by
     apply List.eq_of_perm_of_sorted (r := (· ≤ ·))
@@ -583,7 +583,7 @@ section Composition
         omega
       · exact List.sorted_lt_range _
 
-  private lemma truePos_length_eq_log2_succ (n : ℕ) (hn : n ≥ 1) :
+  lemma truePos_length_eq_log2_succ (n : ℕ) (hn : n ≥ 1) :
       ((List.range n).filter (fun i => isPowerOfTwo (i + 1))).length = Nat.log2 n + 1 := by
     rw [truePos_eq_map_pow2 n hn]; simp
 
@@ -631,8 +631,8 @@ section Composition
         have h_small : truePos.length ≤ 1 := by
           rw [htp]
           rcases n with _ | _ | _
-          · native_decide
-          · native_decide
+          · decide
+          · decide
           · omega
         omega
 
@@ -699,11 +699,11 @@ section Composition
       have h0 : 0 ∈ truePos := by
         rw [htp, List.mem_filter]
         refine ⟨List.mem_range.mpr (by omega), ?_⟩
-        native_decide
+        decide
       have h1 : 1 ∈ truePos := by
         rw [htp, List.mem_filter]
         refine ⟨List.mem_range.mpr (by omega), ?_⟩
-        native_decide
+        decide
       have hdist : (0 : ℕ) ≠ 1 := by omega
       have hnodup : truePos.Nodup := List.Nodup.filter _ List.nodup_range
       have hcard : truePos.length ≥ 2 := by
