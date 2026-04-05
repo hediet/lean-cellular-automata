@@ -7,27 +7,31 @@ import CellularAutomatas.proofs.fssp
 An advice `f : Word α → Word Γ` is **t-time computable** if a CA transducer can
 compute `f(w)` at all positions `0 ≤ i < |w|` by time `t(|w|)`.
 
-The key special case is **n-time computable** (t(n) = n − 1), where the CA has
-exactly enough time for a signal to traverse the entire word.
+## Hierarchy of time-computable advices
+
+1. **Constant-time computable** (`ConstTimeComputableAdvice`):
+   computable in `k` steps for some fixed constant `k` (independent of `n`).
+   Examples: first/last marking (border detection, `k = 1`).
+   These are closely related to the existing **CArt transducer** advices —
+   see `c_is_border` in `basic_mark_border.lean` and the `annotate_with_first` /
+   `annotate_with_last` constructions in `basic_two_stage_advices.lean`.
+
+2. **n-time computable** (`NTimeComputableAdvice`, `t(n) = n − 1`):
+   the CA has exactly enough time for a signal to traverse the entire word.
+   Examples: reversal advice, k-factor compression.
+
+3. **General t-time computable** (`TimeComputableAdvice t`):
+   parameterized by an arbitrary time function `t : ℕ → ℕ`.
 
 ## Main results (statements)
 
-1. **Reversal is n-time computable**: characters propagate left at speed 1
-   and are mirrored at position 0, all within `n − 1` steps.
-
-2. **k-factor compression is n-time computable**: each cell gathers its
-   `k` neighbors within `k` steps, and `k < n` for large enough words.
-
-3. **L(CA_rt + f) ⊆ L(CA_2n) when f is n-time computable**:
+1. **First/last marking is constant-time (and CArt) computable**.
+2. **Reversal is n-time computable**: reflected signal construction.
+3. **k-factor compression is n-time computable**: local neighborhood gathering.
+4. **L(CA_rt + f) ⊆ L(CA_2n) when f is n-time computable**:
    use FSSP to synchronize at time `n − 1`, read the computed advice,
    then run the original CA for another `n − 1` steps (total 2(n − 1)).
-   The marking of first and last cells (needed by FSSP) is itself
-   a kTimeComputable advice (computable in constant time).
-
-## Generalization
-
-We parameterize by an arbitrary time function `t : ℕ → ℕ`.
-The `n − 1` case is recovered by `t = fun n => n - 1`.
+   The FSSP requires first/last marking, which is constant-time computable.
 -/
 
 namespace CellularAutomatas
@@ -63,6 +67,28 @@ structure TimeComputableAdvice (t : ℕ → ℕ) (adv : Advice α Γ) where
 def NTimeComputableAdvice (adv : Advice α Γ) :=
   TimeComputableAdvice (fun n => n - 1) adv
 
+/-! ## Constant-Time Computable Advice
+
+An advice is **constant-time computable** if there exists a fixed `k` such that
+the advice is computable at time `k`, regardless of word length.  This is strictly
+stronger than n-time computable (where the time budget grows with the word).
+
+The canonical examples are border-detection advices (first/last marking), where
+each cell can determine its status by inspecting its immediate neighbors.
+
+In the existing codebase, `CArtTransducer.advice` (from `defs.lean`) produces
+causal advice via `trace_rt`.  A CArt advice at position `i` is ready at time `i`,
+so positions 0 and `n − 1` know their border status at times 0 and 1 respectively.
+The first/last marking is therefore a CArt advice — see `basic_mark_border.lean`
+for the foundational `c_is_border` CA, and `basic_two_stage_advices.lean` for
+the `annotate_with_first` / `annotate_with_last` constructions already in the repo.
+-/
+
+/-- An advice is **constant-time computable** if it is `t`-time computable for
+    some constant `k` (independent of word length). -/
+def ConstTimeComputableAdvice (adv : Advice α Γ) :=
+  ∃ k : ℕ, TimeComputableAdvice (fun _ => k) adv
+
 /-! ## The first/last marking advice -/
 
 /-- Marks position 0 with `true` and all others with `false`. -/
@@ -78,16 +104,33 @@ def Advice.first_last_mark (α : Type) : Advice α (Bool × Bool) :=
   { f := fun w => (List.range w.length).map
       (fun i => (i == 0, i == w.length - 1)) }
 
-/-- The first/last marking is 1-time computable (constant time).
+/-- The first/last marking is a CArt advice: it is computable by a single
+    CA transducer via `trace_rt`.
 
-    **Proof idea**: A CA where position 0 checks if its left neighbor is
-    border (→ first), and each position checks if its right neighbor is
-    border (→ last). This takes exactly 1 step. -/
-theorem first_last_mark_time_computable :
-    TimeComputableAdvice (fun _ => 1) (Advice.first_last_mark α) := by
+    **Construction**: Build a CA whose state tracks whether the left neighbor
+    is border (→ first) and whether the right neighbor is border (→ last).
+    This is a product of two border-detection CAs (cf. `c_is_border` in
+    `basic_mark_border.lean`).
+
+    Since `trace_rt` at position `i` reads the CA output at time `i`,
+    and border detection is immediate (determined by the embedding), position 0
+    knows it is first at time 0, and position `n − 1` knows it is last at time 1. -/
+theorem first_last_mark_is_cart_advice :
+    (Advice.first_last_mark α).is_cart_advice := by
   sorry
 
-/-- As a corollary, first/last marking is n-time computable for n ≥ 2. -/
+/-- The first/last marking is constant-time computable (1 step suffices).
+
+    **Proof idea**: A CA where each cell checks its left neighbor for border
+    (→ first) and its right neighbor for border (→ last). After 1 step,
+    every position has determined both components. This is constant-time:
+    `k = 1`, independent of word length `n`. -/
+theorem first_last_mark_const_time_computable :
+    ConstTimeComputableAdvice (Advice.first_last_mark α) := by
+  sorry
+
+/-- As a corollary, first/last marking is n-time computable for n ≥ 2.
+    Follows from constant-time computability since `1 ≤ n − 1` for `n ≥ 2`. -/
 theorem first_last_mark_ntime_computable :
     NTimeComputableAdvice (Advice.first_last_mark α) := by
   sorry
@@ -140,21 +183,24 @@ def Advice.compress (k : ℕ) [NeZero k] [Inhabited α] : Advice α (Fin k → �
       fun j => if h : k * i + j.val < w.length then w[k * i + j.val] else default
   }
 
-/-- k-factor compression is n-time computable (for fixed k).
+/-- k-factor compression is constant-time computable (time `k − 1`, independent of `n`).
 
     **Proof idea**: Each cell needs to know the values of at most `k`
     neighbors. Information propagates at speed 1, so cell `i` knows
     cells `i − t` through `i + t` at time `t`. By time `k − 1`, each
-    cell knows its `k`-neighborhood. Since `k` is a constant and `k − 1 < n − 1`
-    for `n > k`, this is within the n − 1 time budget.
+    cell knows its `k`-neighborhood. Since `k` is a fixed constant,
+    this is `k − 1` steps regardless of word length.
 
     More precisely: build a CA whose state at position `i` at time `t`
     records the values of positions `max(0, i−t)` through `min(n−1, i+t)`.
     At time `k − 1`, position `i` has all values in `[i−(k−1), i+(k−1)]`,
-    which includes `[ki, ki+k−1]` (for appropriate index mapping).
+    which includes `[ki, ki+k−1]` (for appropriate index mapping). -/
+theorem compress_const_time_computable (k : ℕ) [NeZero k] [Inhabited α] :
+    ConstTimeComputableAdvice (Advice.compress (α := α) k) := by
+  sorry
 
-    The advice is actually computable in time `k − 1` (constant), but since
-    `k − 1 ≤ n − 1` for words of length ≥ k, it is also n-time computable. -/
+/-- k-factor compression is n-time computable, as a corollary of constant-time
+    computability (since `k − 1 ≤ n − 1` for words of length `≥ k`). -/
 theorem compress_ntime_computable (k : ℕ) [NeZero k] [Inhabited α] :
     NTimeComputableAdvice (Advice.compress (α := α) k) := by
   sorry
