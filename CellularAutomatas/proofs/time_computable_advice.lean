@@ -84,7 +84,7 @@ for the foundational `c_is_border` CA, and `basic_two_stage_advices.lean` for
 the `annotate_with_first` / `annotate_with_last` constructions already in the repo.
 -/
 
-/-- An advice is **constant-time computable** if it is `t`-time computable for
+/-- An advice is **constant-time computable** if it is time-computable for
     some constant `k` (independent of word length). -/
 def ConstTimeComputableAdvice (adv : Advice α Γ) :=
   ∃ k : ℕ, TimeComputableAdvice (fun _ => k) adv
