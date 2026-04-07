@@ -11,9 +11,8 @@ structure SolvesFSSP (C : CellAutomaton Bool？ Bool)
   quiescent_set : C.quiescent_set { C.border, C.inner false }
   fire_iff : ∀ n : ℕ, n ≥ 1 →
     let w := input n
-    ∀ t : ℕ, t ≤ time n →
-      ∀ p : ℤ, 0 ≤ p ∧ p < w.length →
-        C.comp ⟬w⟭ t p = true ↔ t = time n
+    ∀ t : ℕ, ∀ p : ℤ, 0 ≤ p ∧ p < w.length →
+        C.comp ⟬w⟭ t p = true ↔ t >= time n
 
 def SolvesFSSPOptimal (C : CellAutomaton Bool？ Bool) := SolvesFSSP C fssp_left_side (fun n => 2 * n - 2)
 

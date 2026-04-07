@@ -90,6 +90,13 @@ namespace TraceKx
     rw [Nat.add_right_comm]
     rw [Nat.add_sub_cancel]
 
+  @[simp]
+  theorem spec' (c: Config e.α) (t1: ℕ) (p: ℤ) (t2: Fin e.k) (h: t1 > e.k):
+      e.C.comp c t1 p t2 = some (e.C_orig.comp c (t1 - e.k + t2) p) := by
+    have key := congrFun (e.spec c (t1 - e.k) p) t2
+    simp [Nat.sub_add_cancel (Nat.le_of_lt h)] at key
+    exact key
+
 end TraceKx
 
 structure SpeedupAndTraceKx where
