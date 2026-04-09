@@ -215,181 +215,374 @@ lemma padLCA_comp_eq (C : CellAutomaton α？ β) (w : Word α) (m : ℕ)
   congr 1
   exact congrFun (congrArg _ (padLCA_embed_config_eq C w m)) p
 
-/-- Suffix-padded lifted language: Lrev_x(L, m) = { w.map(some) ++ x^(m |w|) | w ∈ L }.
-    This is the "dual" of L_x (prefix-padded) — padding comes after the word. -/
-def Lrev_x {α : Type} (x : Option α) (L : Language α) (m : ℕ → ℕ) : Language (Option α) :=
-  { u | ∃ w ∈ L, u = w.map some ++ List.replicate (m w.length) x }
+/-- Suffix-padded lifted language: Lrev_x(L) = { w.map some ++ none^k | w ∈ L, k ≥ |w| }.
+    This is the "dual" of L_x (prefix-padded) — padding comes after the word.
+    The padding length is relaxed: any k ≥ |w| is valid.
+    The split is unique since none and some _ are disjoint. -/
+def Lrev_x {α : Type} (L : Language α) : Language (Option α) :=
+  { u | ∃ (w : Word α) (k : ℕ), w ∈ L ∧ k ≥ w.length ∧
+        u = w.map some ++ List.replicate k none }
 
-/-- If L ∈ ℒ(CA_2n α), then Lrev_x(L, m) ∈ ℒ(CA_rt (Option α)), provided m(n) ≥ n.
+/-! ### Helper lemmas for the construction -/
 
-**Construction**:
-1. Given C ∈ CA_2n recognizing L at time 2*(n-1), position 0.
-2. Apply `latchedCA C (fun n => 2*(n-1))` with `linearTimeConstructible 2` —
-   latches C's output at time 2*(n-1), preserves it indefinitely.
-3. Apply `padLCA` (= `map_embed Option.join`) — makes `none`-padding invisible as border.
-   Both the computation and timer see effective word length `n`, not `N = n + m(n)`.
-4. In parallel, check that the word has the form `some^* ++ none^*` (no interleaving).
-5. The resulting CA reads at RT time `N - 1 = n + m(n) - 1`.
-   Since `m(n) ≥ n`, we have `N - 1 ≥ 2n - 1 ≥ 2*(n-1)`,
-   so the latched value from time `2*(n-1)` is available.
+/-- CA_rt is closed under intersection.
+    Proof: product CA with `&&` on outputs. -/
+private lemma ca_rt_inter_two {β : Type} [Alphabet β] (L₁ L₂ : Language β)
+    (h₁ : L₁ ∈ ℒ (CA_rt β)) (h₂ : L₂ ∈ ℒ (CA_rt β)) :
+    (L₁ ∩ L₂ : Set (Word β)) ∈ ℒ (CA_rt β) := by
+  rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
+  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
+  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
+  let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b))
+  refine ⟨C'.val, C'.property, ?_⟩
+  ext w
+  rw [Set.mem_inter_iff, ← hC₁_L, ← hC₂_L]
+  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
+  change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b)).comp ⦋w⦌ (w.length - 1) 0 = true
+    ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧ C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
+  simp only [comp_of_map_project, ca_zip_comp, Bool.and_eq_true]
 
-Key building blocks used:
-- `padLCA` / `padLCA_comp_eq` — maps none-padding to border
-- `latchedCA` / `latchedCA_correct` — latches output at timer-specified time
-- `linearTimeConstructible 2` — timer for time `2*(n-1)` -/
-lemma ca_2n_padded_in_ca_rt (L : Language α) (hL : L ∈ ℒ (CA_2n α))
-    (m : ℕ → ℕ) (hm : ∀ n, n ≤ m n) :
-    Lrev_x none L m ∈ ℒ (CA_rt (Option α)) := by
-  obtain ⟨C, hC_mem, hL_eq⟩ := hL
-  -- Extract properties of C ∈ CA_2n: reads at position 0, time 2*(n-1)
-  have hC_t : ∀ n, C.t n = 2 * (n - 1) := hC_mem.2
-  have hC_p : C.p = fun _ => 0 := by
-    have := hC_mem.1
-    simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this
-    exact this
-  -- Construction:
-  -- 1. latchedCA latches C's output at time 2*(n-1) using linearTimeConstructible 2
-  -- 2. padLCA collapses none-padding to border, so the timer sees effective word length n
-  -- 3. At RT time N-1 ≥ 2*(n-1), the latched value is C.accepts w
-  let tc2 := linearTimeConstructible 2 (by omega)
-  let D_inner := latchedCA C.toCellAutomaton (fun n => 2 * (n - 1)) tc2
-  refine ⟨{
-    toCellAutomaton := padLCA D_inner
-    t := fun N => N - 1
-    p := fun _ => 0
-  }, ?_, ?_⟩
-  · -- padLCA D_inner ∈ CA_rt (Option α): position 0, time N-1
-    show _ ∈ CA_rt (Option α)
-    refine ⟨⟨Set.mem_univ _, rfl⟩, fun _ => rfl⟩
-  · -- Language equality: Lrev_x none L m = D.L
-    subst hL_eq
-    ext u
-    simp only [Lrev_x, Set.mem_setOf_eq, tCellAutomaton.L, Set.mem_setOf_eq,
-               tCellAutomaton.accepts]
-    constructor
-    · -- Forward: u = w.map some ++ none^(m |w|) with w ∈ C.L → D accepts u
-      intro ⟨w, hw, hu⟩
-      subst hu
-      -- Step 1: padLCA makes none-padding invisible
-      -- padLCA_comp_eq: (padLCA D_inner).comp ⦋u⦌ t p = D_inner.comp ⦋w⦌ t p
-      change (padLCA D_inner).comp
-        (↑(w.map some ++ List.replicate (m w.length) none : Word (Option α)))
-        ((w.map some ++ List.replicate (m w.length) none).length - 1) 0 = true
-      rw [padLCA_comp_eq D_inner w (m w.length)]
-      -- Step 2: Simplify length and decompose RT time as 2*(n-1) + t'
-      simp only [List.length_append, List.length_map, List.length_replicate]
-      set t'_val := w.length + m w.length - 1 - 2 * (w.length - 1)
-      have h_time : w.length + m w.length - 1 =
-          2 * (w.length - 1) + t'_val := by
-        have := hm w.length; omega
-      rw [h_time]
-      -- Step 3: latchedCA_correct gives C's answer at time 2*(n-1)
-      rw [latchedCA_correct C.toCellAutomaton (fun n => 2 * (n - 1)) tc2 w t'_val]
-      -- Step 4: C.comp at (2*(n-1), 0) = C.accepts w
-      change C.toCellAutomaton.comp (↑w) (2 * (w.length - 1)) 0 = true
-      have h_accepts : C.toCellAutomaton.comp (↑w) (C.t w.length) (C.p w.length) = true := hw
-      rw [hC_t, congr_fun hC_p] at h_accepts
-      exact h_accepts
-    · -- Backward: D accepts u → u ∈ Lrev_x
-      -- Requires a word-structure checker verifying u = some^n ++ none^(m n).
-      -- The padLCA + latchedCA CA may accept words beyond Lrev_x
-      -- (any word where the none-collapsed computation gives acceptance after the latch time).
-      -- A product with a format-checking CA (checking some^* ++ none^* and exact padding count)
-      -- would close this gap.
-      sorry
+/-- Monotone format: words of the form `some^* ++ none^*` over Option α. -/
+def MonotoneFormat (α : Type) : Language (Option α) :=
+  { u | ∃ (w : Word α) (k : ℕ), u = w.map some ++ List.replicate k none }
 
-/-- Lrev_x none L nextPow2 = rev(L_none(rev(lift(L)))) by language algebra.
+/-- Padded format: monotone-format words with at least as many nones as somes.
+    This is `some^n ++ none^k` where `k ≥ n`. -/
+def PaddedFormat (α : Type) : Language (Option α) :=
+  { u | ∃ (w : Word α) (k : ℕ), k ≥ w.length ∧ u = w.map some ++ List.replicate k none }
 
-The suffix-padded lifted language equals the reversed prefix-padded reversed lifted language:
-- Lrev_x: { w.map(some) ++ x^m | w ∈ L }
-- rev(L_x(rev(lift(L)))): reverse { x^m ++ v | v.reverse ∈ lift(L) } = { v.reverse ++ x^m | v.reverse ∈ lift(L) }
-  = { w.map(some) ++ x^m | w ∈ L } since v.reverse = w.map(some) means v = (w.map some).reverse -/
-lemma Lrev_x_eq_rev_Lx_rev_lift (L : Language α) :
-    Lrev_x none L nextPow2 = Language.rev (L_x (none : Option α) (Language.rev (Language.lift L))) := by
+/-- Padded bool format: true^i ++ false^j where j ≥ i.
+    This is the "erased" version of PaddedFormat that ignores the actual values. -/
+def PaddedBoolFormat : Language Bool :=
+  { u | ∃ i j : ℕ, j ≥ i ∧ u = List.replicate i true ++ List.replicate j false }
+
+/-- **Axiom**: The padded bool format language `true^i false^j` with `j ≥ i` is in CA_rt.
+
+    **Construction sketch**: Intersect two CA_rt languages:
+    1. `true* false*` (monotone, 3-state DFA)
+    2. `{ w | #false ≥ #true }`: A signal from position 0 travels right at speed 1.
+       At RT time n-1, it's at position n-1. The boundary (first false) is at position i.
+       A signal from the boundary travels left. They meet iff i ≤ (n-1)/2, i.e., j ≥ i. -/
+axiom padded_bool_format_in_ca_rt : PaddedBoolFormat ∈ ℒ (CA_rt Bool)
+
+omit [Alphabet α] in
+/-- PaddedFormat α is the preimage of PaddedBoolFormat under Option.isSome. -/
+lemma paddedFormat_eq_preimage :
+    PaddedFormat α = { w | w.map Option.isSome ∈ PaddedBoolFormat } := by
   ext u
-  simp only [Lrev_x, Set.mem_setOf_eq, Language.rev, L_x, Language.lift]
+  simp only [PaddedFormat, PaddedBoolFormat]
   constructor
-  · -- Lrev_x → rev(L_x(rev(lift(L))))
-    -- Given: ∃ w ∈ L, u = w.map some ++ none^(nextPow2 |w|)
-    -- Need: ∃ v, (∃ w' ∈ L, v.reverse = w'.map some) ∧ u.reverse = none^(nextPow2 |v|) ++ v
-    intro ⟨w, hw, hu_eq⟩
-    use (w.map some).reverse
-    constructor
-    · -- v.reverse = w.map some for some w ∈ L
-      use w, hw
-      simp only [List.reverse_reverse]
-    · -- u.reverse = none^m ++ v
-      subst hu_eq
-      simp only [List.reverse_append, List.reverse_replicate, List.length_reverse, List.length_map]
-  · -- rev(L_x(rev(lift(L)))) → Lrev_x
-    -- Given: ∃ v, (∃ w' ∈ L, v.reverse = w'.map some) ∧ u.reverse = none^(nextPow2 |v|) ++ v
-    -- Need: ∃ w ∈ L, u = w.map some ++ none^(nextPow2 |w|)
-    intro ⟨v, ⟨w, hw, hv_rev_eq⟩, hu_rev_eq⟩
-    use w, hw
-    have hv_len : v.length = w.length := by
-      have : v.reverse.length = (w.map some).length := by rw [hv_rev_eq]
-      simp only [List.length_reverse, List.length_map] at this
-      exact this
-    calc u = u.reverse.reverse := by simp
-      _ = (List.replicate (nextPow2 v.length) none ++ v).reverse := by rw [hu_rev_eq]
-      _ = v.reverse ++ List.replicate (nextPow2 v.length) none := by
-          simp [List.reverse_append, List.reverse_replicate]
-      _ = w.map some ++ List.replicate (nextPow2 w.length) none := by rw [hv_rev_eq, hv_len]
+  · -- PaddedFormat → preimage: straightforward map computation
+    intro ⟨w, k, hk, hu⟩
+    refine ⟨w.length, k, hk, ?_⟩
+    subst hu
+    have : (Option.isSome ∘ @some α) = fun _ => true := funext (fun _ => rfl)
+    simp [List.map_append, List.map_map, List.map_replicate, this]
+  · -- preimage → PaddedFormat: extract values from true^i ++ false^j
+    intro ⟨i, j, hj, hu_map⟩
+    have h_len : u.length = i + j := by simpa using congrArg List.length hu_map
+    -- Element-wise: u[p].isSome matches (true^i ++ false^j)[p]
+    have h_elem (p : ℕ) (hp : p < i + j) :
+        (u[p]'(by omega)).isSome =
+        (List.replicate i true ++ List.replicate j false)[p]'(by simp; omega) := by
+      have : (u.map Option.isSome)[p]'(by simp; omega) =
+          (List.replicate i true ++ List.replicate j false)[p]'(by simp; omega) := by congr 1
+      simpa using this
+    -- First i elements are some _
+    have h_some (p : ℕ) (hp : p < i) : (u[p]'(by omega)).isSome = true := by
+      rw [h_elem p (by omega),
+          List.getElem_append_left (show p < (List.replicate i true).length by simp; omega)]
+      simp
+    -- Remaining j elements are none
+    have h_none (p : ℕ) (hp1 : i ≤ p) (hp2 : p < i + j) : u[p]'(by omega) = none := by
+      have h1 := h_elem p hp2
+      rw [List.getElem_append_right (show (List.replicate i true).length ≤ p by simp; omega)] at h1
+      simp at h1
+      cases hx : u[p] <;> simp_all
+    -- Build w by extracting values from the first i elements
+    let w : Word α := List.ofFn fun (k : Fin i) =>
+      (u[k.val]'(by omega)).get (h_some k.val k.isLt)
+    exact ⟨w, j, by simp [w]; exact hj, List.ext_getElem (by simp [w, h_len]) fun p hp1 hp2 => by
+      simp only [List.length_append, List.length_map, List.length_replicate, w,
+                  List.length_ofFn] at hp2
+      by_cases hp : p < i
+      · -- p in the some-part: (w.map some)[p] = some (u[p].get _) = u[p]
+        rw [List.getElem_append_left (by simp [w]; omega)]
+        rw [List.getElem_map, List.getElem_ofFn]
+        exact (Option.some_get _).symm
+      · -- p in the none-part: none^j[p-i] = none = u[p]
+        push_neg at hp
+        rw [List.getElem_append_right (by simp [w]; omega), List.getElem_replicate]
+        simp [(h_none p hp (by omega)).symm]
+        ⟩
 
-/-- For L ∈ ℒ(CA_2n), the suffix-padded lifted language is in CA_rt. -/
+/-- The padded format language is in CA_rt.
+
+    Uses the preimage characterization and lifts from CA_rt Bool via map_embed. -/
+lemma padded_format_in_ca_rt : PaddedFormat α ∈ ℒ (CA_rt (Option α)) := by
+  rw [paddedFormat_eq_preimage]
+  obtain ⟨C, hC_rt, hC_L⟩ := padded_bool_format_in_ca_rt
+  let C' : tCellAutomaton (Option α) := C.map_embed Option.isSome
+  refine ⟨C', ?_, ?_⟩
+  · rw [c_map_embed_in_ca_rt_iff_c_in_ca_rt]
+    exact hC_rt
+  · ext w
+    show w.map Option.isSome ∈ PaddedBoolFormat ↔ w ∈ (C.map_embed Option.isSome).L
+    simp only [map_embed_L, hC_L]
+    rfl
+
+/-- A variant of `latchedCA` that outputs a default value `d` before the latch fires,
+    instead of the current CA output. This ensures no false positives before the timer.
+    Shares Q/δ/embed with `latchedCA`, so state evolution (`nextt`) is identical. -/
+def latchedCA_strict {α β : Type} [Alphabet α] [Alphabet β]
+    (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t) (d : β)
+    : CellAutomaton α？ β where
+  Q := LatchedState C.Q tc.timer.Q β
+  δ := fun left mid right =>
+    let ca_next := C.δ left.ca_state mid.ca_state right.ca_state
+    let timer_next := tc.timer.δ left.timer_state mid.timer_state right.timer_state
+    let timer_signal := tc.timer.project timer_next
+    let new_latched :=
+      if mid.latched.isSome then mid.latched
+      else if timer_signal then some (C.project ca_next)
+      else none
+    ⟨ca_next, timer_next, new_latched⟩
+  embed := fun a =>
+    let ca_emb := C.embed a
+    let timer_emb := tc.timer.embed (a.map fun _ => ())
+    ⟨ca_emb, timer_emb, none⟩
+  project := fun s => s.latched.getD d
+
+/-- After the latch fires (at time ≥ t(n)), `latchedCA_strict` outputs the same
+    value as the original CA at time t(n).
+    Reuses `latch_triggered_at_t` and `latch_persists` from `latchedCA`. -/
+theorem latchedCA_strict_correct {α β : Type} [Alphabet α] [Alphabet β]
+    (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t) (d : β)
+    (w : Word α) (t' : ℕ) :
+    (latchedCA_strict C t tc d).comp ⦋⟬w⟭⦌ (t w.length + t') 0 =
+    C.comp ⦋⟬w⟭⦌ (t w.length) 0 := by
+  -- latchedCA_strict shares Q/δ/embed with latchedCA, only project differs.
+  change ((latchedCA C t tc).nextt
+    (CellAutomaton.embed_config (word_to_config w)) (t w.length + t') 0).latched.getD d =
+    C.project (C.nextt (CellAutomaton.embed_config (word_to_config w)) (t w.length) 0)
+  have h_persist := LatchedCA.latch_persists C t tc w (t w.length) (t w.length + t') rfl (by omega)
+  have h_trig := LatchedCA.latch_triggered_at_t C t tc w
+  rw [h_persist, h_trig]
+  simp
+
+/-- Before the latch fires (at time < t(n)), `latchedCA_strict` outputs the default `d`.
+    Reuses `latched_none_before_signal` from `latchedCA` — since `nextt` is the same
+    (by `rfl`), the latched field is `none` before the timer fires. -/
+theorem latchedCA_strict_before {α β : Type} [Alphabet α] [Alphabet β]
+    (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t) (d : β)
+    (w : Word α) (j : ℕ) (hj : j < t w.length) :
+    (latchedCA_strict C t tc d).comp ⦋⟬w⟭⦌ j 0 = d := by
+  -- latchedCA_strict shares Q/δ/embed with latchedCA, only project differs.
+  -- comp = project ∘ nextt, so the goal reduces to latched.getD d for latchedCA's nextt.
+  change ((latchedCA C t tc).nextt
+    (CellAutomaton.embed_config (word_to_config w)) j 0).latched.getD d = d
+  rw [LatchedCA.latched_none_before_signal C t tc w j hj]
+  rfl
+
+/-- For C ∈ CA_2n, padLCA(latchedCA_strict C (2*(n-1)) false) is a CA_rt that on
+    padded-format words `w.map some ++ none^k` with `k ≥ |w|` accepts iff `w ∈ C.L`.
+
+    **Construction**: `padLCA(latchedCA_strict C.toCellAutomaton (2*(n-1)) false)`:
+    - `latchedCA_strict` latches at time `2*(n-1)`, outputs `false` before latch fires
+    - `padLCA` maps none-padding to border (timer sees effective length n)
+
+    At RT time `n + k - 1` with `k ≥ n`:
+    - `n+k-1 ≥ 2*(n-1)`, so latch has fired → output = `C.accepts w`
+
+    **Depends on**: `latchedCA_strict_correct`. -/
+lemma exists_main_ca_for_Lrev_x (C : tCellAutomaton α) (hC : C ∈ CA_2n α) :
+    ∃ D ∈ CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
+      ((w.map some ++ List.replicate k none) ∈ D.L ↔ w ∈ C.L) := by
+  have hC_t : ∀ n, C.t n = 2 * (n - 1) := hC.2
+  have hC_p : C.p = fun _ => 0 := by
+    have := hC.1; simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this; exact this
+
+  -- Build CA: padLCA(latchedCA_strict C 2*(n-1) false)
+  let tc2 := linearTimeConstructible 2 (by omega)
+  let D_inner := latchedCA_strict C.toCellAutomaton (fun n => 2 * (n - 1)) tc2 false
+  let D := toRtCa (padLCA D_inner)
+
+  -- Helper: padLCA collapses padding → D_inner sees effective word w
+  have h_pad : ∀ (w : Word α) (k t : ℕ) (p : ℤ),
+      (padLCA D_inner).comp ⦋(w.map some ++ List.replicate k none : Word (Option α))⦌ t p =
+      D_inner.comp ⦋w⦌ t p :=
+    fun w k t p => padLCA_comp_eq D_inner w k t p
+
+  -- Helper: D membership unfolded for monotone-format words
+  have h_D_mono : ∀ (w : Word α) (k : ℕ),
+      (w.map some ++ List.replicate k none) ∈ D.val.L ↔
+      D_inner.comp ⦋w⦌ (w.length + k - 1) 0 = true := by
+    intro w k
+    rw [CA_rt_L_iff (C := D)]
+    simp only [List.length_append, List.length_map, List.length_replicate]
+    constructor
+    · intro h
+      change (padLCA D_inner).comp _ _ _ = _ at h
+      rwa [h_pad w k (w.length + k - 1) 0] at h
+    · intro h
+      change (padLCA D_inner).comp _ _ _ = _
+      rwa [h_pad w k (w.length + k - 1) 0]
+
+  -- Helper: latch-to-C connection (after latch fires at time 2*(n-1) + t')
+  have h_latch_C : ∀ (w : Word α) (t' : ℕ),
+      D_inner.comp ⦋⟬w⟭⦌ (2 * (w.length - 1) + t') 0 = true ↔ w ∈ C.L := by
+    intro w t'
+    rw [latchedCA_strict_correct]
+    show C.toCellAutomaton.comp ⦋⟬w⟭⦌ (2 * (w.length - 1)) 0 = true ↔ w ∈ C.L
+    rw [show (w ∈ C.L) ↔ (w ∈ tCellAutomaton.L C) from Iff.rfl,
+        tCellAutomaton.elem_L_iff, hC_t, congr_fun hC_p]
+
+  refine ⟨D.val, D.property, ?_⟩
+  intro w k hk
+  rw [h_D_mono]
+  -- k ≥ |w|, so |w| + k - 1 ≥ 2*(|w|-1). Write as 2*(|w|-1) + remainder.
+  by_cases hn : w.length = 0
+  · rw [show w.length + k - 1 = 2 * (w.length - 1) + (w.length + k - 1) from by omega]
+    exact h_latch_C w _
+  · have h_eq : w.length + k - 1 = 2 * (w.length - 1) + (k - w.length + 1) := by omega
+    rw [h_eq]
+    exact h_latch_C w _
+
+/-- If L ∈ ℒ(CA_2n α), then Lrev_x(L) ∈ ℒ(CA_rt (Option α)).
+
+    **Proof**: Intersect two CA_rt languages:
+    1. `D.L` from `exists_main_ca_for_Lrev_x` — on padded-format words (`k ≥ |w|`),
+       accepts iff `w ∈ L`
+    2. `PaddedFormat α` — restricts to `some^n none^k` with `k ≥ n`
+
+    Their intersection is exactly `Lrev_x L`.
+
+    Note: We need `PaddedFormat` (not just `MonotoneFormat`) because `latchedCA_strict`
+    only guarantees `false` output strictly before latch time `2*(n-1)`. At the boundary
+    `k = n-1`, RT time equals the latch time exactly, causing a false positive. -/
+lemma ca_2n_padded_in_ca_rt (L : Language α) (hL : L ∈ ℒ (CA_2n α)) :
+    Lrev_x L ∈ ℒ (CA_rt (Option α)) := by
+  obtain ⟨C, hC_mem, hL_eq⟩ := hL
+  subst hL_eq
+
+  -- Get the two component CAs
+  obtain ⟨D, hD_rt, hD_spec⟩ := exists_main_ca_for_Lrev_x C hC_mem
+  have h_padded := padded_format_in_ca_rt (α := α)
+
+  -- Lrev_x C.L = D.L ∩ PaddedFormat
+  suffices h_eq : Lrev_x (DefinesLanguage.L C) = (D.L ∩ PaddedFormat α : Set (Word (Option α))) by
+    rw [h_eq]
+    exact ca_rt_inter_two D.L (PaddedFormat α)
+      ⟨D, hD_rt, rfl⟩ h_padded
+
+  -- Prove language equality
+  ext u
+  simp only [Lrev_x, PaddedFormat]
+  constructor
+  · -- Lrev_x → D.L ∩ PaddedFormat
+    intro ⟨w, k, hw_mem, hk_ge, hu_eq⟩
+    constructor
+    · -- u ∈ D.L: by hD_spec since k ≥ |w| and w ∈ C.L
+      rw [hu_eq]; exact (hD_spec w k hk_ge).mpr hw_mem
+    · -- u ∈ PaddedFormat
+      exact ⟨w, k, hk_ge, hu_eq⟩
+  · -- D.L ∩ PaddedFormat → Lrev_x
+    intro ⟨hu_D, w, k, hk_ge, hu_eq⟩
+    -- u = w.map some ++ none^k with k ≥ |w| (from PaddedFormat)
+    -- u ∈ D.L, so by hD_spec: w ∈ C.L
+    rw [hu_eq] at hu_D
+    have hw_mem := (hD_spec w k hk_ge).mp hu_D
+    exact ⟨w, k, hw_mem, hk_ge, hu_eq⟩
+
+omit [Alphabet α] in
+/-- Lrev_x L = rev(L_x(rev(L))) by language algebra.
+
+The suffix-padded lifted language equals the reversed prefix-padded reversed language:
+- Lrev_x L: { w.map some ++ none^k | w ∈ L, k ≥ |w| }
+- rev(L_x(rev L)): reverse { none^k ++ v.map some | v ∈ rev L, k ≥ |v| }
+                 = { (v.map some).reverse ++ none^k | v.reverse ∈ L, k ≥ |v| }
+                 = { w.map some ++ none^k | w ∈ L, k ≥ |w| } -/
+lemma Lrev_x_eq_rev_Lx_rev (L : Language α) :
+    Lrev_x L = Language.rev (L_x (Language.rev L)) := by
+  ext u
+  simp only [Lrev_x, L_x, Language.rev]
+  constructor
+  · -- Lrev_x → rev(L_x(rev L))
+    intro ⟨w, k, hw_mem, hk_ge, hu_eq⟩
+    -- u = w.map some ++ none^k with w ∈ L, k ≥ nextPow2 |w|
+    -- Need: u.reverse ∈ L_x (rev L)
+    -- i.e., ∃ v ∈ rev L, k' ≥ nextPow2 |v|, u.reverse = none^k' ++ v.map some
+    use w.reverse, k
+    refine ⟨?_, ?_, ?_⟩
+    · -- w.reverse ∈ rev L, i.e., w.reverse.reverse ∈ L
+      show w.reverse.reverse ∈ L
+      simp only [List.reverse_reverse]
+      exact hw_mem
+    · -- k ≥ |w.reverse| = |w|
+      simp only [List.length_reverse]
+      exact hk_ge
+    · -- u.reverse = none^k ++ (w.reverse).map some
+      subst hu_eq
+      simp only [List.reverse_append, List.reverse_replicate, List.map_reverse]
+  · -- rev(L_x(rev L)) → Lrev_x
+    intro ⟨v, k, hv_mem, hk_ge, hu_rev_eq⟩
+    -- u.reverse = none^k ++ v.map some with v ∈ rev L (i.e., v.reverse ∈ L)
+    use v.reverse, k
+    constructor
+    · -- v.reverse ∈ L
+      exact hv_mem
+    · constructor
+      · -- k ≥ |v.reverse| = |v|
+        simp only [List.length_reverse]
+        exact hk_ge
+      · -- u = (v.reverse).map some ++ none^k
+        have : u = u.reverse.reverse := by simp
+        rw [this, hu_rev_eq]
+        simp only [List.reverse_append, List.reverse_replicate, List.map_reverse]
+
+/-- For L ∈ ℒ(CA_2n), the suffix-padded lifted language is in CA_rt.
+    Alias for `ca_2n_padded_in_ca_rt`. -/
 theorem ca_2n_suffix_padded_in_ca_rt (L : Language α) (hL : L ∈ ℒ (CA_2n α)) :
-    Lrev_x none L nextPow2 ∈ ℒ (CA_rt (Option α)) := by
-  have h := ca_2n_padded_in_ca_rt L hL nextPow2 (fun n => by
-    by_cases hn : n ≥ 1
-    · exact nextPow2_ge n hn
-    · simp only [Nat.not_le, Nat.lt_one_iff] at hn; simp [hn, nextPow2])
-  exact h
+    Lrev_x L ∈ ℒ (CA_rt (Option α)) :=
+  ca_2n_padded_in_ca_rt L hL
 
 /-- If ℒ_rev(CA_rt) ⊆ ℒ(CA_rt) for all alphabets,
     then ℒ(CA_2n β) ⊆ ℒ(CA_rt β).
 
-**Proof** (double reversal over Option β):
-1. Lift L to Option β: lifted(L) ∈ ℒ(CA_2n (Option β))
-2. Pad: Lrev_x none L nextPow2 ∈ ℒ(CA_rt (Option β)) — `ca_2n_suffix_padded_in_ca_rt`
-3. First reversal: L_none(rev(lifted(L))) ∈ ℒ(CA_rt (Option β)) — via ℒ_rev ⊆ ℒ
-4. Remove padding: rev(lifted(L)) ∈ ℒ(CA_rt (Option β)) — `lx_rt_implies_rt`
-5. Second reversal: lifted(L) ∈ ℒ(CA_rt (Option β)) — via ℒ_rev ⊆ ℒ
-6. Project back: L ∈ ℒ(CA_rt β) -/
+**Proof** (double reversal):
+1. Pad: Lrev_x L ∈ ℒ(CA_rt (Option β)) — `ca_2n_suffix_padded_in_ca_rt`
+2. Rewrite: = rev(L_x(rev L)) — `Lrev_x_eq_rev_Lx_rev`
+3. First reversal: L_x(rev L) ∈ ℒ(CA_rt (Option β)) — via ℒ_rev ⊆ ℒ
+4. Remove padding: rev L ∈ ℒ(CA_rt β) — `lx_rt_implies_rt`
+5. Second reversal: L ∈ ℒ(CA_rt β) — via ℒ_rev ⊆ ℒ -/
 theorem rt_rev_closed_implies_ca_2n_subset_ca_rt (β : Type) [Alphabet β]
     (h_rev_closure : ∀ (γ : Type) [Alphabet γ], ℒ_rev (CA_rt γ) ⊆ ℒ (CA_rt γ)) :
     ℒ (CA_2n β) ⊆ ℒ (CA_rt β) := by
   intro L hL_2n
 
-  -- Step 1: lift to Option β
-  have hL_2n_opt : (Language.lift L) ∈ ℒ (CA_2n (Option β)) := lift_mem_ca_2n L hL_2n
-
-  -- Step 2: Lrev_x none L nextPow2 ∈ ℒ(CA_rt (Option β))
-  have h2 : Lrev_x none L nextPow2 ∈ ℒ (CA_rt (Option β)) :=
+  -- Step 1: Lrev_x L ∈ ℒ(CA_rt (Option β))
+  have h1 : Lrev_x L ∈ ℒ (CA_rt (Option β)) :=
     ca_2n_suffix_padded_in_ca_rt L hL_2n
 
-  -- Rewrite to rev form for reversal closure
-  rw [Lrev_x_eq_rev_Lx_rev_lift] at h2
+  -- Step 2: Rewrite to rev form for reversal closure
+  rw [Lrev_x_eq_rev_Lx_rev] at h1
 
-  -- Step 3: L_none(rev(lifted(L))) ∈ ℒ(CA_rt (Option β)) by reversal closure
-  have h3 : L_x none (Language.rev (Language.lift L)) ∈ ℒ (CA_rt (Option β)) := by
-    rw [← Language.rev_rev (L_x _ (Language.rev (Language.lift L)))]
+  -- Step 3: L_x(rev L) ∈ ℒ(CA_rt (Option β)) by reversal closure
+  have h3 : L_x (Language.rev L) ∈ ℒ (CA_rt (Option β)) := by
+    rw [← Language.rev_rev (L_x (Language.rev L))]
     apply h_rev_closure
     simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
-    exact ⟨_, h2, rfl⟩
+    exact ⟨_, h1, rfl⟩
 
-  -- Step 4: rev(lifted(L)) ∈ ℒ(CA_rt (Option β)) by lx_rt_implies_rt
-  have h4 : Language.rev (Language.lift L) ∈ ℒ (CA_rt (Option β)) :=
-    lx_rt_implies_rt none (Language.rev (Language.lift L)) h3
+  -- Step 4: rev L ∈ ℒ(CA_rt β) by lx_rt_implies_rt
+  have h4 : Language.rev L ∈ ℒ (CA_rt β) :=
+    lx_rt_implies_rt (Language.rev L) h3
 
-  -- Step 5: lifted(L) ∈ ℒ(CA_rt (Option β)) by reversal closure
-  have h5 : (Language.lift L) ∈ ℒ (CA_rt (Option β)) := by
-    rw [← Language.rev_rev (Language.lift L)]
-    apply h_rev_closure
-    simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
-    exact ⟨_, h4, rfl⟩
-
-  -- Step 6: L ∈ ℒ(CA_rt β) by projection
-  exact unlift_mem_ca_rt L h5
+  -- Step 5: L ∈ ℒ(CA_rt β) by reversal closure
+  rw [← Language.rev_rev L]
+  apply h_rev_closure
+  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
+  exact ⟨_, h4, rfl⟩
 
 /-- Main direction (⇐): If ℒ_rev(CA_rt) ⊆ ℒ(CA_rt) for all alphabets,
     then ℒ(CA_rt) = ℒ(CA_2n).
@@ -429,5 +622,7 @@ theorem rt_eq_2n_iff_rt_eq_rt_rev :
       intro γ _
       rw [← h γ]
     exact rt_eq_rt_rev_implies_rt_eq_2n β h_rev
+
+#print axioms rt_eq_2n_iff_rt_eq_rt_rev
 
 end CellularAutomatas

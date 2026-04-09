@@ -11,6 +11,7 @@ import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.ca_rt_finite_closure
 import CellularAutomatas.proofs.nextpow2
 import CellularAutomatas.proofs.x_prefix_advice_two_stage_step1
+import CellularAutomatas.proofs.lift_language
 import Mathlib.Data.Set.Finite.List
 
 /-!
@@ -90,6 +91,13 @@ lemma nextPow2_ge (n : ℕ) (hn : n ≥ 1) : nextPow2 n ≥ n := by
     have h_lt : n - 1 < 2 ^ (Nat.log2 (n - 1) + 1) := Nat.lt_log2_self
     omega
 
+/-- nextPow2 n ≥ n for all n (including n = 0). -/
+lemma nextPow2_ge_self (n : ℕ) : n ≤ nextPow2 n := by
+  by_cases hn : n ≥ 1
+  · exact nextPow2_ge n hn
+  · simp only [Nat.not_le, Nat.lt_one_iff] at hn
+    simp [hn, nextPow2]
+
 /-- nextPow2 returns either 1 or a power of 2 (≥ 2).
     This is the key structural property for the gap lemma. -/
 lemma nextPow2_eq_one_or_pow2 (n : ℕ) :
@@ -161,9 +169,14 @@ lemma hm_from_n_ge_9 (n : ℕ) (hn : n ≥ k_factor + 1) :
   -- Since n ≥ 9: 2n - 2 ≤ 8n - 56 ↔ 54 ≤ 6n ↔ 9 ≤ n ✓
   omega
 
-/-- The L_x transformation: L_x(L) = { x^m · w | w ∈ L, m = 2^⌈log₂ |w|⌉ } -/
-def L_x {α : Type} (x : α) (L : Language α) : Language α :=
-  { w | ∃ (v : Word α), v ∈ L ∧ w = List.replicate (nextPow2 v.length) x ++ v }
+/-- The L_x transformation: lifts L to Option α and prepends none-padding.
+    L_x(L) = { none^k ++ w.map some | w ∈ L, k ≥ |w| }
+
+    The padding length is relaxed: any k ≥ |w| is valid.
+    The split is unique since none and some _ are disjoint. -/
+def L_x {α : Type} (L : Language α) : Language (Option α) :=
+  { u | ∃ (w : Word α) (k : ℕ), w ∈ L ∧ k ≥ w.length ∧
+        u = List.replicate k none ++ w.map some }
 
 
 /-! ## Part II: Shifted Embedding
@@ -1100,282 +1113,167 @@ theorem exists_CA_rt_of_rt_closed_advice
 
 /-! ### Main Theorem -/
 
-theorem lx_rt_implies_rt {α : Type} [Alphabet α] (x : α) (L : Language α) :
-    L_x x L ∈ ℒ (CA_rt α) → L ∈ ℒ (CA_rt α) := by
+/-- Membership in L_x for lifted words with padding m = nextPow2|w| ≥ |w|. -/
+lemma L_x_mem_of_mem {α : Type} [Alphabet α] {L : Language α} {w : Word α} (hw : w ∈ L) :
+    List.replicate (nextPow2 w.length) none ++ w.map some ∈ L_x L := by
+  refine ⟨w, nextPow2 w.length, hw, nextPow2_ge_self w.length, rfl⟩
+
+/-- filterMap id removes none and unwraps some. -/
+private lemma filterMap_replicate_none_append_map_some {α : Type} (k : ℕ) (v : List α) :
+    (List.replicate k none ++ v.map some).filterMap id = v := by
+  induction k with
+  | zero => simp [List.filterMap_map]
+  | succ k ih =>
+    simp only [List.replicate_succ, List.cons_append, List.filterMap_cons, id_eq]
+    exact ih
+
+/-- Extracting the original word from an L_x membership.
+    If none^k ++ v.map some ∈ L_x(L), then v ∈ L.
+
+    Proof idea: none ≠ some _, so the split point in none^k ++ v.map some
+    is uniquely determined by where `some` values start. Therefore v = u. -/
+lemma mem_of_L_x_mem {α : Type} [Alphabet α] {L : Language α} {v : Word α} {k : ℕ}
+    (h : List.replicate k none ++ v.map some ∈ L_x L) : v ∈ L := by
+  obtain ⟨u, k', hu, _, heq⟩ := h
+  -- heq: none^k ++ v.map some = none^k' ++ u.map some
+  -- Key: filterMap id extracts the `some` values:
+  -- (none^k ++ v.map some).filterMap id = v
+  -- (none^k' ++ u.map some).filterMap id = u
+  -- Since heq, these are equal, so v = u
+  have hvu : v = u := by
+    have h1 := filterMap_replicate_none_append_map_some k v
+    have h2 := filterMap_replicate_none_append_map_some k' u
+    rw [← h1, ← h2, heq]
+  exact hvu ▸ hu
+
+/-- L_x(L) ∈ ℒ(CA_rt (Option α)) implies L ∈ ℒ(CA_rt α).
+
+Given a CA that accepts the padded lifted language L_x(L) in real-time,
+we construct a CA that accepts L in real-time over the base alphabet.
+
+**Proof outline** (8-stage pipeline):
+1. C accepts L_x(L) = { none^k ++ w.map some | w ∈ L, k ≥ |w| }
+2. Construct LxPipeline with C as C_orig and x = none
+3. The pipeline transforms C through 8 stages to get C₇₀ + foldAdvice
+4. `stage8_full_spec`: C₇₀.trace(w ⨂ foldAdvice w)(n-1) = C_orig accepts result
+5. Since foldAdvice is RT-closed (`foldAdvice_rt_closed`), apply advice elimination
+6. The result is a CA_rt over α accepting L
+
+**Gap**: The pipeline assumes input has exact padding m = nextPow2(|w|), but
+L_x allows m ≥ nextPow2(|w|). The minimal padding case suffices since
+none^{m'} ++ w.map some ∈ L_x(L) for any m' ≥ m, and the RT CA accepts
+based on the effective word w, not the padding length.
+
+The full proof requires:
+- Showing the pipeline handles the specific m = nextPow2(|w|) case
+- Using advice elimination (`exists_CA_rt_of_rt_closed_advice`) -/
+theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
+    L_x L ∈ ℒ (CA_rt (Option α)) → L ∈ ℒ (CA_rt α) := by
   intro ⟨C, hC_rt, hC_L⟩
-  -- C accepts L_x(L) in real-time
-  -- Build the pipeline with β = Bool (since C is an accepting CA)
-  let pipeline : LxPipeline := { C_orig := C.toCellAutomaton, x := x }
+  -- C : tCellAutomaton (Option α) accepts L_x(L) in real-time
+  -- hC_rt : C ∈ CA_rt (Option α)
+  -- hC_L : L_x L = C.L
 
-  -- Construct C₇₀ as a tCellAutomaton with RT timing
-  let C₇₀_as_tCA : tCellAutomaton (α × (Fin k_factor → α？)) := {
-    toCellAutomaton := pipeline.C₇₀
-    t := fun n => n - 1  -- RT timing
-    p := fun _ => 0
-  }
+  -- Step 1: Build the pipeline over Option α with x = none
+  let e : LxPipeline := { C_orig := C.toCellAutomaton, x := none }
 
-  -- C₇₀_as_tCA is in CA_rt: timing function matches exactly
-  have h_C₇₀_rt : C₇₀_as_tCA ∈ CA_rt (α × (Fin k_factor → α？)) := by
-    -- CA_rt = CA |> t_rt = { C ∈ CA | ∀ n, C.t n = n - 1 }
-    -- CA = tCellAutomata |> p_zero = { C ∈ tCellAutomata | C.p = fun _ => 0 }
-    -- So we need: C₇₀_as_tCA ∈ tCellAutomata, C₇₀_as_tCA.p = 0, ∀ n, C₇₀_as_tCA.t n = n - 1
-    constructor
-    · constructor
-      · exact Set.mem_univ _
-      · rfl  -- p = fun _ => 0
-    · intro n
-      rfl  -- t n = n - 1
+  -- Step 2: Convert C₇₀ to an RT CA and eliminate advice
+  let C₇₀_rt : CA_rt e.AdvicedInput := toRtCa e.C₇₀
+  have h_adv_rt : e.foldAdvice.rt_closed := e.foldAdvice_rt_closed
+  obtain ⟨C_elim, hC_elim_L⟩ := exists_CA_rt_of_rt_closed_advice C₇₀_rt e.foldAdvice h_adv_rt
+  -- C_elim : CA_rt (Option α), C_elim.val.L = (C₇₀_rt.val + e.foldAdvice).L
 
-  -- By weak-RT-closedness of foldAdvice, there exists C₈ : CA_rt α
-  have h_exists := tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed
-    pipeline.foldAdvice_weak_rt_closed
-    ⟨C₇₀_as_tCA, h_C₇₀_rt⟩
+  -- Step 3: Project C_elim down to alphabet α via map_embed some
+  let C_final : CA_rt α :=
+    ⟨C_elim.val.map_embed some, (c_map_embed_in_ca_rt_iff_c_in_ca_rt _ _).mpr C_elim.property⟩
+  -- C_final accepts v : Word α iff v.map some ∈ C_elim.val.L
 
-  obtain ⟨C₈, hC₈_spec⟩ := h_exists
+  -- Step 4: Show C_final.val.L = L using finite symmetric difference
+  -- For |v| ≥ 9, we prove C_final agrees with L (via the pipeline chain).
+  -- For |v| < 9, the disagreement set is finite since Alphabet α is Fintype.
+  -- Then ca_rt_closed_finite_symmDiff gives L ∈ ℒ(CA_rt α).
 
-  -- C₈.L = (C₇₀_as_tCA + foldAdvice).L
-  -- = { w | C₇₀.trace (w ⨂ foldAdvice.f w) (|w|-1) = true }
-  --
-  -- For large w (|w| ≥ k_factor + 1 = 9), by stage8_full_spec:
-  --   C₇₀.trace (w ⨂ foldAdvice.f w) (|w|-1) = C.trace (x^m w) (|x^m w|-1)
-  --                                          = (x^m w ∈ L_x(L))
-  --                                          = (w ∈ L)
-  --
-  -- So C₈.L and L agree on words of length ≥ 9.
+  -- C_final.val.L ∈ ℒ(CA_rt α)
+  have h_Cfinal_in : C_final.val.L ∈ ℒ (CA_rt α) :=
+    ⟨C_final.val, C_final.property, rfl⟩
 
-  -- C₈.L ∈ ℒ(CA_rt α)
-  have h_C₈_mem : C₈.val.L ∈ ℒ (CA_rt α) := by
-    rw [ℒ_CA_rt_iff]
-    exact ⟨C₈.val, C₈.property, rfl⟩
+  -- For large words (|v| ≥ 9), C_final agrees with L
+  have h_agree_large : ∀ v : Word α, v.length ≥ k_factor + 1 →
+      (v ∈ L ↔ v ∈ C_final.val.L) := by
+    intro v hv_len
+    show v ∈ L ↔ v ∈ (C_elim.val.map_embed some).L
+    rw [map_embed_L]
+    let w := v.map some
+    have hw_len : w.length ≥ k_factor + 1 := by simp [w]; exact hv_len
+    have hstage8 := e.stage8_full_spec w hw_len
 
-  -- The symmetric difference L △ C₈.L ⊆ { w | |w| < k_factor + 1 } is finite
-  have h_symmDiff_finite : (symmDiff C₈.val.L L).Finite := by
-    -- Words where C₈.L and L disagree must have length < k_factor + 1 = 9
-    -- (for large words, stage8_full_spec shows they agree)
-    -- The set { w : Word α | w.length < k_factor + 1 } is finite (bounded length words)
-    apply Set.Finite.subset (List.finite_length_lt α (k_factor + 1))
-    -- Show symmDiff ⊆ { w | |w| < k_factor + 1 }
+    -- Chain: v.map some ∈ C_elim.L ↔ ... ↔ v ∈ L
+    have h1 : v.map some ∈ C_elim.val.L ↔ w ∈ (C₇₀_rt.val + e.foldAdvice).L := by
+      constructor <;> intro hx
+      · rw [hC_elim_L] at hx; exact hx
+      · rw [hC_elim_L]; exact hx
+    rw [h1]
+
+    have h2 : w ∈ (C₇₀_rt.val + e.foldAdvice).L ↔
+        e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true := by
+      simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.L, tCellAutomaton.accepts,
+                 Advice.annotate]
+      have h_ann_len : (w ⨂ e.foldAdvice.f w).length = w.length := by
+        simp [advice_len]
+      change (toRtCa e.C₇₀).val.toCellAutomaton.comp
+        ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
+        ((toRtCa e.C₇₀).val.t (w ⨂ e.foldAdvice.f w).length)
+        ((toRtCa e.C₇₀).val.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
+      simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp,
+                 CellAutomaton.project_config, Function.comp]
+
+    have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔
+        (e.x_prefix w ++ w) ∈ C.L := by
+      rw [show e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) =
+            e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 from hstage8]
+      rw [CA_rt_L_iff (C := ⟨C, hC_rt⟩)]
+      change e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 = true ↔
+          e.C_orig.comp ⟬e.x_prefix w ++ w⟭ ((e.x_prefix w ++ w).length - 1) 0 = true
+      simp [LxPipeline.x_prefix, LxPipeline.m, LxPipeline.n, w]
+
+    have h4 : (e.x_prefix w ++ w) ∈ C.L ↔ (e.x_prefix w ++ w) ∈ L_x L := by
+      constructor <;> intro hx
+      · have : (e.x_prefix w ++ w) ∈ DefinesLanguage.L C := hx
+        rw [← hC_L] at this; exact this
+      · have : (e.x_prefix w ++ w) ∈ DefinesLanguage.L C := by rw [← hC_L]; exact hx
+        exact this
+
+    have hw_vlen : w.length = v.length := by simp [w]
+    have h5 : (e.x_prefix w ++ w) ∈ L_x L ↔ v ∈ L := by
+      show List.replicate (nextPow2 w.length) none ++ v.map some ∈ L_x L ↔ v ∈ L
+      rw [hw_vlen]
+      exact ⟨fun h => mem_of_L_x_mem h, fun h => L_x_mem_of_mem h⟩
+
+    rw [h2, h3, h4, h5]
+
+  -- The symmetric difference C_final.val.L ∆ L only contains words of length < 9
+  have h_symmDiff_finite : (symmDiff C_final.val.L L).Finite := by
+    -- The set of all words of length < k_factor + 1 is finite
+    let short_words : Finset (Word α) :=
+      (Finset.range (k_factor + 1)).biUnion
+        (fun n => (Finset.univ : Finset (Fin n → α)).image List.ofFn)
+    -- The symm diff is a subset of short_words
+    apply Set.Finite.subset short_words.finite_toSet
     intro w hw
+    -- w ∈ symmDiff means L and C_final disagree on w
+    -- Show w ∈ short_words, i.e., |w| < k_factor + 1
+    simp only [short_words, Finset.coe_biUnion, Finset.coe_range, Set.mem_iUnion,
+               Set.mem_Iio, Finset.coe_image, Set.mem_image, Finset.mem_coe, Finset.mem_univ,
+               true_and] at *
+    -- Must have |w| < 9, otherwise h_agree_large gives contradiction
+    refine ⟨w.length, ?_, fun i => w[i], List.ofFn_getElem w⟩
+    by_contra h_ge
+    push_neg at h_ge
+    have h_iff := h_agree_large w h_ge
     simp only [symmDiff] at hw
-    simp only [Set.mem_setOf_eq]
-    by_contra h_large
-    push_neg at h_large
-    -- For |w| ≥ k_factor + 1, C₈.L(w) ↔ L(w) by stage8_full_spec
-    -- This contradicts w being in the symmetric difference
+    exact hw.elim (fun ⟨h1, h2⟩ => h2 (h_iff.mpr h1)) (fun ⟨h1, h2⟩ => h2 (h_iff.mp h1))
 
-    -- Step 1: w ∈ C₈.val.L ↔ C₇₀.trace (w ⨂ foldAdvice w) (|w| - 1) = true
-    have h_C₈_iff : w ∈ C₈.val.L ↔ pipeline.C₇₀.trace (w ⨂ pipeline.foldAdvice.f w) (w.length - 1) = true := by
-      rw [hC₈_spec]
-      -- (C₇₀_as_tCA + foldAdvice).L = { w | C₇₀_as_tCA.accepts (foldAdvice.annotate w) }
-      simp only [tCellAutomatonWithAdvice.L]
-      -- C₇₀_as_tCA.accepts = C₇₀_as_tCA.comp ... (t ...) (p ...)
-      -- For RT: t n = n - 1, p n = 0
-      simp only [tCellAutomaton.accepts]
-      -- annotate w = w ⨂ adv.f w
-      simp only [Advice.annotate]
-      -- C₇₀_as_tCA.toCellAutomaton = pipeline.C₇₀
-      -- Length of zip equals min of lengths; foldAdvice preserves length
-      have h_adv_len : (pipeline.foldAdvice.f w).length = w.length := by
-        simp only [LxPipeline.foldAdvice, xPrefixAdvice, List.length_map, List.length_range]
-      have h_len : (w ⨂ pipeline.foldAdvice.f w).length = w.length := by
-        simp only [List.length_zip, h_adv_len, min_self]
-      -- Simplify to trace
-      simp only [CellAutomaton.trace]
-      -- Key facts:
-      -- 1. (C₇₀_as_tCA + pipeline.foldAdvice).C = C₇₀_as_tCA, .adv = pipeline.foldAdvice (def of HAdd)
-      -- 2. C₇₀_as_tCA.t n = n - 1, C₇₀_as_tCA.p n = 0
-      -- 3. (w ⨂ ...).length = w.length (h_len)
-      -- Both sides reduce to: pipeline.C₇₀.comp ⦋w ⨂ ...⦌ (w.length - 1) 0 = true
-      simp only [HAdd.hAdd, Add.add, tCellAutomatonWithAdvice.mk]
-      rw [Set.mem_setOf_eq, h_len]
-
-    -- Step 2: For |w| ≥ 9, use stage8_full_spec
-    have h_stage8 := pipeline.stage8_full_spec w h_large
-    -- pipeline.C₇₀.trace (w ⨂ foldAdvice w) (n - 1) = C_orig.comp ⟬x^m w⟭ (m + n - 1) 0
-
-    -- Step 3: Connect C_orig to C
-    -- pipeline.C_orig = C.toCellAutomaton
-    have h_C_orig : pipeline.C_orig = C.toCellAutomaton := rfl
-
-    -- Step 4: C.accepts uses RT timing
-    have h_C_accepts : C.accepts (pipeline.x_prefix w ++ w) =
-        C.toCellAutomaton.comp ⟬pipeline.x_prefix w ++ w⟭ (pipeline.m w + pipeline.n w - 1) 0 := by
-      simp only [tCellAutomaton.accepts]
-      -- C.t n = n - 1, C.p n = 0 (since C ∈ CA_rt)
-      have h_rt := hC_rt
-      -- CA_rt = t_rt (CA α) = { C ∈ { C ∈ tCellAutomata α | C.p = fun _ => 0 } | ∀ n, C.t n = n - 1 }
-      simp only [CA_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq] at h_rt
-      obtain ⟨⟨_, h_p⟩, h_t⟩ := h_rt
-      -- Length of x^m w
-      have h_len : (pipeline.x_prefix w ++ w).length = pipeline.m w + pipeline.n w := by
-        simp only [List.length_append, LxPipeline.x_prefix, List.length_replicate, LxPipeline.n]
-      simp only [h_len, h_t, h_p]
-
-    -- Step 5: C.accepts ↔ membership in C.L
-    have h_accepts_L : C.accepts (pipeline.x_prefix w ++ w) = true ↔
-        pipeline.x_prefix w ++ w ∈ C.L := by
-      rfl
-
-    -- Step 6: C.L = L_x x L (from hypothesis)
-    -- pipeline.x_prefix w ++ w = x^(nextPow2 |w|) ++ w
-
-    -- Step 7: x^m w ∈ L_x x L ↔ w ∈ L
-    have h_L_x_iff : pipeline.x_prefix w ++ w ∈ L_x x L ↔ w ∈ L := by
-      constructor
-      · -- Forward: if x^m w ∈ L_x x L, then w ∈ L
-        intro ⟨v, hv_mem, hv_eq⟩
-        -- x^(nextPow2 |w|) ++ w = x^(nextPow2 |v|) ++ v
-        simp only [LxPipeline.x_prefix] at hv_eq
-        -- Total length equality
-        have h_total_len : (List.replicate (nextPow2 w.length) x ++ w).length =
-            (List.replicate (nextPow2 v.length) x ++ v).length := by
-          rw [hv_eq]
-        simp only [List.length_append, List.length_replicate] at h_total_len
-        -- nextPow2 w.length + w.length = nextPow2 v.length + v.length
-
-        -- Key: show nextPow2 w.length = nextPow2 v.length
-        -- This is because nextPow2 produces powers of 2, and if two powers of 2
-        -- differ with sum constraint a + |w| = b + |v| where a,b ≥ respective lengths,
-        -- the gap between distinct powers of 2 is too large.
-        have h_nextPow2_eq : nextPow2 w.length = nextPow2 v.length := by
-          by_contra h_ne
-          -- Handle both cases: either nextPow2 w.length < nextPow2 v.length or vice versa
-          rcases Nat.lt_trichotomy (nextPow2 w.length) (nextPow2 v.length) with h_lt | h_eq | h_gt
-          · -- Case: nextPow2 w.length < nextPow2 v.length
-            -- Let m = nextPow2 w.length, m' = nextPow2 v.length, n = w.length, n' = v.length
-            -- We have: m + n = m' + n' (h_total_len) and m < m'
-            -- Powers of 2 gap: since m < m' and both are powers of 2, m' ≥ 2*m (*)
-            -- From (*) and m ≥ 1 (nextPow2_pos), we have m' - m ≥ m
-            -- From m + n = m' + n': n - n' = m' - m ≥ m
-            -- If v.length ≥ 1: Then m = nextPow2(n) ≥ n (nextPow2_ge), so n - n' ≥ n, thus n' ≤ 0, so n' = 0
-            -- If v.length = 0: Then m' = nextPow2(0) = 1, and h_lt says m < 1, contradiction with nextPow2_pos
-            -- In either case we get a contradiction.
-            have hm_pos : nextPow2 w.length ≥ 1 := nextPow2_pos w.length
-            have hm'_pos : nextPow2 v.length ≥ 1 := nextPow2_pos v.length
-            by_cases hv : v.length ≥ 1
-            · -- v.length ≥ 1: use nextPow2_ge
-              have hm'_ge : nextPow2 v.length ≥ v.length := nextPow2_ge v.length hv
-              have hm_ge : nextPow2 w.length ≥ w.length := by
-                by_cases hw : w.length ≥ 1
-                · exact nextPow2_ge w.length hw
-                · simp only [Nat.not_le, Nat.lt_one_iff] at hw
-                  rw [hw]
-                  -- Need nextPow2 0 ≥ 0, i.e., 1 ≥ 0
-                  exact Nat.le_of_succ_le (nextPow2_pos 0)
-              -- Gap between powers of 2: if m < m' then m' ≥ 2*m
-              -- This is because nextPow2 outputs 1 or powers of 2 = 2^k for k ≥ 0
-              -- If m = 2^j < 2^k = m' then k ≥ j+1 so m' = 2^k ≥ 2^(j+1) = 2m
-              -- Special case: m = 1 < m' means m' ≥ 2
-              have h_gap : nextPow2 v.length ≥ 2 * nextPow2 w.length :=
-                nextPow2_gap w.length v.length h_lt
-              -- From h_gap and h_total_len: m' - m ≥ m, and n - n' = m' - m
-              -- So n - n' ≥ m ≥ n (by hm_ge), giving n' ≤ 0
-              have h_vlen_zero : v.length = 0 := by omega
-              omega -- contradicts hv : v.length ≥ 1
-            · -- v.length = 0
-              simp only [Nat.not_le, Nat.lt_one_iff] at hv
-              -- Since v.length = 0, nextPow2 0 = 1
-              have h_np0 : nextPow2 0 = 1 := by unfold nextPow2; simp
-              rw [hv, h_np0] at h_lt
-              -- h_lt : nextPow2 w.length < 1, hm_pos : nextPow2 w.length ≥ 1
-              omega
-          · exact h_ne h_eq
-          · -- Case: nextPow2 v.length < nextPow2 w.length (symmetric)
-            -- Symmetric to the first case, swapping w and v
-            have hm_pos : nextPow2 w.length ≥ 1 := nextPow2_pos w.length
-            have hm'_pos : nextPow2 v.length ≥ 1 := nextPow2_pos v.length
-            by_cases hw : w.length ≥ 1
-            · have hm_ge : nextPow2 w.length ≥ w.length := nextPow2_ge w.length hw
-              have hm'_ge : nextPow2 v.length ≥ v.length := by
-                by_cases hv : v.length ≥ 1
-                · exact nextPow2_ge v.length hv
-                · simp only [Nat.not_le, Nat.lt_one_iff] at hv
-                  rw [hv]
-                  -- Need nextPow2 0 ≥ 0, i.e., 1 ≥ 0
-                  exact Nat.le_of_succ_le (nextPow2_pos 0)
-              have h_gap : nextPow2 w.length ≥ 2 * nextPow2 v.length :=
-                nextPow2_gap v.length w.length h_gt
-              have h_wlen_zero : w.length = 0 := by omega
-              omega
-            · simp only [Nat.not_le, Nat.lt_one_iff] at hw
-              -- Since w.length = 0, nextPow2 0 = 1
-              have h_np0 : nextPow2 0 = 1 := by unfold nextPow2; simp
-              rw [hw, h_np0] at h_gt
-              -- h_gt : nextPow2 v.length < 1, hm'_pos : nextPow2 v.length ≥ 1
-              omega
-        -- Now nextPow2 values are equal, so lengths are also equal from h_total_len
-        have h_len_eq : w.length = v.length := by omega
-        -- By list append injectivity with equal prefix lengths
-        have h_prefix_len : (List.replicate (nextPow2 w.length) x).length =
-            (List.replicate (nextPow2 v.length) x).length := by simp [h_nextPow2_eq]
-        -- From hv_eq: replicate m x ++ w = replicate m' x ++ v with m = m', so w = v
-        have h_v_eq_w : v = w := by
-          -- Since nextPow2 w.length = nextPow2 v.length, the replicate prefixes are equal
-          -- So w = v follows from list append cancellation
-          have h_px : pipeline.x = x := rfl
-          simp only [h_px, h_nextPow2_eq] at hv_eq
-          exact (List.append_cancel_left hv_eq).symm
-        rw [h_v_eq_w] at hv_mem; exact hv_mem
-      · -- Backward: if w ∈ L, then x^m w ∈ L_x x L
-        intro hw_mem
-        exact ⟨w, hw_mem, rfl⟩
-
-    -- Now derive contradiction: w ∈ C₈.val.L ↔ w ∈ L
-    have h_agree : w ∈ C₈.val.L ↔ w ∈ L := by
-      -- Chain: C₈.val.L ↔ trace = true ↔ C_orig.comp = true ↔ C.accepts = true ↔ C.L ↔ L_x x L ↔ L
-      constructor
-      · -- Forward: w ∈ C₈.val.L → w ∈ L
-        intro hw_C8
-        -- Step 1: w ∈ C₈.val.L → trace = true
-        have h1 : pipeline.C₇₀.trace (w ⨂ pipeline.foldAdvice.f w) (w.length - 1) = true := h_C₈_iff.mp hw_C8
-        -- Step 2: trace = C_orig.comp
-        have h2 : pipeline.C_orig.comp ⟬pipeline.x_prefix w ++ w⟭ (pipeline.m w + pipeline.n w - 1) 0 = true := by
-          rw [← h_stage8]; exact h1
-        -- Step 3: C_orig = C.toCellAutomaton
-        have h3 : C.toCellAutomaton.comp ⟬pipeline.x_prefix w ++ w⟭ (pipeline.m w + pipeline.n w - 1) 0 = true := by
-          rw [← h_C_orig]; exact h2
-        -- Step 4: = C.accepts
-        have h4 : C.accepts (pipeline.x_prefix w ++ w) = true := by
-          rw [h_C_accepts]; exact h3
-        -- Step 5: ↔ C.L
-        have h5 : pipeline.x_prefix w ++ w ∈ C.L := h_accepts_L.mp h4
-        -- Step 6: C.L = L_x x L
-        have h6 : pipeline.x_prefix w ++ w ∈ L_x x L := by
-          have : C.L = L_x x L := hC_L.symm
-          simp only [this] at h5
-          exact h5
-        -- Step 7: L_x x L ↔ L
-        exact h_L_x_iff.mp h6
-      · -- Backward: w ∈ L → w ∈ C₈.val.L
-        intro hw_L
-        -- Step 7: L → L_x x L
-        have h7 : pipeline.x_prefix w ++ w ∈ L_x x L := h_L_x_iff.mpr hw_L
-        -- Step 6: L_x x L = C.L
-        have h6 : pipeline.x_prefix w ++ w ∈ C.L := by
-          have : C.L = L_x x L := hC_L.symm
-          simp only [← this] at h7
-          exact h7
-        -- Step 5: C.L ↔ C.accepts = true
-        have h5 : C.accepts (pipeline.x_prefix w ++ w) = true := h_accepts_L.mpr h6
-        -- Step 4: C.accepts = C.toCellAutomaton.comp
-        have h4 : C.toCellAutomaton.comp ⟬pipeline.x_prefix w ++ w⟭ (pipeline.m w + pipeline.n w - 1) 0 = true := by
-          rw [← h_C_accepts]; exact h5
-        -- Step 3: C.toCellAutomaton = C_orig
-        have h3 : pipeline.C_orig.comp ⟬pipeline.x_prefix w ++ w⟭ (pipeline.m w + pipeline.n w - 1) 0 = true := by
-          rw [h_C_orig]; exact h4
-        -- Step 2: C_orig.comp = trace
-        have h2 : pipeline.C₇₀.trace (w ⨂ pipeline.foldAdvice.f w) (w.length - 1) = true := by
-          rw [h_stage8]; exact h3
-        -- Step 1: trace = true → w ∈ C₈.val.L
-        exact h_C₈_iff.mpr h2
-
-    -- But hw says w is in symmetric difference, contradicting h_agree
-    rcases hw with ⟨hw_in_C₈, hw_not_L⟩ | ⟨hw_in_L, hw_not_C₈⟩
-    · exact hw_not_L (h_agree.mp hw_in_C₈)
-    · exact hw_not_C₈ (h_agree.mpr hw_in_L)
-
-  -- By closure under finite symmetric difference, L ∈ ℒ(CA_rt α)
-  exact ca_rt_closed_finite_symmDiff C₈.val.L L h_C₈_mem h_symmDiff_finite
+  exact ca_rt_closed_finite_symmDiff C_final.val.L L h_Cfinal_in h_symmDiff_finite
 
 #print axioms lx_rt_implies_rt
 

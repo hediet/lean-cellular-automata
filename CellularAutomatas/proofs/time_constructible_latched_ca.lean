@@ -129,7 +129,7 @@ private lemma latched_init (w : Word α) (p : ℤ) :
 
 /-- Before timer fires, latched stays none at position 0.
     Proof: by induction, showing that while timer_signal is false, latched doesn't change from none. -/
-private lemma latched_none_before_signal (w : Word α) (j : ℕ) (hj : j < t w.length) :
+lemma latched_none_before_signal (w : Word α) (j : ℕ) (hj : j < t w.length) :
     ((latchedCA C t tc).nextt ⦋w⦌ j 0).latched = none := by
   induction j with
   | zero => exact latched_init C t tc w 0

@@ -137,65 +137,21 @@ The language `Language.rev (L_x none (Language.rev (Language.lift L)))` consists
 **Proof of language equality:**
 - `u ∈ Language.rev (L_x none (Language.rev (Language.lift L)))`
 - ⟺ `u.reverse ∈ L_x none (Language.rev (Language.lift L))`
-- ⟺ `∃ v ∈ Language.rev (Language.lift L), u.reverse = none^m ++ v` where `m = nextPow2(|v|)`
-- ⟺ `∃ v, v.reverse ∈ Language.lift L ∧ u.reverse = none^m ++ v`
-- ⟺ `∃ v, (∃ w ∈ L, v.reverse = w.map some) ∧ u.reverse = none^(nextPow2 |v|) ++ v`
-- With `v.reverse = w.map some`: `|v| = |w|` and `u = v.reverse ++ none^m = w.map some ++ none^m`
+- ⟺ `∃ v ∈ Language.rev (Language.lift L), u.reverse = none^k ++ v` where `k ≥ nextPow2(|v|)`
+- ⟺ `∃ v, v.reverse ∈ Language.lift L ∧ u.reverse = none^k ++ v`
+- ⟺ `∃ v, (∃ w ∈ L, v.reverse = w.map some) ∧ u.reverse = none^k ++ v, k ≥ nextPow2(|v|)`
+- With `v.reverse = w.map some`: `|v| = |w|` and `u = v.reverse ++ none^k = w.map some ++ none^k`
 
 Follows from `ca_2n_padded_in_ca_rt` since `nextPow2(n) ≥ n`. -/
 theorem lx_none_rev_rev_in_ca_rt (L : Language α)
     (hL : L ∈ ℒ (CA_2n α)) :
-    Language.rev (L_x (none : Option α) (Language.rev (Language.lift L))) ∈ ℒ (CA_rt (Option α)) := by
-  -- The target language is { w.map(some) ++ none^m | w ∈ L, m = nextPow2(|w|) }
+    Language.rev (L_x (Language.rev (Language.lift L))) ∈ ℒ (CA_rt (Option α)) := by
+  -- The target language is { w.map(some) ++ none^k | w ∈ L, k ≥ nextPow2(|w|) }
   -- This matches ca_2n_padded_in_ca_rt with m = nextPow2
   have h := ca_2n_padded_in_ca_rt L hL nextPow2 nextPow2_ge_all
-  -- Need to show the languages are equal
-  convert h using 1
-  ext u
-  simp only [Set.mem_setOf_eq, Language.rev, L_x, Language.lift]
-  constructor
-  · -- u ∈ rev(L_x none (rev(lift L))) → ∃ w ∈ L, u = w.map(some) ++ none^m
-    -- Means: u.reverse ∈ L_x none (rev(lift L))
-    intro hu
-    obtain ⟨v, hv_mem, hu_rev_eq⟩ := hu
-    -- hv_mem : v ∈ rev(lift L), i.e., v.reverse ∈ lift L
-    obtain ⟨w, hw, hv_rev_eq⟩ := hv_mem
-    -- hw : w ∈ L, hv_rev_eq : v.reverse = w.map some
-    refine ⟨w, hw, ?_⟩
-    -- Goal: u = w.map some ++ none^(nextPow2 |w|)
-    -- From hu_rev_eq: u.reverse = none^(nextPow2 |v|) ++ v
-    -- So u = v.reverse ++ none^(nextPow2 |v|) = w.map some ++ none^(nextPow2 |v|)
-    -- And |v| = |v.reverse| = |w.map some| = |w|
-    have hv_len : v.length = w.length := by
-      have : v.reverse.length = (w.map some).length := by rw [hv_rev_eq]
-      simp only [List.length_reverse, List.length_map] at this
-      exact this
-    calc u = u.reverse.reverse := by simp
-      _ = (List.replicate (nextPow2 v.length) none ++ v).reverse := by rw [hu_rev_eq]
-      _ = v.reverse ++ List.replicate (nextPow2 v.length) none := by
-          simp [List.reverse_append, List.reverse_replicate]
-      _ = w.map some ++ List.replicate (nextPow2 w.length) none := by rw [hv_rev_eq, hv_len]
-  · -- ∃ w ∈ L, u = w.map(some) ++ none^m → u ∈ rev(L_x none (rev(lift L)))
-    intro hu
-    obtain ⟨w, hw, hu_eq⟩ := hu
-    -- Need: u.reverse ∈ L_x none (rev(lift L))
-    -- i.e., ∃ v ∈ rev(lift L), u.reverse = none^(nextPow2 |v|) ++ v
-    -- Take v = (w.map some).reverse
-    refine ⟨(w.map some).reverse, ?_, ?_⟩
-    · -- v.reverse ∈ lift L, i.e., ((w.map some).reverse).reverse ∈ lift L
-      show ((w.map some).reverse).reverse ∈ Language.lift L
-      rw [List.reverse_reverse]
-      exact ⟨w, hw, rfl⟩
-    · -- u.reverse = none^(nextPow2 |v|) ++ v
-      subst hu_eq
-      -- Goal: (w.map some ++ none^m).reverse = none^(nextPow2 |v|) ++ v
-      -- where v = (w.map some).reverse and m = nextPow2 |w|
-      rw [List.reverse_append, List.reverse_replicate]
-      -- Goal: none^m ++ (w.map some).reverse = none^(nextPow2 |v|) ++ v
-      -- |v| = |(w.map some).reverse| = |w.map some| = |w|
-      show List.replicate (nextPow2 w.length) none ++ (w.map some).reverse =
-           List.replicate (nextPow2 ((w.map some).reverse).length) none ++ (w.map some).reverse
-      rw [List.length_reverse, List.length_map]
+  -- Need to show the languages are equal (or at least the subset relation)
+  -- With relaxed L_x and Lrev_x, this needs an updated proof
+  sorry
 
 /-! ## RT ⊆ LT: real-time is a special case of linear-time -/
 
@@ -242,18 +198,33 @@ theorem rt_rev_closed_implies_ca_2n_subset_ca_rt (β : Type) [Alphabet β]
   -- Step 1: lift to Option β
   have hL_2n_opt : (Language.lift L) ∈ ℒ (CA_2n (Option β)) := lift_mem_ca_2n L hL_2n
 
-  -- Step 2: rev(L_none(((Language.lift L))^R)) ∈ ℒ(CA_rt (Option β))
-  have h2 : Language.rev (L_x none (Language.rev (Language.lift L))) ∈ ℒ (CA_rt (Option β)) :=
+  -- Step 2: rev(L_x(((Language.lift L))^R)) ∈ ℒ(CA_rt (Option β))
+  have h2 : Language.rev (L_x (Language.rev (Language.lift L))) ∈ ℒ (CA_rt (Option β)) :=
     lx_none_rev_rev_in_ca_rt L hL_2n
 
-  -- Step 3: L_none(((Language.lift L))^R) ∈ ℒ(CA_rt (Option β)) by reversal closure
-  have h3 : L_x none (Language.rev (Language.lift L)) ∈ ℒ (CA_rt (Option β)) := by
-    rw [← Language.rev_rev (L_x _ (Language.rev (Language.lift L)))]
+  -- Step 3: L_x(((Language.lift L))^R) ∈ ℒ(CA_rt (Option β)) by reversal closure
+  have h3 : L_x (Language.rev (Language.lift L)) ∈ ℒ (CA_rt (Option β)) := by
+    rw [← Language.rev_rev (L_x (Language.rev (Language.lift L)))]
     exact h_rev_closure (Option β) _ h2
 
   -- Step 4: ((Language.lift L))^R ∈ ℒ(CA_rt (Option β)) by lx_rt_implies_rt
+  -- Need to show that all words in Language.rev (Language.lift L) are all-some
+  have h_allSome : ∀ w ∈ Language.rev (Language.lift L), Word.allSome w := by
+    intro w hw
+    simp only [Language.rev] at hw
+    change w.reverse ∈ Language.lift L at hw
+    rw [Language.mem_lift_iff] at hw
+    obtain ⟨u, _, hu_eq⟩ := hw
+    unfold Word.allSome
+    intro a ha
+    have : a ∈ w.reverse := List.mem_reverse.mpr ha
+    rw [hu_eq] at this
+    rw [List.mem_map] at this
+    obtain ⟨b, _, hab⟩ := this
+    rw [← hab]
+    rfl
   have h4 : Language.rev (Language.lift L) ∈ ℒ (CA_rt (Option β)) :=
-    lx_rt_implies_rt none (Language.rev (Language.lift L)) h3
+    lx_rt_implies_rt (Language.rev (Language.lift L)) h_allSome h3
 
   -- Step 5: (Language.lift L) ∈ ℒ(CA_rt (Option β)) by reversal closure
   have h5 : (Language.lift L) ∈ ℒ (CA_rt (Option β)) := by
