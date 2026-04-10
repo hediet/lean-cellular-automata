@@ -34,7 +34,11 @@ instance LatchedState.alphabet (Q T β : Type) [Alphabet Q] [Alphabet T] [Alphab
 
 /-- Product CA that runs original CA and timer in parallel, latching when timer fires.
 
-    When timer fires at time t(n), we latch C.project of the current state. -/
+    When timer fires at time t(n), we latch C.project of the current state.
+
+    Special case: For border cells (a = none) when t(0) = 0, we pre-latch
+    the initial value. This handles empty words where t(0) = 0 means the
+    timer "fires" at time 0, but δ hasn't been called yet. -/
 def latchedCA {α β : Type} [Alphabet α] [Alphabet β]
     (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t)
     : CellAutomaton α？ β where
@@ -51,7 +55,9 @@ def latchedCA {α β : Type} [Alphabet α] [Alphabet β]
   embed := fun a =>
     let ca_emb := C.embed a
     let timer_emb := tc.timer.embed (a.map fun _ => ())
-    ⟨ca_emb, timer_emb, none⟩
+    -- Pre-latch border cells when t(0) = 0 (handles empty word case)
+    let initial_latched := if a.isNone ∧ t 0 = 0 then some (C.project ca_emb) else none
+    ⟨ca_emb, timer_emb, initial_latched⟩
   project := fun s => s.latched.getD (C.project s.ca_state)
 
 namespace LatchedCA
@@ -122,17 +128,45 @@ lemma timer_component_sync (w : Word α) (j : ℕ) (p : ℤ) :
                     (tc.timer.nextt ⦋unitWord w.length⦌ j (p + 1))
     rw [ih (p - 1), ih p, ih (p + 1)]
 
-/-- Initially, latched is none at all positions. -/
+/-- Initially, latched depends on whether the position is border and t(0) = 0. -/
 private lemma latched_init (w : Word α) (p : ℤ) :
-    ((latchedCA C t tc).nextt ⦋w⦌ 0 p).latched = none := by
+    ((latchedCA C t tc).nextt ⦋w⦌ 0 p).latched =
+    if (word_to_config w p).isNone ∧ t 0 = 0 then some (C.project (C.embed none)) else none := by
   simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config, latchedCA]
+  -- The condition involves (word_to_config w p).isNone
+  -- When true, word_to_config w p = none, so C.embed (word_to_config w p) = C.embed none
+  split_ifs with h
+  · -- Condition true: (word_to_config w p).isNone ∧ t 0 = 0
+    rw [Option.isNone_iff_eq_none.mp h.1]
+  · rfl
+
+/-- At position 0, latched is none initially when t(w.length) > 0.
+    This is because either w.length > 0 (so position 0 is not border) or
+    w.length = 0 but t(0) > 0 (so pre-latch condition fails). -/
+private lemma latched_init_pos0_none (w : Word α) (ht : t w.length > 0) :
+    ((latchedCA C t tc).nextt ⦋w⦌ 0 0).latched = none := by
+  rw [latched_init]
+  simp only [ite_eq_right_iff, and_imp]
+  intro h_border h_t0
+  -- h_border: (word_to_config w 0).isNone = true
+  -- h_t0: t 0 = 0
+  -- From h_border, position 0 is border, so w = []
+  simp only [word_to_config] at h_border
+  split_ifs at h_border with h_in_range
+  · simp at h_border
+  · -- Position 0 is outside the word, so w.length ≤ 0, hence w = []
+    push_neg at h_in_range
+    have hw_empty : w.length = 0 := by omega
+    -- But then t w.length = t 0 = 0, contradicting ht
+    rw [hw_empty] at ht
+    omega
 
 /-- Before timer fires, latched stays none at position 0.
     Proof: by induction, showing that while timer_signal is false, latched doesn't change from none. -/
 lemma latched_none_before_signal (w : Word α) (j : ℕ) (hj : j < t w.length) :
     ((latchedCA C t tc).nextt ⦋w⦌ j 0).latched = none := by
   induction j with
-  | zero => exact latched_init C t tc w 0
+  | zero => exact latched_init_pos0_none C t tc w (by omega)
   | succ j ih =>
     simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
     -- The new latched value depends on mid.latched and timer_signal
@@ -146,7 +180,7 @@ lemma latched_none_before_signal (w : Word α) (j : ℕ) (hj : j < t w.length) :
                else none) = none
     -- By IH, mid.latched = none, so isSome = false
     have ih_none : ((latchedCA C t tc).nextt ⦋w⦌ j 0).latched = none := ih (Nat.lt_of_succ_lt hj)
-    simp only [ih_none, Option.isSome_none, ↓reduceIte]
+    simp only [ih_none, Option.isSome_none]
     -- Timer signal is false at time j+1 < t(n)
     have h_timer_sync : tc.timer.δ ((latchedCA C t tc).nextt ⦋w⦌ j (-1)).timer_state
                                    ((latchedCA C t tc).nextt ⦋w⦌ j 0).timer_state
@@ -159,7 +193,7 @@ lemma latched_none_before_signal (w : Word α) (j : ℕ) (hj : j < t w.length) :
       ring_nf
     rw [h_timer_sync]
     have h_no_signal := tc.no_signal_before w.length (j + 1) hj
-    simp only [unitWord_length] at h_no_signal
+    -- h_no_signal already in right form
     simp only [CellAutomaton.nextt_succ] at h_no_signal
     simp [h_no_signal]
 
@@ -174,20 +208,62 @@ private lemma latchedCA_δ_latched (left mid right : (latchedCA C t tc).Q) :
 /-- At time t(n), the latch is triggered with C's projected value.
 
     Uses: tc.signal_at_t says timer signals at t(n)
-    Uses: ca_component_sync says CA state matches C's evolution -/
-lemma latch_triggered_at_t (w : Word α) :
+    Uses: ca_component_sync says CA state matches C's evolution
+
+    Note: For t(n) = 0, the latch is never triggered via δ (latched stays none),
+    but latchedCA.project still returns the correct value via getD fallback. -/
+lemma latch_triggered_at_t (w : Word α) (ht_pos : t w.length > 0) :
     ((latchedCA C t tc).nextt ⦋w⦌ (t w.length) 0).latched =
     some (C.project (C.nextt ⦋w⦌ (t w.length) 0)) := by
-  cases ht : t w.length with
-  | zero =>
-    -- t(n) = 0: at time 0, nextt gives initial embed, latched = none.
-    -- The latch only updates through δ, so t(n) = 0 is degenerate.
-    sorry
-  | succ j =>
-    -- t(n) = j + 1: the latch triggers with C's projected value.
-    -- Key steps: latched is none before t(n), timer fires at t(n),
-    -- CA state is synchronized with C's evolution.
-    sorry
+  -- Since t(n) > 0, we can express t(n) = j + 1 for some j
+  obtain ⟨j, hj⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : t w.length ≠ 0)
+  -- t(n) = j + 1: the latch triggers with C's projected value.
+  -- Key steps: latched is none before t(n), timer fires at t(n),
+  -- CA state is synchronized with C's evolution.
+  have h_none : ((latchedCA C t tc).nextt ⦋w⦌ j 0).latched = none :=
+    latched_none_before_signal C t tc w j (by rw [hj]; omega)
+  -- Timer fires at t(n) = j + 1
+  have h_signal := tc.signal_at_t w.length
+  rw [hj] at h_signal ⊢
+  -- Unfold nextt at time j+1
+  simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
+  rw [latchedCA_δ_latched]
+  -- Since latched was none at time j, isSome = false
+  simp only [h_none, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
+  -- The timer signal fires at time j+1
+  have h_timer_eq : tc.timer.δ ((latchedCA C t tc).nextt ⦋w⦌ j (0 - 1)).timer_state
+                               ((latchedCA C t tc).nextt ⦋w⦌ j 0).timer_state
+                               ((latchedCA C t tc).nextt ⦋w⦌ j (0 + 1)).timer_state
+                  = tc.timer.nextt ⦋unitWord w.length⦌ (j + 1) 0 := by
+    simp only [CellAutomaton.nextt_succ, CellAutomaton.next]
+    rw [timer_component_sync C t tc w j (0 - 1),
+        timer_component_sync C t tc w j 0,
+        timer_component_sync C t tc w j (0 + 1)]
+  rw [h_timer_eq, h_signal]
+  simp only [↓reduceIte]
+  -- Now show the CA state is synchronized
+  -- Use ca_component_sync to rewrite the ca_state components
+  rw [ca_component_sync C t tc w j (0 - 1),
+      ca_component_sync C t tc w j 0,
+      ca_component_sync C t tc w j (0 + 1)]
+
+/-- For empty word with t(0) = 0, latched is pre-set to the correct value at time 0.
+
+    The embed function pre-latches border cells when t(0) = 0.
+    For empty word, all positions are borders, so position 0 is pre-latched. -/
+lemma latch_triggered_at_t_zero (ht_zero : t 0 = 0) :
+    ((latchedCA C t tc).nextt ⦋([] : Word α)⦌ 0 0).latched =
+    some (C.project (C.nextt ⦋([] : Word α)⦌ 0 0)) := by
+  rw [latched_init]
+  -- word_to_config [] 0 = none (empty word, all positions are border)
+  have h_border : word_to_config ([] : Word α) (0 : ℤ) = none := by
+    simp only [word_to_config, List.length_nil]
+    split_ifs with h <;> simp_all
+  simp only [h_border, Option.isNone_none, true_and, ht_zero, ↓reduceIte]
+  -- At time 0, C.nextt gives embed_config
+  simp only [CellAutomaton.nextt_zero, CellAutomaton.embed_config]
+  -- C.embed (word_to_config [] 0) = C.embed none by h_border
+  rw [h_border]
 
 /-- Once latched has a value, it persists through subsequent steps. -/
 private lemma latched_persists_step (w : Word α) (j : ℕ)
@@ -203,7 +279,8 @@ private lemma latched_persists_step (w : Word α) (j : ℕ)
 /-- Once latched, the value persists.
 
     By construction: if mid.latched.isSome then new_latched = mid.latched -/
-lemma latch_persists (w : Word α) (j₀ j : ℕ) (hj₀ : j₀ = t w.length) (hj : j ≥ j₀) :
+lemma latch_persists (w : Word α) (j₀ j : ℕ) (hj₀ : j₀ = t w.length) (hj : j ≥ j₀)
+    (ht_pos : t w.length > 0) :
     ((latchedCA C t tc).nextt ⦋w⦌ j 0).latched =
     ((latchedCA C t tc).nextt ⦋w⦌ j₀ 0).latched := by
   -- By induction on the difference j - j₀
@@ -217,7 +294,7 @@ lemma latch_persists (w : Word α) (j₀ j : ℕ) (hj₀ : j₀ = t w.length) (h
     · -- j ≥ j₀: use IH and latched_persists_step
       have h_eq := ih hle
       -- At j₀, latch is triggered, so latched.isSome
-      have h_trig := latch_triggered_at_t C t tc w
+      have h_trig := latch_triggered_at_t C t tc w ht_pos
       rw [← hj₀] at h_trig
       have h_some_j₀ : ((latchedCA C t tc).nextt ⦋w⦌ j₀ 0).latched.isSome := by
         rw [h_trig]; simp
@@ -228,6 +305,23 @@ lemma latch_persists (w : Word α) (j₀ j : ℕ) (hj₀ : j₀ = t w.length) (h
       push_neg at hle
       have h_eq : j + 1 = j₀ := by omega
       rw [h_eq]
+
+/-- For empty word with t(0) = 0, the latched value persists from time 0.
+
+    Since latch is pre-set at embed time for border cells when t(0) = 0,
+    it persists through all subsequent steps via latched_persists_step. -/
+lemma latch_persists_zero (j : ℕ) (ht_zero : t 0 = 0) :
+    ((latchedCA C t tc).nextt ⦋([] : Word α)⦌ j 0).latched =
+    ((latchedCA C t tc).nextt ⦋([] : Word α)⦌ 0 0).latched := by
+  induction j with
+  | zero => rfl
+  | succ j ih =>
+    have h_trig := latch_triggered_at_t_zero C t tc ht_zero
+    have h_some_0 : ((latchedCA C t tc).nextt ⦋([] : Word α)⦌ 0 0).latched.isSome := by
+      rw [h_trig]; simp
+    have h_some_j : ((latchedCA C t tc).nextt ⦋([] : Word α)⦌ j 0).latched.isSome := by
+      rw [ih]; exact h_some_0
+    rw [latched_persists_step C t tc [] j h_some_j, ih]
 
 end LatchedCA
 
@@ -243,16 +337,55 @@ end LatchedCA
     fires at t(n), it latches C.project of the current state.
 
     **Proof outline**:
-    1. **Latch triggers at t(n)**: latched = some(C.comp w t(n) 0)
-    2. **Latch persists**: Once latched.isSome, the value never changes
-    3. **Project returns latched**: s.latched.getD _ = latched value when Some -/
+    - **Case t(n) > 0**: Latch triggers at t(n) via δ, persists afterward.
+    - **Case t(n) = 0 (empty word)**: Pre-latched at embed time, persists.
+
+    The hypothesis `w.length > 0 → t w.length > 0` ensures that when w is non-empty,
+    the timer fires at a positive time (so latch triggers via δ). For empty word,
+    the embed function pre-latches if t(0) = 0. -/
 theorem latchedCA_correct {α β : Type} [Alphabet α] [Alphabet β]
     (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t)
-    (w : Word α) (t' : ℕ) :
+    (w : Word α) (t' : ℕ) (ht_pos : w.length > 0 → t w.length > 0) :
     (latchedCA C t tc).comp ⦋⟬w⟭⦌ (t w.length + t') 0 =
     C.comp ⦋⟬w⟭⦌ (t w.length) 0 := by
-  -- Uses latch_triggered_at_t + latch_persists + project returns latched value
-  sorry
+  by_cases ht : t w.length > 0
+  · -- Case: t(n) > 0 — latch triggers via δ at time t(n)
+    have h_trig := LatchedCA.latch_triggered_at_t C t tc w ht
+    have h_pers := LatchedCA.latch_persists C t tc w (t w.length) (t w.length + t') rfl
+                     (Nat.le_add_right _ _) ht
+    -- comp is defined as project_config ∘ nextt, so at position 0:
+    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [Function.comp]
+    -- latchedCA.project s = s.latched.getD (C.project s.ca_state)
+    -- By h_pers, latched at time t(n) + t' = latched at time t(n)
+    -- By h_trig, latched at time t(n) = some (C.project (C.nextt ⦋⟬w⟭⦌ (t w.length) 0))
+    show ((latchedCA C t tc).nextt ⦋⟬w⟭⦌ (t w.length + t') 0).latched.getD
+           (C.project ((latchedCA C t tc).nextt ⦋⟬w⟭⦌ (t w.length + t') 0).ca_state) =
+         C.project (C.nextt ⦋⟬w⟭⦌ (t w.length) 0)
+    rw [h_pers, h_trig]
+    simp only [Option.getD_some]
+  · -- Case: t(n) = 0 — must be empty word, pre-latched at embed time
+    push_neg at ht
+    have ht_zero : t w.length = 0 := by omega
+    -- By contrapositive of ht_pos: ¬(t w.length > 0) → ¬(w.length > 0)
+    have hw_empty : w.length = 0 := by
+      by_contra h
+      have h_pos : w.length > 0 := Nat.pos_of_ne_zero h
+      have : t w.length > 0 := ht_pos h_pos
+      omega
+    have hw : w = [] := List.eq_nil_of_length_eq_zero hw_empty
+    subst hw
+    -- Now w = [], t 0 = 0
+    simp only [List.length_nil] at ht_zero ⊢
+    have h_trig := LatchedCA.latch_triggered_at_t_zero C t tc ht_zero
+    have h_pers := LatchedCA.latch_persists_zero C t tc t' ht_zero
+    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [Function.comp]
+    show ((latchedCA C t tc).nextt ⦋⟬[]⟭⦌ (t 0 + t') 0).latched.getD
+           (C.project ((latchedCA C t tc).nextt ⦋⟬[]⟭⦌ (t 0 + t') 0).ca_state) =
+         C.project (C.nextt ⦋⟬[]⟭⦌ (t 0) 0)
+    rw [ht_zero, Nat.zero_add, h_pers, h_trig]
+    simp only [Option.getD_some]
 
 /-!
 ## Latched CA with k-step lookback
@@ -281,6 +414,10 @@ def latchedCA_k {α β : Type} [Alphabet α] [Alphabet β]
     At time `t(n) + t'` for any `t' ≥ 0`:
       `(latchedCA_k C t tc k).comp ⦋⟬w⟭⦌ (t w.length + t') 0 = C.comp ⦋⟬w⟭⦌ (t w.length - k) 0`
 
+    Requires:
+    - `t(n) > k` (so the trace has k previous outputs to look back)
+    - `t(n) > 0` (for the latch mechanism to work)
+
     **Proof idea**:
     1. By `latchedCA_correct`, at time `t(n) + t'` the latched trace equals
        `TraceKx.C.comp` at time `t(n)`.
@@ -290,10 +427,35 @@ def latchedCA_k {α β : Type} [Alphabet α] [Alphabet β]
 @[simp]
 theorem latchedCA_k_spec {α β : Type} [Alphabet α] [Alphabet β]
     (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t) (k : ℕ) [NeZero k]
-    (w : Word α) (t' : ℕ) :
+    (w : Word α) (t' : ℕ) (ht_pos : t w.length > 0) (ht_k : t w.length > k) :
     (latchedCA_k C t tc k).comp ⦋⟬w⟭⦌ (t w.length + t') 0 =
     C.comp ⦋⟬w⟭⦌ ((t w.length) - k) 0 := by
-  sorry
+  -- latchedCA_k C t tc k = (latchedCA trace.C t tc).map_project (fun f => (f 0).getD default)
+  -- where trace = { k := k, α := α？, β := β, C_orig := C }
+
+  -- Define trace to match the definition
+  let trace : TraceKx := { k := k, α := α？, β := β, C_orig := C }
+
+  -- Use latchedCA_correct: (latchedCA trace.C t tc).comp ⦋w⦌ (t + t') 0 = trace.C.comp ⦋w⦌ t 0
+  -- ht_pos : t w.length > 0, which implies (w.length > 0 → t w.length > 0)
+  have h_latch := latchedCA_correct trace.C t tc w t' (fun _ => ht_pos)
+
+  -- Use TraceKx.spec': for t > k, trace.C.comp c t p i = some (C.comp c (t - k + i) p)
+  -- Note: trace.k = k by definition
+  have hk : trace.k = k := rfl
+  have h_spec' := trace.spec' ⟬w⟭ (t w.length) 0 (0 : Fin k) (hk ▸ ht_k)
+
+  -- Calculate step by step
+  calc (latchedCA_k C t tc k).comp ⦋⟬w⟭⦌ (t w.length + t') 0
+      = ((latchedCA trace.C t tc).comp ⦋⟬w⟭⦌ (t w.length + t') 0 0).getD default := rfl
+    _ = (trace.C.comp ⦋⟬w⟭⦌ (t w.length) 0 0).getD default := by rw [h_latch]
+    _ = (some (trace.C_orig.comp ⦋⟬w⟭⦌ (t w.length - k + 0) 0)).getD default := by
+          -- h_spec' : trace.C.comp ⦋⟬w⟭⦌ (t w.length) 0 (0 : Fin k) = some (...)
+          -- And 0 : Fin trace.k = 0 : Fin k since trace.k = k
+          simp only [hk] at h_spec'
+          exact congrArg (fun x => x.getD default) h_spec'
+    _ = trace.C_orig.comp ⦋⟬w⟭⦌ (t w.length - k) 0 := by simp
+    _ = C.comp ⦋⟬w⟭⦌ (t w.length - k) 0 := rfl
 
 /-!
 ## Time Extension
@@ -312,6 +474,8 @@ answer when the timer fires at t(n), read the latched value at t'(n).
     fires at t(n), latching C's acceptance value at position 0. At time
     t'(n) ≥ t(n), the latched value is still available.
 
+    Requires t(n) > 0 for all n (satisfied by real-time t(n) = n-1 for n ≥ 2).
+
     This is the variable-time analogue of `ComposeKSteps`: where `ComposeKSteps`
     switches phases after a fixed `k` steps (using a local countdown), `latchedCA`
     switches after `t(n)` steps using a `TimeConstructible` timer that fires at
@@ -320,7 +484,7 @@ answer when the timer fires at t(n), read the latched value at t'(n).
 theorem time_extension {α : Type} [Alphabet α]
     {t : ℕ → ℕ} (tc : TimeConstructible t)
     {C : tCellAutomaton α} (hC : C ∈ CA α) (hT : ∀ n, C.t n = t n)
-    (t' : ℕ → ℕ) (ht' : ∀ n, t n ≤ t' n) :
+    (t' : ℕ → ℕ) (ht' : ∀ n, t n ≤ t' n) (ht_pos : ∀ n, t n > 0) :
     ∃ C' : tCellAutomaton α, C' ∈ CA α ∧ (∀ n, C'.t n = t' n) ∧ C'.L = C.L := by
   -- Build C' as latchedCA with time t' and position 0
   refine ⟨{
@@ -329,7 +493,7 @@ theorem time_extension {α : Type} [Alphabet α]
     p := fun _ => 0
   }, ?_, fun _ => rfl, ?_⟩
   · -- C' ∈ CA α: position is always 0
-    simp only [CA, tCellAutomata, Set.mem_sep_iff, Set.mem_univ, Set.mem_setOf_eq, true_and]
+    simp only [CA, tCellAutomata, Set.mem_univ, Set.mem_setOf_eq, true_and]
   · -- C'.L = C.L: latchedCA preserves the language
     ext w
     show (latchedCA C.toCellAutomaton t tc).comp ⦋⟬w⟭⦌ (t' w.length) 0 = true
@@ -341,6 +505,7 @@ theorem time_extension {α : Type} [Alphabet α]
     rw [hp, hT w.length]
     -- Apply latchedCA_correct: the latched value at time t'(n) equals C's output at t(n)
     have key := latchedCA_correct C.toCellAutomaton t tc w (t' w.length - t w.length)
+                  (fun _ => ht_pos w.length)
     rw [show t w.length + (t' w.length - t w.length) = t' w.length
         from Nat.add_sub_cancel' (ht' w.length)] at key
     rw [key]

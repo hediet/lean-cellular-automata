@@ -85,6 +85,66 @@ def identityTimerCA : CellAutomaton Unit？ Bool where
     | some () => false
   project := id
 
+/-- The initial configuration for unitWord n.
+    Position p is `false` iff `0 ≤ p < n`, and `true` otherwise (border). -/
+private lemma identityTimerCA_initial (n : ℕ) (p : ℤ) :
+    (⦋unitWord n⦌ : Config identityTimerCA.Q) p = decide (p < 0 ∨ p ≥ n) := by
+  simp only [CellAutomaton.embed_config, word_to_config, identityTimerCA, unitWord_length]
+  split_ifs with h
+  · -- Inside word: p ≥ 0 ∧ p < n → result is false
+    -- Need: false = decide (p < 0 ∨ p ≥ n)
+    rw [eq_comm, decide_eq_false_iff_not]
+    push_neg
+    exact ⟨h.1, h.2⟩
+  · -- Border: ¬(p ≥ 0 ∧ p < n) → result is true
+    -- Need: true = decide (p < 0 ∨ p ≥ n)
+    rw [eq_comm, decide_eq_true_eq]
+    push_neg at h
+    rcases (Int.lt_or_le p 0) with hp | hp
+    · exact Or.inl hp
+    · exact Or.inr (h hp)
+
+/-- Key invariant: At time t, position p has state `decide (p < 0 ∨ p ≥ n - t)`.
+
+    For positions inside the word (0 ≤ p < n):
+    - p is `true` iff p ≥ n - t
+    - p is `false` iff p < n - t
+
+    The signal starts at the right border and propagates left at speed 1. -/
+private lemma identityTimerCA_invariant (n t : ℕ) (p : ℤ) :
+    identityTimerCA.nextt ⦋unitWord n⦌ t p = decide (p < 0 ∨ p ≥ (n : ℤ) - t) := by
+  induction t generalizing p with
+  | zero =>
+    simp only [CellAutomaton.nextt_zero, Nat.sub_zero, Nat.cast_zero, sub_zero]
+    exact identityTimerCA_initial n p
+  | succ t ih =>
+    -- Unfold next step - the goal becomes δ _ (nextt t p) (nextt t (p+1))
+    rw [CellAutomaton.nextt_succ, CellAutomaton.next]
+    -- For identityTimerCA, δ _ mid right = mid || right
+    -- Apply induction hypothesis
+    have h_mid := ih p
+    have h_right := ih (p + 1)
+    simp only [identityTimerCA] at h_mid h_right ⊢
+    rw [h_mid, h_right]
+    -- LHS: decide (p < 0 ∨ p ≥ n - t) || decide (p + 1 < 0 ∨ p + 1 ≥ n - t)
+    -- RHS: decide (p < 0 ∨ p ≥ n - (t + 1))
+    simp only [Nat.cast_succ]
+    -- Use decidability to reduce to propositional reasoning
+    simp only [← Bool.decide_and, ← Bool.decide_or, Bool.or_eq_true,
+               decide_eq_decide, decide_eq_true_eq]
+    -- Now it's: (p < 0 ∨ p ≥ n - t) ∨ (p + 1 < 0 ∨ p + 1 ≥ n - t) ↔ p < 0 ∨ p ≥ n - (t + 1)
+    constructor
+    · intro h
+      rcases h with (hp | hp) | (hp | hp)
+      · left; exact hp
+      · right; omega
+      · left; omega
+      · right; omega
+    · intro h
+      rcases h with hp | hp
+      · left; left; exact hp
+      · right; right; omega
+
 /-- The identity function `t(n) = n` is time-constructible.
 
     **Construction**: A signal propagates left from the right border at speed 1.
@@ -100,37 +160,19 @@ def identityTimeConstructible : TimeConstructible id where
   timer := identityTimerCA
   signal_at_t := fun n => by
     show id (identityTimerCA.nextt ⦋unitWord n⦌ n 0) = true
-    simp only [id_eq]
-    -- Signal at position 0 is true at time n.
-    -- Key invariant: at time t, position p (0 ≤ p < n) has state (n - p ≤ t).
-    -- At t = n, p = 0: n - 0 ≤ n, so true.
-    -- Prove by induction on n.
-    induction n with
-    | zero =>
-      -- n = 0: unitWord 0 = [], position 0 is outside the word (border).
-      -- embed_config maps none to true. nextt at time 0 is initial.
-      simp [CellAutomaton.nextt_zero, CellAutomaton.embed_config, identityTimerCA,
-            unitWord, word_to_config]
-    | succ n ih =>
-      sorry
+    rw [id_eq, identityTimerCA_invariant]
+    -- Need: decide (0 < 0 ∨ 0 ≥ n - n) = true, i.e., decide (0 ≥ 0) = true
+    simp
   no_signal_before := fun n k hk => by
     show id (identityTimerCA.nextt ⦋unitWord n⦌ k 0) = false
-    simp only [id_eq]
-    -- Before time n, the signal hasn't reached position 0.
-    -- Key invariant: at time t < n, position 0 is false.
-    sorry
-
-/-- Linear functions `c * n` are time-constructible for all constants `c`.
-
-    A CA can count to `c * n` using a zig-zag signal of speed `c`. -/
-axiom scaleTimeConstructible (c : ℕ) : TimeConstructible (fun n => c * n)
-
-/-- Linear functions `c * (n - 1)` are time-constructible for `c ≥ 2`.
-
-    Matches the codebase convention where real-time is `n - 1` and
-    linear time is `c * (n - 1)` (cf. `t_lt`, `t_2n`).
-    Requires `c ≥ 2` since the timer needs a zig-zag signal that
-    traverses the word at least once before firing. -/
-axiom linearTimeConstructible (c : ℕ) (hc : c ≥ 2) : TimeConstructible (fun n => c * (n - 1))
+    rw [id_eq, identityTimerCA_invariant]
+    -- Need: decide (0 < 0 ∨ 0 ≥ n - k) = false
+    -- Since k < n (from hk : k < id n), we have n - k > 0, so ¬(0 ≥ n - k)
+    simp only [lt_self_iff_false, false_or]
+    -- hk : k < id n = k < n
+    simp only [id_eq] at hk
+    -- Need: decide (0 ≥ ↑n - ↑k) = false
+    rw [decide_eq_false_iff_not, not_le]
+    omega
 
 end CellularAutomatas

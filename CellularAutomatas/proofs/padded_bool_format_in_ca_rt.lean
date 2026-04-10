@@ -1,228 +1,261 @@
 /-
-  # PaddedBoolFormat Language in CA_rt
+  # PaddedBoolFormat ∈ ℒ(CA_rt Bool)
 
-  This file proves that `PaddedBoolFormat` = `{ true^i false^j | j ≥ i }` is in ℒ(CA_rt Bool).
+  Proves that `PaddedBoolFormat = { true^i false^j | j ≥ i }` is in ℒ(CA_rt Bool).
 
-  ## Approach
+  ## Strategy
+  Build a CA directly for PaddedBoolFormat by combining:
+  1. The monotone DFA (checks `true^* false^*` pattern) — 3 states
+  2. A midpoint-checking CA using two meeting signals — checks `i ≤ ⌊n/2⌋`
 
-  Intersect two CA_rt languages:
-  1. `true* false*` — the monotone format (3-state DFA, from monotone_format_in_ca_rt)
-  2. `{ w | #false ≥ #true }` — counting constraint via signal-based CA
+  ### Midpoint CA
+  For a word of length n, two signals:
+  - **Right signal** from position 0, speed 1, carries "boundary crossed" flag
+  - **Left signal** from the right border (position n-1), speed 1
+  They meet around position ⌊(n-1)/2⌋. The meeting cell checks if its input is false.
+  The result propagates back to cell 0, arriving by time n.
 
-  For the counting constraint:
-  - Boundary (first false) at position i, word length n = i + j
-  - Condition j ≥ i ⟺ i ≤ n/2 ⟺ n ≥ 2i
-
-  **Signal construction for #false ≥ #true:**
-  - Right-moving signal F from position 0 at speed 1
-  - Left-moving signal B from right boundary at speed 1
-  - F and B meet at position (n-1)/2 at time (n-1)/2
-  - The boundary position i is marked; if F reaches the boundary location
-    before meeting B, then i < n/2 approximately.
-  - The meeting point signal propagates the answer to position 0.
-
-  Alternative construction (used here):
-  - The boundary emits a left-moving signal at speed 2 (moving 2 cells per step).
-  - This signal reaches position 0 at time ⌈i/2⌉.
-  - At RT time n-1, the signal has arrived iff ⌈i/2⌉ ≤ n-1.
-  - The detailed timing gives exactly j ≥ i with proper adjustments.
+  Since the result arrives at time n (not n-1), we use the 1-step speedup theorem
+  (SpBD) to get acceptance at time n-1 for real-time.
 -/
 
-import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.monotone_format_in_ca_rt
-import Mathlib.Data.Fintype.Basic
+import CellularAutomatas.proofs.constructions.basic_product_ca
+import CellularAutomatas.proofs.constructions.speedup_k_step
+import CellularAutomatas.proofs.constructions.cart_fix_empty_word
+import CellularAutomatas.proofs.constructions.extract_mid_input
 
 namespace CellularAutomatas
 
 open CellAutomaton
 
-/-! ## PaddedBoolFormat Definition -/
+/-! ## Definitions -/
 
-/-- Padded bool format: true^i ++ false^j where j ≥ i.
-    This is the "erased" version of PaddedFormat that ignores the actual values. -/
-def PaddedBoolFormat' : Language Bool :=
+/-- Padded bool format: true^i ++ false^j where j ≥ i. -/
+def PaddedBoolFormat : Language Bool :=
   { u | ∃ i j : ℕ, j ≥ i ∧ u = List.replicate i true ++ List.replicate j false }
 
-/-! ## Characterization: PaddedBoolFormat = Monotone ∩ CountConstraint -/
+/-- MonotoneBool: the true^* false^* language. -/
+def MonotoneBool : Language Bool :=
+  { u | ∃ i j : ℕ, u = List.replicate i true ++ List.replicate j false }
 
-/-- The count constraint language: { w | #false(w) ≥ #true(w) }. -/
-def FalseCountGeq : Language Bool :=
-  { w | w.count false ≥ w.count true }
+/-! ## PaddedBoolFormat = MonotoneBool ∩ MidpointFalse
 
-/-- PaddedBoolFormat equals the intersection of monotone (true* false*) and count constraint. -/
-lemma paddedBoolFormat_eq_inter :
-    PaddedBoolFormat' = monotoneDFA.accepts ∩ FalseCountGeq := by
-  ext u
-  simp only [PaddedBoolFormat', Set.mem_setOf_eq, Set.mem_inter_iff, FalseCountGeq]
+We decompose PaddedBoolFormat into:
+- MonotoneBool: the word has form true^i false^j
+- MidpointFalse: the element at position ⌊(n-1)/2⌋ is false (or n = 0)
+
+For monotone words true^i false^j with n = i + j:
+  MidpointFalse ↔ i ≤ ⌊(n-1)/2⌋ ↔ 2i ≤ n - 1 ↔ 2i < n + 1 ↔ 2i ≤ n ↔ i ≤ j
+Wait, need to be careful:
+  i ≤ ⌊(n-1)/2⌋ ↔ i ≤ (i+j-1)/2 ↔ 2i ≤ i+j-1 ↔ i ≤ j-1 ↔ i < j
+That only gives j > i, not j ≥ i!
+
+For j = i (n = 2i): ⌊(2i-1)/2⌋ = i-1. Position i-1 has value true (since first false is
+at position i). So MidpointFalse is FALSE, but we want to ACCEPT (j = i ≥ i).
+
+So checking position ⌊(n-1)/2⌋ is too restrictive for even-length words.
+
+**Fix**: Check position ⌊n/2⌋ instead.
+For n = 2i: ⌊2i/2⌋ = i. Position i is the first false. So check passes. ✓
+For i=3, j=2, n=5: ⌊5/2⌋ = 2. Position 2 is true (i=3). Check fails. j < i, correct. ✓
+For i=2, j=3, n=5: ⌊5/2⌋ = 2. Position 2 is false (i=2). Check passes. j ≥ i, correct. ✓
+For i=2, j=2, n=4: ⌊4/2⌋ = 2. Position 2 is false (i=2). Check passes. j = i, correct. ✓
+For i=3, j=2, n=5: ⌊5/2⌋ = 2. Position 2 is true (i=3 > 2). Check fails. j < i, correct. ✓
+For i=3, j=3, n=6: ⌊6/2⌋ = 3. Position 3 is false (i=3). Check passes. j = i, correct. ✓
+
+So MidpointFalse should check position ⌊n/2⌋.
+But the CA reads at time n-1, not time n/2. We need a signal construction.
+
+**Alternative**: Use a half-speed signal.
+A signal starting at position 0 that moves right at speed 1/2 reaches position ⌊t/2⌋ at time t.
+At time n-1, it's at position ⌊(n-1)/2⌋, which for even n = 2i gives i-1 (one too few),
+and for odd n = 2i+1 gives i.
+
+Hmm, this is still off. Let me use a different approach.
+
+**Cleanest decomposition**: Instead of a midpoint check, use a direct characterization.
+-/
+
+/-- PaddedBoolFormat characterized via length and boundary. -/
+lemma paddedBoolFormat_iff (w : Word Bool) :
+    w ∈ PaddedBoolFormat ↔ ∃ i j, j ≥ i ∧ w = List.replicate i true ++ List.replicate j false := by
+  rfl
+
+/-! ## Helper lemmas -/
+
+private lemma count_replicate_self (a : Bool) (n : ℕ) :
+    (List.replicate n a).count a = n := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp [List.replicate_succ, List.count_cons, ih]
+
+private lemma count_replicate_ne (a b : Bool) (n : ℕ) (h : a ≠ b) :
+    (List.replicate n a).count b = 0 := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    simp only [List.replicate_succ, List.count_cons, ih]
+    simp [show (a == b) = false from by cases a <;> cases b <;> simp_all]
+
+lemma monotoneBool_eq_dfa : MonotoneBool = monotoneDFA.accepts := by
+  ext u; simp only [MonotoneBool, monotoneDFA_accepts_iff]; rfl
+
+theorem monotoneBool_in_ca_rt : MonotoneBool ∈ ℒ (CA_rt Bool) := by
+  rw [monotoneBool_eq_dfa]; exact truestar_falsestar_in_ca_rt
+
+/-! ## MidpointFalse: w[⌊n/2⌋] = false -/
+
+/-- The midpoint-false condition for PaddedBoolFormat.
+    For a nonempty word, the element at position ⌊n/2⌋ is false. -/
+def MidpointFalse : Language Bool :=
+  { w | ∀ (h : w.length > 0), w[w.length / 2]'(by omega) = false }
+
+instance : DecidablePred (· ∈ MidpointFalse) := fun w =>
+  if hlen : w.length > 0 then
+    if heq : w[w.length / 2]'(by omega) = false then
+      isTrue (fun _ => heq)
+    else
+      isFalse (fun hw => heq (hw hlen))
+  else
+    isTrue (fun hp => by omega)
+
+/-- For monotone true^i false^j, MidpointFalse ↔ j ≥ i -/
+private lemma midpointFalse_monotone_iff (i j : ℕ) :
+    (List.replicate i true ++ List.replicate j false) ∈ MidpointFalse ↔ j ≥ i := by
+  simp only [MidpointFalse, Set.mem_setOf_eq, List.length_append, List.length_replicate]
   constructor
-  · -- PaddedBoolFormat → intersection
-    intro ⟨i, j, hj, hu⟩
-    constructor
-    · -- Monotone: true^i ++ false^j matches true* false*
-      rw [monotoneDFA_accepts_iff]
-      exact ⟨i, j, hu⟩
-    · -- Count: j ≥ i means #false ≥ #true
-      subst hu
-      simp only [List.count_append, List.count_replicate_self, List.count_replicate]
-      simp only [ne_eq, Bool.false_eq_true, not_false_eq_true, ↓reduceIte,
-                 Bool.true_eq_false, add_zero, zero_add]
-      exact hj
-  · -- Intersection → PaddedBoolFormat
-    intro ⟨hMono, hCount⟩
-    rw [monotoneDFA_accepts_iff] at hMono
-    obtain ⟨i, j, hu⟩ := hMono
-    refine ⟨i, j, ?_, hu⟩
-    -- Extract count constraint from hCount
-    subst hu
-    simp only [List.count_append, List.count_replicate_self, List.count_replicate,
-               ne_eq, Bool.false_eq_true, not_false_eq_true, ↓reduceIte,
-               Bool.true_eq_false, add_zero, zero_add] at hCount
-    exact hCount
+  · intro h
+    by_cases hij : i + j = 0
+    · omega
+    · have h_pos : (List.replicate i true ++ List.replicate j false).length > 0 := by simp; omega
+      specialize h h_pos
+      by_contra h_lt
+      push_neg at h_lt
+      have h_pos_lt_i : (i + j) / 2 < i := Nat.div_lt_iff_lt_mul (by omega) |>.mpr (by omega)
+      rw [List.getElem_append_left (by simp; exact h_pos_lt_i)] at h
+      simp [List.getElem_replicate] at h
+  · intro h _
+    have h_pos_ge_i : (i + j) / 2 ≥ i := Nat.le_div_iff_mul_le (by omega) |>.mpr (by omega)
+    rw [List.getElem_append_right (by simp; omega)]
+    simp [List.getElem_replicate]
 
-/-! ## CA Construction for Count Constraint
+/-- PaddedBoolFormat = MonotoneBool ∩ MidpointFalse -/
+lemma paddedBoolFormat_eq_inter :
+    PaddedBoolFormat = (MonotoneBool ∩ MidpointFalse : Set (Word Bool)) := by
+  ext w
+  simp only [PaddedBoolFormat, MonotoneBool, MidpointFalse,
+    Set.mem_inter_iff, Set.mem_setOf_eq]
+  constructor
+  · intro ⟨i, j, hj, hw⟩
+    refine ⟨⟨i, j, hw⟩, ?_⟩
+    rw [hw]
+    exact (midpointFalse_monotone_iff i j).mpr hj
+  · intro ⟨⟨i, j, hw⟩, hmid⟩
+    refine ⟨i, j, ?_, hw⟩
+    rw [hw] at hmid
+    exact (midpointFalse_monotone_iff i j).mp hmid
 
-We build a CA that checks #false ≥ #true using the signal approach.
+/-! ## MidpointFalse ∈ ℒ(CA_rt Bool)
 
-**Key insight:** For a word w of length n with #true = i and #false = n - i,
-the condition #false ≥ #true is equivalent to i ≤ n/2.
+We check w[⌊n/2⌋] = false using `extractMidCA`, which extracts the middle cell(s) of the
+input at time n-1. We compose it with a projection that checks whether the middle value
+is false.
 
-For monotone inputs (true^i false^j), the boundary is at position i,
-and the condition becomes: is the boundary in the first half?
+For `extractMidCA_spec` (requires n ≥ 2):
+- Even n: output = `.pair w[n/2-1] w[n/2]`
+- Odd n:  output = `.single w[n/2]`
+
+In both cases, the "rightmost" value is `w[n/2]`, which is exactly what MidpointFalse checks.
 -/
 
-/-- States for the counting CA. The CA tracks:
-    - Whether we've seen the boundary (first false)
-    - A signal traveling from the boundary toward position 0
-    - Whether the signal has arrived at position 0 -/
-inductive CountingState
-  | idle : CountingState
-  | boundary : CountingState
-  | signal_left : CountingState
-  | signal_left_fast : CountingState  -- moves 2 cells per step
-  | arrived : CountingState
-deriving DecidableEq, Fintype, Inhabited, Repr
+/-- Extract the value to check from BetaUnionSq: always the rightmost. -/
+private def betaUnionSqRight : BetaUnionSq Bool → Bool
+  | .single b => b
+  | .pair _ b => b
 
-/-- The CA for checking count constraint.
+/-- The midpoint-false CA: extracts the middle value and checks if it's false. -/
+def midpointFalseCA : CellAutomaton Bool？ Bool :=
+  (extractMidCA Bool).map_project (fun x => decide (betaUnionSqRight x = false))
 
-    High-level behavior:
-    - Position i (boundary) starts a left-moving signal
-    - The signal moves at "double speed" (2 cells per time step)
-    - At position 0, we check if the signal has arrived by RT time
+/-- For length-1 words, the rightmost extracted value is w[0]. -/
+private lemma betaUnionSqRight_extractMid_len1 (w : Word Bool) (hw : w.length = 1) :
+    betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = w[0]'(by omega) := by
+  rw [extractMidCA_spec_len1 w hw]
+  simp [betaUnionSqRight]
 
-    For true^i false^j of length n = i + j:
-    - Boundary at position i
-    - Double-speed signal reaches position 0 at time ⌈i/2⌉
-    - At RT time n - 1, signal has arrived iff ⌈i/2⌉ ≤ n - 1
-    - With care, this gives exactly j ≥ i. -/
-def countingCA : CellAutomaton Bool？ Bool where
-  Q := CountingState
-  δ := fun left mid right =>
-    match mid with
-    | .arrived => .arrived
-    | .signal_left_fast =>
-      -- Fast signal: pass to left neighbor immediately
-      .arrived
-    | .signal_left =>
-      -- Regular signal: move left
-      .arrived
-    | .boundary =>
-      -- After marking boundary, become idle
-      .idle
-    | .idle =>
-      -- Check if signal arrives from right
-      match right with
-      | .signal_left => .signal_left
-      | .signal_left_fast => .signal_left_fast
-      | .arrived => .arrived
-      | _ => .idle
-  embed := fun a =>
-    match a with
-    | none => .idle  -- Border
-    | some true => .idle
-    | some false =>
-      -- This cell could be the boundary; check handled in initial setup
-      .boundary
-  project := fun s =>
-    match s with
-    | .arrived => true
-    | _ => false
+/-- At time n-1, cell 0 outputs `!w[n/2]` for words of length ≥ 2. -/
+private lemma betaUnionSqRight_extractMid (w : Word Bool) (hw : w.length ≥ 2) :
+    betaUnionSqRight ((extractMidCA Bool).comp (↑w) (w.length - 1) 0) = w[w.length / 2]'(by omega) := by
+  have h := extractMidCA_spec w hw
+  unfold betaUnionSqRight
+  rw [h]
+  by_cases hp : w.length % 2 = 0 <;> simp [hp]
 
-/-- The boundary position in a monotone word true^i false^j is i. -/
-def boundaryPos (w : Word Bool) : ℕ :=
-  w.findIdx (· == false)
+private lemma midpointFalseCA_spec' (w : Word Bool) (hw : w.length ≥ 2) :
+    midpointFalseCA.comp w (w.length - 1) 0 = true ↔ w[w.length / 2]'(by omega) = false := by
+  unfold midpointFalseCA
+  simp only [map_project_comp, decide_eq_true_iff]
+  have key := betaUnionSqRight_extractMid w hw
+  exact key ▸ Iff.rfl
 
-/-- Helper: for a monotone word, the boundary position equals the true count. -/
-lemma boundaryPos_of_monotone (i j : ℕ) :
-    boundaryPos (List.replicate i true ++ List.replicate j false) = i := by
-  simp only [boundaryPos, List.findIdx_append]
-  have h : ∀ x ∈ List.replicate i true, (x == false) = false := by
-    intro x hx
-    simp only [List.mem_replicate] at hx
-    simp [hx.2]
-  simp only [List.findIdx_eq_length_iff_none_satisfies.mpr (fun _ hx => h _ hx), List.length_replicate]
-  split_ifs with hj
-  · -- j = 0: no falses, boundary is at the end
-    simp only [List.replicate_zero, List.append_nil]
-    simp [List.length_replicate]
-  · -- j > 0: first false is at position i
-    push_neg at hj
-    have : (List.replicate j false).findIdx (· == false) = 0 := by
-      rw [List.findIdx_eq_find?_index]
-      · simp only [List.find?_replicate, decide_eq_true_eq, beq_iff_eq]
-        split_ifs with hne
-        · omega
-        · simp
-      · simp [hj]
-    simp [this, List.length_replicate]
+/-- MidpointFalse ∈ ℒ(CA_rt Bool). -/
+theorem midpointFalse_in_ca_rt : MidpointFalse ∈ ℒ (CA_rt Bool) := by
+  rw [ℒ_CA_rt_iff]
+  let C_rt := fix_empty true (toRtCa midpointFalseCA)
+  use C_rt.val
+  refine ⟨C_rt.property, ?_⟩
+  ext w
+  rw [fix_empty_spec]
+  by_cases hw : w = []
+  · -- Empty word: vacuously in MidpointFalse
+    simp only [hw, beq_self_eq_true, ↓reduceIte]
+    exact ⟨fun _ h => by simp at h, fun _ => trivial⟩
+  · simp only [beq_iff_eq, hw, ↓reduceIte, decide_eq_true_iff]
+    have hw_pos : w.length ≥ 1 := by cases w with | nil => contradiction | cons _ _ => simp
+    by_cases hw1 : w.length = 1
+    · -- Length 1: w[n/2] = w[0], time n-1 = 0
+      have hdiv : w.length / 2 = 0 := by omega
+      -- key: betaUnionSqRight at time 0 gives w[0]
+      have key : betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = w[0]'(by omega) :=
+        betaUnionSqRight_extractMid_len1 w hw1
+      simp only [MidpointFalse, Set.mem_setOf_eq, hdiv]
+      -- The CA_rt_L_iff gives us comp (n-1) 0 = true. Since n-1 = 0, this is comp 0 0.
+      -- The comp goes through toRtCa which preserves the CA, just wrapping it.
+      -- toRtCa.comp = midpointFalseCA.comp = decide(betaUnionSqRight(extractMidCA.comp w 0 0) = false)
+      constructor
+      · intro hmem _
+        have hmem' := (CA_rt_L_iff (C := toRtCa midpointFalseCA)).mp hmem
+        change midpointFalseCA.comp (↑w) (w.length - 1) 0 = true at hmem'
+        rw [show w.length - 1 = 0 from by omega] at hmem'
+        change decide (betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = false) = true at hmem'
+        rw [decide_eq_true_iff, key] at hmem'
+        simpa [hdiv] using hmem'
+      · intro hmem
+        apply (CA_rt_L_iff (C := toRtCa midpointFalseCA)).mpr
+        change midpointFalseCA.comp (↑w) (w.length - 1) 0 = true
+        rw [show w.length - 1 = 0 from by omega]
+        change decide (betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = false) = true
+        rw [decide_eq_true_iff, key]
+        simpa [hdiv] using hmem hw_pos
+    · -- Length ≥ 2: use midpointFalseCA_spec'
+      have hw_ge2 : w.length ≥ 2 := by omega
+      constructor
+      · intro hmem
+        simp only [MidpointFalse, Set.mem_setOf_eq]
+        intro _
+        exact (midpointFalseCA_spec' w hw_ge2).mp ((CA_rt_L_iff (C := toRtCa midpointFalseCA)).mp hmem)
+      · intro hmem
+        exact (CA_rt_L_iff (C := toRtCa midpointFalseCA)).mpr
+          ((midpointFalseCA_spec' w hw_ge2).mpr (hmem hw_pos))
 
-/-! ## Correctness of Counting CA
+/-! ## Main result -/
 
-The key lemma: countingCA accepts a monotone word true^i false^j iff j ≥ i.
-
-**Detailed timing analysis:**
-- Input length n = i + j
-- RT time = n - 1
-- Boundary at position i, emits signal at time 0 (via embed)
-- Signal speed: conceptually "fast" but implemented discretely
-- Signal reaches position 0 at time ~ i (with adjustments for speed)
-- Accept iff signal has arrived by time n - 1
-
-For exact j ≥ i:
-- Need: signal arrival time ≤ n - 1 when j ≥ i
-- Need: signal arrival time > n - 1 when j < i
-
-The precise construction ensures this by having the boundary emit a signal
-that reaches position 0 iff the counting constraint is satisfied.
--/
-
-/-- **Simplified construction**: Instead of the complex signal timing,
-    we use the fact that CA_rt is closed under intersection with OCA_rt,
-    and #false ≥ #true can be expressed as a language recognized by an OCA.
-
-    For monotone inputs, the real construction uses a left-edge signal
-    from the boundary that "races" against the RT deadline. -/
-theorem falseCountGeq_in_ca_rt : FalseCountGeq ∈ ℒ (CA_rt Bool) := by
-  /-
-    **Construction sketch** (formal proof uses signal-based CA):
-
-    Define a CA where:
-    1. Each cell marks whether it contains `false` or `true`
-    2. The boundary (first false) emits a leftward signal at speed 1
-    3. Position 0 also tracks time via a rightward signal reflecting off the right edge
-    4. Accept iff the boundary signal arrives before the "halfway" mark
-
-    The formal proof constructs this CA and verifies the timing conditions.
-    For now, we assert the result with sorry, as the detailed signal
-    verification requires careful case analysis on timing.
-  -/
-  sorry
-
-/-! ## Main Theorem -/
-
-/-- CA_rt is closed under intersection. -/
-private lemma ca_rt_inter {L₁ L₂ : Language Bool}
-    (h₁ : L₁ ∈ ℒ (CA_rt Bool)) (h₂ : L₂ ∈ ℒ (CA_rt Bool)) :
-    (L₁ ∩ L₂ : Set (Word Bool)) ∈ ℒ (CA_rt Bool) := by
+/-- PaddedBoolFormat is in ℒ(CA_rt Bool). -/
+theorem padded_bool_format_in_ca_rt : PaddedBoolFormat ∈ ℒ (CA_rt Bool) := by
+  rw [paddedBoolFormat_eq_inter]
+  have h₁ := monotoneBool_in_ca_rt
+  have h₂ := midpointFalse_in_ca_rt
   rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
   obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
   obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
@@ -231,16 +264,10 @@ private lemma ca_rt_inter {L₁ L₂ : Language Bool}
   ext w
   rw [Set.mem_inter_iff, ← hC₁_L, ← hC₂_L]
   rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
-  change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b)).comp ⦋w⦌ (w.length - 1) 0 = true
-    ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧ C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
+  show ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b)).comp
+    ⦋w⦌ (w.length - 1) 0 = true ↔
+    C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧
+    C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
   simp only [comp_of_map_project, ca_zip_comp, Bool.and_eq_true]
-
-/-- **Main theorem**: The padded bool format language `true^i false^j` with `j ≥ i` is in CA_rt.
-
-    **Proof**: Intersect the monotone language (from `truestar_falsestar_in_ca_rt`)
-    with the count constraint (from `falseCountGeq_in_ca_rt`). -/
-theorem padded_bool_format_in_ca_rt' : PaddedBoolFormat' ∈ ℒ (CA_rt Bool) := by
-  rw [paddedBoolFormat_eq_inter]
-  exact ca_rt_inter truestar_falsestar_in_ca_rt falseCountGeq_in_ca_rt
 
 end CellularAutomatas
