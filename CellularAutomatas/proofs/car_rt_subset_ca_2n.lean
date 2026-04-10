@@ -1,4 +1,3 @@
-import CellularAutomatas.lt_closed
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.ca_rt_rev_eq_car_rt
 

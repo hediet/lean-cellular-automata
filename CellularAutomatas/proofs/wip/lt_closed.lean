@@ -3,21 +3,6 @@ import CellularAutomatas.proofs.basic
 
 namespace CellularAutomatas
 
-section LanguageReversal
-
-  variable {α : Type}
-
-  /-- The reverse of a language: L^R = { w^R | w ∈ L }. -/
-  def Language.rev (L : Language α) : Language α := { w | w.reverse ∈ L }
-
-  /-- The reverse of a language class (set of languages). -/
-  def LanguageClass.rev (S : Set (Language α)) : Set (Language α) := Language.rev '' S
-
-end LanguageReversal
-
-def ℒ_rev {α : Type} {T : Type*} [Alphabet α] [DefinesLanguage T α] (S : Set T) : Set (Language α) :=
-  LanguageClass.rev (ℒ S)
-
 section ReverseAdvice
 
   /-- The reverse advice maps each word to its reverse. -/
@@ -75,14 +60,6 @@ section RevLTClosed
 
   private lemma rev_weak_lt_closed : (Advice.rev α).weak_lt_closed :=
     lt_closed_implies_weak_lt_closed (rev_lt_closed α)
-
-  /-- Language reversal is an involution. -/
-  @[simp]
-  lemma Language.rev_rev {α : Type} (L : Language α) :
-      Language.rev (Language.rev L) = L := by
-    ext w
-    show w.reverse.reverse ∈ L ↔ w ∈ L
-    simp
 
   /-- Key fact: zip w w^R and projecting Prod.snd gives w^R -/
   @[simp]

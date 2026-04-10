@@ -1,4 +1,4 @@
-import CellularAutomatas.lt_closed
+import CellularAutomatas.defs
 
 /-!
 # Language lifting from α to Option α

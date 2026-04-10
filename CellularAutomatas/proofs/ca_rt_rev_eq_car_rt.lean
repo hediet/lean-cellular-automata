@@ -1,4 +1,3 @@
-import CellularAutomatas.lt_closed
 import CellularAutomatas.proofs.constructions.basic_flip
 import CellularAutomatas.proofs.basic
 

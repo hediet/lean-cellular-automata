@@ -526,4 +526,27 @@ section AdviceHelpers
 
 end AdviceHelpers
 
+section LanguageReversal
+
+  variable {α : Type}
+
+  /-- The reverse of a language: L^R = { w^R | w ∈ L }. -/
+  def Language.rev (L : Language α) : Language α := { w | w.reverse ∈ L }
+
+  /-- The reverse of a language class (set of languages). -/
+  def LanguageClass.rev (S : Set (Language α)) : Set (Language α) := Language.rev '' S
+
+  /-- Language reversal is an involution. -/
+  @[simp]
+  lemma Language.rev_rev (L : Language α) :
+      Language.rev (Language.rev L) = L := by
+    ext w
+    show w.reverse.reverse ∈ L ↔ w ∈ L
+    simp
+
+end LanguageReversal
+
+def ℒ_rev {α : Type} {T : Type*} [Alphabet α] [DefinesLanguage T α] (S : Set T) : Set (Language α) :=
+  LanguageClass.rev (ℒ S)
+
 end CellularAutomatas
