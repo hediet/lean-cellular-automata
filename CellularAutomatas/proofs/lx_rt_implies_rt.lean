@@ -10,7 +10,7 @@ import CellularAutomatas.proofs.constructions.basic_border_normalization
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.ca_rt_finite_closure
 import CellularAutomatas.proofs.nextpow2
-import CellularAutomatas.proofs.x_prefix_advice_two_stage_step1
+import CellularAutomatas.proofs.x_prefix_advice_two_stage
 import CellularAutomatas.proofs.lift_language
 import Mathlib.Data.Set.Finite.List
 
