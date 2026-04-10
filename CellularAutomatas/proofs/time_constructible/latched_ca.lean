@@ -65,6 +65,7 @@ namespace LatchedCA
 variable {α β : Type} [Alphabet α] [Alphabet β]
 variable (C : CellAutomaton α？ β) (t : ℕ → ℕ) (tc : TimeConstructible t)
 
+omit [Alphabet α] in
 /-- Key observation: The timer embed sees the same thing for any word of length n.
     For word w of length n, `tc.timer.embed (word_to_config w p).map(fun _ => ())`
     equals `tc.timer.embed (word_to_config (unitWord n) p)`. -/

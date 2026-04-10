@@ -127,7 +127,7 @@ lemma map_embed_trace_rt {α β γ: Type} (C: CellAutomaton β？ γ) (f: α →
       simp only [nextt, Function.iterate_succ_apply', next, map_embed]
       congr 1 <;> exact ih _
   -- project is the same for map_embed
-  simp only [project_config, map_embed]
+  simp only [map_embed]
   exact congrArg C.project (h_nextt_eq i 0)
 
 

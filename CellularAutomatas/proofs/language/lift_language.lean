@@ -25,6 +25,7 @@ variable {α : Type} [Alphabet α]
 def Language.lift (L : Language α) : Language (Option α) :=
   { w | ∃ v ∈ L, w = v.map some }
 
+omit [Alphabet α] in
 /-- Lifting preserves membership. -/
 lemma Language.mem_lift_iff (L : Language α) (w : Word (Option α)) :
     w ∈ (Language.lift L) ↔ ∃ v ∈ L, w = v.map some := Iff.rfl
@@ -46,6 +47,7 @@ private def liftCA (C : tCellAutomaton α) : tCellAutomaton (Option α) where
   t := C.t
   p := C.p
 
+omit [Alphabet α] in
 /-- Initial config equality: the Q-component of liftCA's embedded config for `w.map some`
     equals C's embedded config for `w`. -/
 private lemma liftCA_embed_Q_eq (C : tCellAutomaton α) (w : Word α) (p : ℤ) :
@@ -65,6 +67,7 @@ private lemma liftCA_embed_Q_eq (C : tCellAutomaton α) (w : Word α) (p : ℤ) 
   · -- Both out of range
     rfl
 
+omit [Alphabet α] in
 /-- Helper: The Q-component of liftCA state equals C's state when inputs match.
 
 At any time t and position p, if the input is `w.map some`, the Q-track of liftCA
@@ -89,6 +92,7 @@ private lemma liftCA_Q_component (C : tCellAutomaton α) (w : Word α) (t : ℕ)
              (C.toCellAutomaton.nextt ⦋w⦌ t (p + 1))
     rw [ih (p - 1), ih p, ih (p + 1)]
 
+omit [Alphabet α] in
 /-- Initial Bool is true at all positions when input is `w.map some`. -/
 private lemma liftCA_embed_Bool_true (C : tCellAutomaton α) (w : Word α) (p : ℤ) :
     (⦋w.map some⦌ p : (liftCA C).Q).2 = true := by
@@ -100,10 +104,12 @@ private lemma liftCA_embed_Bool_true (C : tCellAutomaton α) (w : Word α) (p : 
   · -- Out of range: none → (_, true)
     rfl
 
+omit [Alphabet α] in
 /-- δ of liftCA gives (C.δ on first components, c.2 && r.2). -/
 private lemma liftCA_δ_snd (C : tCellAutomaton α) (l c r : (liftCA C).Q) :
     ((liftCA C).δ l c r).2 = (c.2 && r.2) := rfl
 
+omit [Alphabet α] in
 /-- Bool stays true at all positions for all times when input is `w.map some`.
     Proof: δ_bool(l, c, r) = c && r. If all initial bools are true, conjunctions stay true. -/
 private lemma liftCA_Bool_true_all (C : tCellAutomaton α) (w : Word α) (t : ℕ) (p : ℤ) :
@@ -117,12 +123,14 @@ private lemma liftCA_Bool_true_all (C : tCellAutomaton α) (w : Word α) (t : �
     rw [liftCA_δ_snd, ih p, ih (p + 1)]
     rfl
 
+omit [Alphabet α] in
 /-- Helper: For w = v.map some, the Bool component at position 0 at time t is true
     (as long as t < v.length, the Bool track sees only `some (some _)` inputs). -/
 private lemma liftCA_Bool_true_for_map_some (C : tCellAutomaton α) (v : Word α) (t : ℕ) :
     ((liftCA C).toCellAutomaton.nextt ⦋v.map some⦌ t 0).2 = true :=
   liftCA_Bool_true_all C v t 0
 
+omit [Alphabet α] in
 /-- Initial Bool at position i is false when w[i] = none. -/
 private lemma liftCA_embed_Bool_false_at_none (C : tCellAutomaton α) (w : Word (Option α))
     (i : ℕ) (hi : i < w.length) (hn : w[i] = none) :
@@ -132,6 +140,7 @@ private lemma liftCA_embed_Bool_false_at_none (C : tCellAutomaton α) (w : Word 
   rw [dif_pos h_range]
   simp only [Int.toNat_natCast, hn, liftCA]
 
+omit [Alphabet α] in
 /-- If an initial Bool in range [p, p+t] is false, then Bool at position p at time t is false.
     This is because δ_bool(l, c, r) = c && r, so false propagates from right to left. -/
 private lemma liftCA_Bool_false_propagates (C : tCellAutomaton α) (w : Word (Option α))
@@ -153,11 +162,12 @@ private lemma liftCA_Bool_false_propagates (C : tCellAutomaton α) (w : Word (Op
     | inr hj_eq =>
       subst hj_eq
       have h_init' : (⦋w⦌ ((p + 1) + t) : (liftCA C).Q).2 = false := by
-        simp only [Nat.cast_succ, Nat.cast_add, Nat.cast_one] at h_init_false
+        simp only [Nat.cast_succ] at h_init_false
         convert h_init_false using 2
         ring
       rw [ih (p + 1) t (Nat.le_refl t) h_init', Bool.and_false]
 
+omit [Alphabet α] in
 /-- Helper: If w contains `none` at some position i (where i ≤ t),
     then the Bool component at position 0 at time t is false. -/
 private lemma liftCA_Bool_false_for_none (C : tCellAutomaton α) (w : Word (Option α))
@@ -167,6 +177,7 @@ private lemma liftCA_Bool_false_for_none (C : tCellAutomaton α) (w : Word (Opti
   simp only [Int.zero_add]
   exact liftCA_embed_Bool_false_at_none C w i hi hn
 
+omit [Alphabet α] in
 /-- Given a list w : List (Option α) where all elements are `some _`,
     extract the underlying values and show w = result.map some. -/
 private lemma all_some_eq_map_some (w : List (Option α))
@@ -319,6 +330,7 @@ lemma lift_mem_ca_2n (L : Language α) (hL : L ∈ ℒ (CA_2n α)) :
     simp only [h_p_eq]
   exact (liftCA_L_eq_lift C ht hp).symm
 
+omit [Alphabet α] in
 /-- Lifting commutes with reversal: lift(L^R) = (lift L)^R -/
 lemma Language.lift_rev (L : Language α) :
     Language.lift (Language.rev L) = Language.rev (Language.lift L) := by

@@ -173,11 +173,12 @@ theorem truestar_falsestar_in_ca_rt :
     monotoneDFA.accepts ∈ ℒ (CA_rt Bool) :=
   ℒ_OCA_rt_sub_CA_rt (dfa_language_in_OCA_rt monotoneDFA)
 
+omit [Alphabet α] in
 /-- MonotoneFormat α is the preimage of monotoneDFA.accepts under Option.isSome. -/
 lemma monotoneFormat_eq_preimage :
     MonotoneFormat α = { w | w.map Option.isSome ∈ monotoneDFA.accepts } := by
   ext u
-  simp only [MonotoneFormat, Set.mem_setOf_eq, monotoneDFA_accepts_iff]
+  simp only [MonotoneFormat, monotoneDFA_accepts_iff]
   constructor
   · intro ⟨w, k, hu⟩
     exact ⟨w.length, k, by subst hu; simp [List.map_append, List.map_map, List.map_replicate,

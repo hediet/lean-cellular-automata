@@ -117,7 +117,7 @@ theorem ca_rt_subset_ca_2n : ℒ (CA_rt α) ⊆ ℒ (CA_2n α) := by
       -- For w.length = 1: position 0 is some w[0], not border, latched = none
       by_cases hw : w.length = 0
       · -- Empty word: all border, pre-latched
-        simp only [word_to_config, hw, List.length_nil, id_eq, Option.getD_some]
+        simp only [word_to_config, hw, id_eq]
         split_ifs <;> simp_all
       · -- Length 1: position 0 is inside the word, not border
         have h1 : w.length = 1 := by omega
@@ -217,7 +217,7 @@ lemma ca_2n_proper_subset_ca_2n : ℒ (CA_2n_proper α) ⊆ ℒ (CA_2n α) := by
     -- C'.L: accepts w ↔ (SpBDk 3 2 C.toCellAutomaton).comp w (2*(n-1)) 0 = true
     show w ∈ tCellAutomaton.L C ↔ w ∈ tCellAutomaton.L C'
     rw [tCellAutomaton.elem_L_iff (C := C), tCellAutomaton.elem_L_iff (C := C')]
-    simp only [C', hC_t, hC_p, congr_fun rfl]
+    simp only [C', hC_t, hC_p]
     -- Goal: C.toCellAutomaton.comp ⟬w⟭ (2n) 0 = true ↔
     --       (SpBDk 3 2 C.toCellAutomaton).comp ⟬w⟭ (2*(n-1)) 0 = true
     by_cases hn : w.length ≥ 1
@@ -238,8 +238,8 @@ lemma ca_2n_proper_subset_ca_2n : ℒ (CA_2n_proper α) ⊆ ℒ (CA_2n α) := by
       -- C reads at time 2*0 = 0, C' reads at time 2*(0-1) = 0
       -- Both read at time 0, position 0: project(embed(none))
       -- C' uses SpBDk which at time 0 on empty word is definitionally same as C
-      simp only [tCellAutomaton.elem_L_iff, C', hC_t, List.length_nil,
-                 Nat.mul_zero, Nat.zero_sub, congr_fun hC_p]
+      simp only [List.length_nil,
+                 Nat.mul_zero, Nat.zero_sub]
       -- Goal: comp ⟬[]⟭ 0 0 = true ↔ (SpBDk 3 2 C.toCellAutomaton).comp ⟬[]⟭ 0 0 = true
       -- At time 0 on empty word, SpBDk is identity on the border projection
       simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp,
@@ -249,7 +249,7 @@ lemma ca_2n_proper_subset_ca_2n : ℒ (CA_2n_proper α) ⊆ ℒ (CA_2n α) := by
       -- SpBDk's embed of none goes through dead border layers but projects the same
       simp only [SpBDk, Function.iterate_succ, Function.iterate_zero, Function.comp_apply,
                  SpBD, SpB, CellAutomaton.map_project, withDeadBorder, DeadBorder.C,
-                 CellAutomaton.map_embed, Function.comp, Sp, CellAutomaton.border]
+                 Function.comp, Sp, CellAutomaton.border]
       -- The SpBDk chain on border input reduces to C's border projection
       -- This is definitionally true but simp can't fully reduce DeadBorder.C's match
       -- Use the same rfl trick that works in exists_main_ca_for_Lrev_x_proper
@@ -673,7 +673,7 @@ lemma exists_main_ca_for_Lrev_x_proper (C : tCellAutomaton α) (hC : C ∈ CA_2n
     -- D_fast = SpBD 2 D_pad = SpB (withDeadBorder 2 D_pad)
     -- For none input, SpBD preserves the border projection
     simp only [D_fast, SpBD, SpB, CellAutomaton.map_project, withDeadBorder,
-               DeadBorder.C, CellAutomaton.map_embed, Function.comp, Sp]
+               DeadBorder.C, Function.comp, Sp]
     -- After unfolding: the dead border embed of none gives none,
     -- Sp.embed of none gives (none, fun _ => border), project evaluates at border
     -- which gives D_pad.project(D_pad.border) = D_pad.project(D_pad.embed none)

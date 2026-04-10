@@ -84,6 +84,7 @@ def extractFlag (C : LCellAutomaton α) (q : ShiftState C) : Bool := q.2.2
 
 /-! ## Key shift invariant -/
 
+omit [Alphabet α] in
 /-- Helper: position p is in inner region (not border). -/
 lemma shiftCA_inner_not_border (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p : ℤ)
     (hp : 0 ≤ p) (hpt : p < w.length) :
@@ -111,6 +112,7 @@ lemma shiftCA_inner_not_border (C : LCellAutomaton α) (w : Word α) (t : ℕ) (
     · rfl  -- true branch: (_, _, false).2.2 = false
     · rfl  -- false branch: (_, _, false).2.2 = false
 
+omit [Alphabet α] in
 /-- Helper: position p is outside the word (border region). -/
 lemma shiftCA_outer_is_border (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p : ℤ)
     (hp : p ∉ w.range) :
@@ -134,6 +136,7 @@ lemma shiftCA_outer_is_border (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p
     · -- false branch: this contradicts ih
       next h_false => exact absurd ih h_false
 
+omit [Alphabet α] in
 /-- Helper: at position n-1, comp2 equals comp1 (at all times). -/
 lemma shiftCA_comp2_eq_comp1_at_boundary (C : LCellAutomaton α) (w : Word α) (t : ℕ)
     (hw : w.length ≥ 1) :
@@ -177,6 +180,7 @@ lemma shiftCA_comp2_eq_comp1_at_boundary (C : LCellAutomaton α) (w : Word α) (
     have hr' : r.2.2 = true := by rw [← hr]; exact h2
     simp only [shiftCA, hc', hr', Bool.false_eq_true, ↓reduceIte]
 
+omit [Alphabet α] in
 /-- Helper: extractComp1 commutes with shiftCA's delta. -/
 lemma shiftCA_delta_comp1 (C : LCellAutomaton α) (l c r : ShiftState C) :
     extractComp1 C ((shiftCA C).δ l c r) = C.δ (extractComp1 C l) (extractComp1 C c) (extractComp1 C r) := by
@@ -186,11 +190,13 @@ lemma shiftCA_delta_comp1 (C : LCellAutomaton α) (l c r : ShiftState C) :
   · rfl
   · split <;> rfl
 
+omit [Alphabet α] in
 /-- Helper: extractComp1 commutes with shiftCA's embed. -/
 lemma shiftCA_embed_comp1 (C : LCellAutomaton α) (a : Option α) :
     extractComp1 C ((shiftCA C).embed a) = C.embed a := by
   cases a <;> rfl
 
+omit [Alphabet α] in
 /-- Helper: extractComp1 of shiftCA equals C at all positions (including out-of-bounds). -/
 lemma shiftCA_comp1_eq_C_general (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p : ℤ) :
     extractComp1 C ((shiftCA C).nextt ⦋w⦌ t p) = C.nextt ⦋w⦌ t p := by
@@ -204,12 +210,14 @@ lemma shiftCA_comp1_eq_C_general (C : LCellAutomaton α) (w : Word α) (t : ℕ)
     simp only [nextt_succ, next, shiftCA_delta_comp1]
     congr 1 <;> exact ih _
 
+omit [Alphabet α] in
 /-- Helper: comp1 tracks C's state at all positions. -/
 lemma shiftCA_comp1_eq_C (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p : ℤ)
-    (hp : 0 ≤ p) (hpt : p < w.length) :
+    (_hp : 0 ≤ p) (_hpt : p < w.length) :
     extractComp1 C ((shiftCA C).nextt ⦋w⦌ t p) = C.nextt ⦋w⦌ t p :=
   shiftCA_comp1_eq_C_general C w t p
 
+omit [Alphabet α] in
 /-- Helper: comp1 at position n-1 tracks C's state there. -/
 lemma shiftCA_comp1_eq_C_at_boundary (C : LCellAutomaton α) (w : Word α) (t : ℕ)
     (hw : w.length ≥ 1) :
@@ -217,6 +225,7 @@ lemma shiftCA_comp1_eq_C_at_boundary (C : LCellAutomaton α) (w : Word α) (t : 
     C.nextt ⦋w⦌ t (w.length - 1) :=
   shiftCA_comp1_eq_C C w t (w.length - 1) (by omega) (by omega)
 
+omit [Alphabet α] in
 /-- The shift invariant: at time t ≥ n-1-p, position p, the second component equals
     the first component at time t-(n-1-p), position n-1.
 
@@ -302,6 +311,7 @@ lemma shiftCA_shift_invariant (C : LCellAutomaton α) (w : Word α) (t : ℕ) (p
     congr 1
     omega
 
+omit [Alphabet α] in
 /-- The main acceptance equivalence:
     At time 2(n-1), position 0, the shiftCA's second component equals
     the original CA's state at time n-1, position n-1. -/
@@ -324,10 +334,10 @@ lemma shiftCA_accepts_eq (C : LCellAutomaton α) (w : Word α) (hw : w.length �
 /-! ## Main theorems -/
 
 /-- The shiftTCA is in CA_2n. -/
-lemma shiftTCA_in_CA_2n (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) :
+lemma shiftTCA_in_CA_2n (C : tCellAutomaton α) (_hC : C ∈ CAr_rt α) :
     shiftTCA C ∈ CA_2n α := by
-  simp only [CA_2n, t_2n, CA, tCellAutomata, Set.sep_and,
-             Set.mem_sep_iff, Set.mem_setOf_eq, Set.mem_univ, true_and]
+  simp only [CA_2n, t_2n, CA, tCellAutomata,
+             Set.mem_setOf_eq, Set.mem_univ, true_and]
   constructor
   · rfl
   · intro n; rfl
@@ -360,8 +370,8 @@ theorem shiftTCA_L_eq (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) :
     -- So (shiftCA C).project ((shiftCA C).embed none) = C.project C.border
     -- For C: project C.border
     -- Both equal C.project C.border
-    simp only [List.length_nil, Nat.zero_sub, Nat.mul_zero, Int.ofNat_zero, sub_self,
-               comp, nextt_zero, CellAutomaton.project_config,
+    simp only [List.length_nil, Nat.zero_sub, Nat.mul_zero, Int.ofNat_zero,
+               comp,
                shiftCA, CellAutomaton.border]
     -- After simp, both sides should be C.project C.border = true ↔ C.project C.border = true
     rfl

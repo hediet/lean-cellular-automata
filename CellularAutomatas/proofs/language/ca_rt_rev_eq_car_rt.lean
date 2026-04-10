@@ -41,6 +41,7 @@ def CAr_rt (α : Type) [Alphabet α] :=
 
 /-! ## Key config identity -/
 
+omit [Alphabet α] in
 /-- shift (1-n) ⟬w⟭.flip = ⟬w.reverse⟭
 
 Proof:
@@ -93,6 +94,7 @@ theorem tCellAutomaton.toLeft_in_CA_rt (C : tCellAutomaton α) (hC : C ∈ CAr_r
 
 /-! ## Acceptance equivalence -/
 
+omit [Alphabet α] in
 /-- The toRight CA accepts w iff the original CA accepts w.reverse. -/
 theorem tCellAutomaton.toRight_accepts_iff (C : tCellAutomaton α) (hC : C ∈ CA_rt α) (w : Word α) :
     C.toRight.accepts w = C.accepts w.reverse := by
@@ -144,7 +146,7 @@ theorem tCellAutomaton.toLeft_accepts_iff (C : tCellAutomaton α) (hC : C ∈ CA
 /-- ℒ_rev(CA_rt) = ℒ(CAr_rt): Reversals of left-reading RT = right-reading RT. -/
 theorem ca_rt_rev_eq_car_rt : ℒ_rev (CA_rt α) = ℒ (CAr_rt α) := by
   ext L
-  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image, ℒ, Set.mem_setOf_eq]
+  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
   constructor
   · -- (⊆) ℒ_rev(CA_rt) ⊆ ℒ(CAr_rt)
     intro ⟨L', ⟨C, hC, hL'⟩, hL_eq⟩
@@ -153,7 +155,7 @@ theorem ca_rt_rev_eq_car_rt : ℒ_rev (CA_rt α) = ℒ (CAr_rt α) := by
     refine ⟨tCellAutomaton.toRight_in_CAr_rt C hC, ?_⟩
     show Language.rev C.L = C.toRight.L
     ext w
-    simp only [Language.rev, tCellAutomaton.L, Set.mem_setOf_eq]
+    simp only [Language.rev, tCellAutomaton.L]
     show w.reverse ∈ {w | C.accepts w} ↔ w ∈ {w | C.toRight.accepts w}
     simp only [Set.mem_setOf_eq]
     constructor <;> intro h <;> rw [tCellAutomaton.toRight_accepts_iff C hC w] at * <;> exact h
@@ -163,7 +165,7 @@ theorem ca_rt_rev_eq_car_rt : ℒ_rev (CA_rt α) = ℒ (CAr_rt α) := by
     use Language.rev C.L
     refine ⟨⟨C.toLeft, tCellAutomaton.toLeft_in_CA_rt C hC, ?_⟩, Language.rev_rev C.L⟩
     ext w
-    simp only [Language.rev, tCellAutomaton.L, Set.mem_setOf_eq, DefinesLanguage.L]
+    simp only [Language.rev, tCellAutomaton.L, DefinesLanguage.L]
     show w.reverse ∈ {w | C.accepts w} ↔ w ∈ {w | C.toLeft.accepts w}
     simp only [Set.mem_setOf_eq]
     constructor <;> intro h <;> rw [tCellAutomaton.toLeft_accepts_iff C hC w] at * <;> exact h

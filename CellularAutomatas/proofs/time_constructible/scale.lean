@@ -35,6 +35,7 @@ def scaleTimerCA : CellAutomaton Unit？ Bool where
     | some () => ⟨0, Nat.zero_lt_succ c⟩
   project := fun s => s = scaleActive c
 
+omit [NeZero c] in
 /-- Border cells are always active. -/
 lemma scaleTimerCA_border (n t : ℕ) (p : ℤ) (hp : ¬(0 ≤ p ∧ p < n)) :
     (scaleTimerCA c).nextt ⦋unitWord n⦌ t p = scaleActive c := by
@@ -50,8 +51,9 @@ lemma scaleTimerCA_border (n t : ℕ) (p : ℤ) (hp : ¬(0 ≤ p ∧ p < n)) :
     simp only [scaleTimerCA] at ih
     rw [ih]
     -- scaleActive c = ⟨c, _⟩, so c + 1 < c + 1 is false
-    simp only [scaleActive, Nat.add_lt_add_iff_right, lt_irrefl, dite_false, ite_self]
+    simp only [scaleActive, lt_irrefl, dite_false, ite_self]
 
+omit [NeZero c] in
 /-- Helper: δ function behavior for scaleTimerCA. -/
 lemma scaleTimerCA_delta (left mid right : ScaleState c) :
     (scaleTimerCA c).δ left mid right =
@@ -153,7 +155,7 @@ lemma scaleTimerCA_counter (n t p : ℕ) (hp : p < n) :
         have h_curr_zero : t - c * (n - p - 1) = 0 := Nat.sub_eq_zero_of_le (Nat.le_of_lt h_t_lt)
         have h_next_le : t + 1 - c * (n - p - 1) ≤ 1 := by omega
         rw [ih_self, h_curr_zero]
-        simp only [Nat.min_zero, Nat.min_def]
+        simp only [Nat.min_def]
         split_ifs with h1 <;> omega
     · -- Right neighbor is border (p = n - 1)
       have hp_eq : p = n - 1 := by omega
@@ -192,7 +194,7 @@ lemma scaleTimerCA_counter (n t p : ℕ) (hp : p < n) :
           by_cases h2 : c ≤ t + 1
           · -- c ≤ t + 1 with t < c means c = t + 1
             have h_eq : t + 1 = c := le_antisymm h_t_lt h2
-            simp [Nat.min_def, h1, h2, h_eq]
+            simp [Nat.min_def, h1, h_eq]
           · -- t + 1 < c
             simp [Nat.min_def, h1, h2]
       · simp only [h_incr, dite_false]

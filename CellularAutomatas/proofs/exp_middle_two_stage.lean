@@ -275,7 +275,7 @@ section Stage2
       · -- k = 0: count elements > a in (a :: as)
         simp only [List.getElem_cons_zero, List.countP_cons,
                    show ¬(a > a) from by omega, decide_false, Bool.false_eq_true, ↓reduceIte,
-                   Nat.zero_add, Nat.add_sub_cancel]
+                   Nat.zero_add]
         rw [List.countP_eq_length_filter, List.filter_eq_self.mpr]
         · simp
         · intro x hx; simp [List.rel_of_sorted_cons hl x hx]
@@ -285,7 +285,7 @@ section Stage2
           have hmem : as[k] ∈ as := List.getElem_mem (h := by omega)
           have := List.rel_of_sorted_cons hl as[k] hmem
           omega
-        simp only [decide_eq_true_eq, h_a_le, Bool.false_eq_true, ↓reduceIte]
+        simp only [decide_eq_true_eq, h_a_le, ↓reduceIte]
         rw [ih has_sorted k (by omega)]
         simp
 
@@ -319,15 +319,14 @@ section Stage2
       simp only [List.filter_cons, List.filter_nil]
       by_cases hp : p < m
       · -- m > p, so m passes the filter
-        simp only [show m > p from hp, decide_true, ↓reduceIte, List.nil_append, ih]
+        simp only [show m > p from hp, decide_true, ↓reduceIte, ih]
         -- (range m ++ [m]).drop (p+1) = (range m).drop (p+1) ++ [m]
         -- because (range m).length = m ≥ p+1
         symm
         rw [List.drop_append_of_le_length (by simp; omega)]
       · -- m ≤ p, so m doesn't pass
         push_neg at hp
-        simp only [show ¬(m > p) from by omega, decide_false, ↓reduceIte, List.nil_append,
-                   List.append_nil, ih]
+        simp only [show ¬(m > p) from by omega, decide_false, ih]
         -- (range m ++ [m]).drop (p+1) = (range m).drop (p+1) ++ [m].drop (p+1-m)
         -- Since m ≤ p, p+1 > m, all elements get dropped
         rw [List.drop_append (l₁ := List.range m)]
@@ -396,7 +395,7 @@ section Stage2
           -- Use same simp approach as case 1
           simp only [h2, ↓reduceIte, List.getElem?_eq_getElem (show tp.length - 2 < tp.length by omega),
                      Option.map_some, hwi, h_count_val,
-                     Bool.true_and, beq_iff_eq]
+                     Bool.true_and]
           -- Goal: (i + 1 = tp[len-2] + 1) = (tp.length - (k+1) = 1)
           -- Both are false: tp[k]=i ≠ tp[len-2], and k ≠ len-2 so length-(k+1) ≠ 1
           have : ¬(i + 1 = tp[tp.length - 2] + 1) := by
@@ -431,7 +430,7 @@ section Stage2
         have hlt : ((List.range w.length).filter (fun j => w[j]!)).length - 2 <
                    ((List.range w.length).filter (fun j => w[j]!)).length := by omega
         clear h_mem2 h_mem2_filter count_eq_countP
-        simp_all [beq_iff_eq, Option.map, List.getElem?_eq_getElem, getElem!_def]
+        simp_all [Option.map, getElem!_def]
       · simp only [show ¬(tp.length ≥ 2) from by omega, ↓reduceIte, hwi_false,
                    Bool.false_and, Option.map]
         rfl
@@ -601,6 +600,7 @@ section Composition
     simp only [getElem!_def, List.getElem?_map, List.getElem?_range, hi]
     rfl
 
+  omit [Alphabet α] in
   /-- True positions in `exp1 w` are exactly positions where `i+1` is a power of 2.
       The second-to-last such position is `exp_middle_idx - 1`. -/
   private lemma second_last_true_of_exp1 (w : Word α) :
@@ -721,6 +721,7 @@ section Composition
 
   /-! ### Main composition theorem -/
 
+  omit [Alphabet α] in
   /-- The key decomposition: `exp_middle = exp1.compose mark_second_last`. -/
   theorem exp_middle_eq_compose :
       (Advice.exp_middle α) = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by

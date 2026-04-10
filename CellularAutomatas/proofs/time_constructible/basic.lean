@@ -115,7 +115,7 @@ private lemma identityTimerCA_invariant (n t : ℕ) (p : ℤ) :
     identityTimerCA.nextt ⦋unitWord n⦌ t p = decide (p < 0 ∨ p ≥ (n : ℤ) - t) := by
   induction t generalizing p with
   | zero =>
-    simp only [CellAutomaton.nextt_zero, Nat.sub_zero, Nat.cast_zero, sub_zero]
+    simp only [CellAutomaton.nextt_zero, Nat.cast_zero, sub_zero]
     exact identityTimerCA_initial n p
   | succ t ih =>
     -- Unfold next step - the goal becomes δ _ (nextt t p) (nextt t (p+1))
@@ -130,8 +130,7 @@ private lemma identityTimerCA_invariant (n t : ℕ) (p : ℤ) :
     -- RHS: decide (p < 0 ∨ p ≥ n - (t + 1))
     simp only [Nat.cast_succ]
     -- Use decidability to reduce to propositional reasoning
-    simp only [← Bool.decide_and, ← Bool.decide_or, Bool.or_eq_true,
-               decide_eq_decide, decide_eq_true_eq]
+    simp only [← Bool.decide_or, decide_eq_decide]
     -- Now it's: (p < 0 ∨ p ≥ n - t) ∨ (p + 1 < 0 ∨ p + 1 ≥ n - t) ↔ p < 0 ∨ p ≥ n - (t + 1)
     constructor
     · intro h

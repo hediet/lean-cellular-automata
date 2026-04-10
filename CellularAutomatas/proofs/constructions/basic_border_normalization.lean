@@ -583,7 +583,7 @@ lemma borderNormalizeCA_main_general {α β : Type} [Alphabet α] [Alphabet β]
 
             subst hr1 hc1 hl1 h_rSim'
             rw [hl_eq, hc_eq, hr_eq]
-            simp only [borderNormalizeCA, Option.isSome_some, Option.getD_some, Option.getD_none]
+            simp only [borderNormalizeCA, Option.getD_some, Option.getD_none]
           · -- Left neighbor was NOT in zone
             have h_l_far : (p - 1) + t < 0 := by omega
             have hmain_l_none : ((borderNormalizeCA C b₁ b₂).nextt ⦋⟬w⟭⦌ t (p - 1)).1 = none :=

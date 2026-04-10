@@ -171,7 +171,7 @@ private lemma marks_eq_countP (n i : ℕ) (hi : i < n) :
     rw [show n - i = (n - 1 - i) + 1 from by omega]
     exact dropLast_range'_succ i (n - 1 - i)
   rw [h_list_eq, List.count_eq_countP, List.countP_map]
-  congr 1; ext x; simp [beq_iff_eq]
+  congr 1; ext x; simp
 
 /-! ### Counting helpers -/
 
@@ -186,7 +186,7 @@ private lemma nodup_three_mem_length {l : List ℕ} (hnd : l.Nodup)
   · simp at ha hb; subst ha; subst hb; exact hab rfl
   · simp at ha hb hc
     rcases ha with rfl | rfl <;> rcases hb with rfl | rfl <;> rcases hc with rfl | rfl <;>
-      first | exact hab rfl | exact hac rfl | exact hbc rfl | simp_all
+      first | exact hab rfl | exact hac rfl | exact hbc rfl
   · exfalso; simp at hlen
 
 private lemma countP_ge_three_of_mem {l : List ℕ} (hnd : l.Nodup) (p : ℕ → Bool)
@@ -419,7 +419,7 @@ theorem bFST_scanr_mark_pow2_eq_threshold (n : ℕ) :
   intro i hi1 hi2
   have hi : i < n := by simp [threshold_v] at hi2; exact hi2
   rw [bFST_scanr_mark_pow2_getElem n i hi]
-  simp [threshold_v, hi]
+  simp [threshold_v]
 
 /-! ## Tests -/
 

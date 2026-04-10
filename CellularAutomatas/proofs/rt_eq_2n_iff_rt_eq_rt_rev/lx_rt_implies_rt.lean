@@ -80,7 +80,7 @@ lemma nextPow2_pos (n : ℕ) : nextPow2 n ≥ 1 := by
   · exact Nat.one_le_two_pow
 
 /-- nextPow2 n ≥ n for all n ≥ 1. -/
-lemma nextPow2_ge (n : ℕ) (hn : n ≥ 1) : nextPow2 n ≥ n := by
+lemma nextPow2_ge (n : ℕ) (_hn : n ≥ 1) : nextPow2 n ≥ n := by
   unfold nextPow2
   split_ifs with h
   · -- Case n ≤ 1: since n ≥ 1, n = 1, and nextPow2 1 = 1 ≥ 1
@@ -260,7 +260,7 @@ theorem xPrefixAdvice_is_two_stage (x : α) :
   -- Step 2: bFST.scanr (mark_pow2_v n) = threshold_v n
   rw [bFST_scanr_mark_pow2_eq_threshold]
   -- Step 3: (threshold_v n).map (to_x_output x) = xPrefixAdvice x k_factor w
-  simp only [threshold_v, xPrefixAdvice, to_x_output, List.map_map, k_factor]
+  simp only [threshold_v, xPrefixAdvice, List.map_map, k_factor]
   congr 1; funext i
   -- to_x_output x (decide (i < nextPow2 n / 8)) = if i < nextPow2 n / 8 then ... else ...
   by_cases h : i < nextPow2 w.length / 8 <;> simp [h, to_x_output]
@@ -538,7 +538,7 @@ namespace LxPipeline
           = ↑(9 * (e.n w - 1)) := by push_cast; ring
       rw [h_calc, Int.toNat_natCast]
     · -- Position: ↑k_factor * -(↑(e.n w) - 1) + ↑(0 : Fin k_factor) = -(8 * (↑(e.n w) - 1))
-      simp only [k_factor, Fin.val_zero, CharP.cast_eq_zero, add_zero, ← h_cast_sub]
+      simp only [k_factor, Fin.val_zero, CharP.cast_eq_zero, add_zero]
       ring
 
   /-- C₄ is left-independent (needed for Stage 5) -/
@@ -686,12 +686,12 @@ namespace LxPipeline
     · -- p ≥ 0, -p-1 < 0: this is our case
       ext
       · -- First component: show p ≥ w.length to use word_to_config_right_border
-        simp only [embed_config, ShiftedConfig, x_prefix]
+        simp only [ShiftedConfig, x_prefix]
         rw [word_to_config_right_border]
         simp only [List.length_append, List.length_replicate]
         omega
       · -- Second component: show k_factor * (-p - 1) + j + m < 0 for left border
-        simp only [embed_config]
+        simp only []
         congr 1
         funext j
         simp only [ShiftedConfig, x_prefix]
@@ -1216,7 +1216,7 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
 
     have h2 : w ∈ (C₇₀_rt.val + e.foldAdvice).L ↔
         e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true := by
-      simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.L, tCellAutomaton.accepts,
+      simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.accepts,
                  Advice.annotate]
       have h_ann_len : (w ⨂ e.foldAdvice.f w).length = w.length := by
         simp [advice_len]

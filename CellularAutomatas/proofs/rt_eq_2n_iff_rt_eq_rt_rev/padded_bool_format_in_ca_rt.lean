@@ -88,7 +88,7 @@ private lemma count_replicate_self (a : Bool) (n : ℕ) :
     (List.replicate n a).count a = n := by
   induction n with
   | zero => simp
-  | succ n ih => simp [List.replicate_succ, List.count_cons, ih]
+  | succ n ih => simp [List.replicate_succ, ih]
 
 private lemma count_replicate_ne (a b : Bool) (n : ℕ) (h : a ≠ b) :
     (List.replicate n a).count b = 0 := by
@@ -123,7 +123,7 @@ instance : DecidablePred (· ∈ MidpointFalse) := fun w =>
 /-- For monotone true^i false^j, MidpointFalse ↔ j ≥ i -/
 private lemma midpointFalse_monotone_iff (i j : ℕ) :
     (List.replicate i true ++ List.replicate j false) ∈ MidpointFalse ↔ j ≥ i := by
-  simp only [MidpointFalse, Set.mem_setOf_eq, List.length_append, List.length_replicate]
+  simp only [MidpointFalse]
   constructor
   · intro h
     by_cases hij : i + j = 0
@@ -144,8 +144,7 @@ private lemma midpointFalse_monotone_iff (i j : ℕ) :
 lemma paddedBoolFormat_eq_inter :
     PaddedBoolFormat = (MonotoneBool ∩ MidpointFalse : Set (Word Bool)) := by
   ext w
-  simp only [PaddedBoolFormat, MonotoneBool, MidpointFalse,
-    Set.mem_inter_iff, Set.mem_setOf_eq]
+  simp only [PaddedBoolFormat, MonotoneBool, MidpointFalse]
   constructor
   · intro ⟨i, j, hj, hw⟩
     refine ⟨⟨i, j, hw⟩, ?_⟩
@@ -219,7 +218,7 @@ theorem midpointFalse_in_ca_rt : MidpointFalse ∈ ℒ (CA_rt Bool) := by
       -- key: betaUnionSqRight at time 0 gives w[0]
       have key : betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = w[0]'(by omega) :=
         betaUnionSqRight_extractMid_len1 w hw1
-      simp only [MidpointFalse, Set.mem_setOf_eq, hdiv]
+      simp only [MidpointFalse]
       -- The CA_rt_L_iff gives us comp (n-1) 0 = true. Since n-1 = 0, this is comp 0 0.
       -- The comp goes through toRtCa which preserves the CA, just wrapping it.
       -- toRtCa.comp = midpointFalseCA.comp = decide(betaUnionSqRight(extractMidCA.comp w 0 0) = false)
@@ -242,7 +241,7 @@ theorem midpointFalse_in_ca_rt : MidpointFalse ∈ ℒ (CA_rt Bool) := by
       have hw_ge2 : w.length ≥ 2 := by omega
       constructor
       · intro hmem
-        simp only [MidpointFalse, Set.mem_setOf_eq]
+        simp only [MidpointFalse]
         intro _
         exact (midpointFalseCA_spec' w hw_ge2).mp ((CA_rt_L_iff (C := toRtCa midpointFalseCA)).mp hmem)
       · intro hmem

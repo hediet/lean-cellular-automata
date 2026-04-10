@@ -101,6 +101,7 @@ theorem DFAtoCA_left_independent (M : DFA α σ) [DecidablePred (· ∈ M.accept
 
 /-! ## Correctness: nextt computes DFA evaluation -/
 
+omit [Alphabet α] in
 /-- General specification: Position p at time t holds state for w[p..p+t]. -/
 theorem DFAtoCA.nextt_spec_general (M : DFA α σ) (w : List α) (t : ℕ) (p : ℤ)
     (hp : p ≥ 0) (hpt : p.toNat + t < w.length)
@@ -151,6 +152,7 @@ theorem DFAtoCA.nextt_spec_general (M : DFA α σ) (w : List α) (t : ℕ) (p : 
       simp only [List.getElem?_eq_getElem h_len, Option.toList_some, List.getElem_drop, h_idx2]
     simp only [h_take, DFA.evalFrom_append_singleton, h_idx1, h_idx2]
 
+omit [Alphabet α] in
 /-- At time n-1, position 0 has the full DFA evaluation. -/
 theorem DFAtoCA.nextt_full (M : DFA α σ) (w : List α) (hw : w.length > 0)
     [DecidablePred (· ∈ M.accept)] [Fintype α] [Inhabited σ] [Inhabited α] :
@@ -177,7 +179,7 @@ theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
     simp only [tCellAutomaton.accepts, toRtCa, List.length_nil, Nat.zero_sub,
       CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply,
       CellAutomaton.nextt_zero, CellAutomaton.embed_config, word_to_config,
-      Int.toNat_zero, le_refl, DFAtoCA, DFAtoCA.embed, DFAtoCA.project,
+      le_refl, DFAtoCA, DFAtoCA.embed, DFAtoCA.project,
       and_false, Int.ofNat_zero, lt_self_iff_false, ↓reduceDIte,
       decide_eq_true_eq, DFA.mem_accepts, DFA.eval_nil]
 
