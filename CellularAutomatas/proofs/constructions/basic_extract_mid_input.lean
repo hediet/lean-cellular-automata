@@ -1,8 +1,8 @@
 import CellularAutomatas.defs
 import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.constructions.composition.trace_kx
-import CellularAutomatas.proofs.lx_rt_implies_rt
+import CellularAutomatas.proofs.constructions.trace_kx
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.lx_rt_implies_rt
 
 /-!
 # Extract Middle Input CA Construction

@@ -1,10 +1,10 @@
-import CellularAutomatas.proofs.lx_rt_implies_rt
-import CellularAutomatas.proofs.lift_language
-import CellularAutomatas.proofs.ca_rt_rev_eq_car_rt
-import CellularAutomatas.proofs.car_rt_subset_ca_2n
-import CellularAutomatas.proofs.time_constructible_latched_ca
-import CellularAutomatas.proofs.padded_bool_format_in_ca_rt
-import CellularAutomatas.proofs.scale_time_constructible
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.lx_rt_implies_rt
+import CellularAutomatas.proofs.language.lift_language
+import CellularAutomatas.proofs.language.ca_rt_rev_eq_car_rt
+import CellularAutomatas.proofs.language.car_rt_subset_ca_2n
+import CellularAutomatas.proofs.time_constructible.latched_ca
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.padded_bool_format_in_ca_rt
+import CellularAutomatas.proofs.time_constructible.scale
 import CellularAutomatas.proofs.ca_rt_finite_closure
 import CellularAutomatas.proofs.constructions.speedup_k_step
 import CellularAutomatas.proofs.constructions.basic_compose_k_steps

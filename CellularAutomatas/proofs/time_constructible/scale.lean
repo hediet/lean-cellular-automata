@@ -1,4 +1,4 @@
-import CellularAutomatas.proofs.time_constructible
+import CellularAutomatas.proofs.time_constructible.basic
 
 namespace CellularAutomatas
 

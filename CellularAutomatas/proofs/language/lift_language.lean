@@ -1,4 +1,5 @@
 import CellularAutomatas.defs
+import CellularAutomatas.proofs.basic
 
 /-!
 # Language lifting from α to Option α

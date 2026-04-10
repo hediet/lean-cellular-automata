@@ -2,7 +2,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.exp_middle_two_stage
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.nextpow2
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.nextpow2
 import Mathlib.Data.Nat.Log
 import Mathlib.Tactic.IntervalCases
 

@@ -14,7 +14,7 @@ import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.speedup_k_step
 import CellularAutomatas.proofs.constructions.speedup_compressed
-import CellularAutomatas.proofs.constructions.composition.trace_kx
+import CellularAutomatas.proofs.constructions.trace_kx
 import CellularAutomatas.proofs.constructions.composition.sim_from_lambda
 import CellularAutomatas.proofs.constructions.composition.decompress_triple
 import CellularAutomatas.proofs.constructions.composition.compress_to_diag

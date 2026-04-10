@@ -1,5 +1,5 @@
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.ca_rt_rev_eq_car_rt
+import CellularAutomatas.proofs.language.ca_rt_rev_eq_car_rt
 
 /-!
 # ℒ(CAr_rt) ⊆ ℒ(CA_2n)

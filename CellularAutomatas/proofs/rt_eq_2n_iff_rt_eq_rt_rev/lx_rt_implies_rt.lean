@@ -1,7 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.broadcast_oca
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.broadcast_oca
 import CellularAutomatas.proofs.constructions.left_indep_from_regular
 import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.speedup_left_independent_config
@@ -9,9 +9,9 @@ import CellularAutomatas.proofs.constructions.basic_fold
 import CellularAutomatas.proofs.constructions.basic_border_normalization
 import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.ca_rt_finite_closure
-import CellularAutomatas.proofs.nextpow2
-import CellularAutomatas.proofs.x_prefix_advice_two_stage
-import CellularAutomatas.proofs.lift_language
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.nextpow2
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.x_prefix_advice_two_stage
+import CellularAutomatas.proofs.language.lift_language
 import Mathlib.Data.Set.Finite.List
 
 /-!

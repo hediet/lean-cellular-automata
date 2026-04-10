@@ -19,11 +19,11 @@
   (SpBD) to get acceptance at time n-1 for real-time.
 -/
 
-import CellularAutomatas.proofs.monotone_format_in_ca_rt
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.monotone_format_in_ca_rt
 import CellularAutomatas.proofs.constructions.basic_product_ca
 import CellularAutomatas.proofs.constructions.speedup_k_step
 import CellularAutomatas.proofs.constructions.cart_fix_empty_word
-import CellularAutomatas.proofs.constructions.extract_mid_input
+import CellularAutomatas.proofs.constructions.basic_extract_mid_input
 
 namespace CellularAutomatas
 

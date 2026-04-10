@@ -1,5 +1,5 @@
-import CellularAutomatas.proofs.time_constructible
-import CellularAutomatas.proofs.constructions.composition.trace_kx
+import CellularAutomatas.proofs.time_constructible.basic
+import CellularAutomatas.proofs.constructions.trace_kx
 
 namespace CellularAutomatas
 
