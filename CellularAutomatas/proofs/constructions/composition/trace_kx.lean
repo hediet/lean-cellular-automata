@@ -4,6 +4,9 @@ namespace CellularAutomatas
 
 open CellAutomaton
 
+-- TraceKx: Outputs k+1 values (including current time step)
+-- At time t1 + k, index t2 : Fin (k+1) gives output from time t1 + t2
+-- So at time t, we get outputs from times t-k, t-k+1, ..., t-1, t
 structure TraceKx where
   k: ℕ
   α: Type
@@ -21,106 +24,6 @@ namespace TraceKx
 
   variable (e: TraceKx)
 
-  def C: CellAutomaton e.α (Fin e.k → e.β？) := {
-    Q := Fin (e.k + 1) → e.C_orig.Q
-    δ := fun a b c =>
-      let next_s := e.C_orig.δ (a (Fin.last e.k)) (b (Fin.last e.k)) (c (Fin.last e.k))
-      Fin.snoc (Fin.tail b) next_s
-    embed := fun a =>
-      let s := e.C_orig.embed a
-      fun _ => s
-    project := fun q =>
-      fun i => some (e.C_orig.project (q (i.castSucc)))
-  }
-
-  lemma state_eq (c: Config e.α) (t: ℕ) (p: ℤ) (i: Fin (e.k + 1)):
-      (e.C.nextt ⦋c⦌ t p) i = (e.C_orig.nextt ⦋c⦌ (t + i - e.k) p) := by
-    revert p i
-    induction t with
-    | zero =>
-      intros p i
-      simp [C, CellAutomaton.embed_config]
-      have : (i : ℕ) - e.k = 0 := Nat.sub_eq_zero_of_le (Nat.le_of_lt_succ i.isLt)
-      rw [this]
-      rw [nextt_zero]
-      rfl
-    | succ t ih =>
-      intros p i
-      rw [CellAutomaton.nextt_succ]
-      unfold CellAutomaton.next C
-      simp
-      by_cases h: i = Fin.last e.k
-      · rw [h]
-        simp [Fin.snoc]
-        change e.C_orig.δ (e.C.nextt ⦋c⦌ t (p - 1) (Fin.last e.k)) (e.C.nextt ⦋c⦌ t p (Fin.last e.k)) (e.C.nextt ⦋c⦌ t (p + 1) (Fin.last e.k)) = _
-        rw [ih (p-1) (Fin.last e.k), ih p (Fin.last e.k), ih (p+1) (Fin.last e.k)]
-        simp [CellAutomaton.next]
-      · have h_lt : (i : ℕ) < e.k := by
-          apply Nat.lt_of_le_of_ne
-          · apply Nat.le_of_lt_succ
-            exact i.isLt
-          · intro heq
-            apply h
-            ext
-            simp [heq]
-        have h_cast : i = Fin.castSucc ⟨i, h_lt⟩ := by
-          ext
-          simp
-        rw [h_cast]
-        simp [Fin.snoc, h_lt]
-        change e.C.nextt ⦋c⦌ t p (Fin.succ ⟨i, h_lt⟩) = _
-        rw [ih p (Fin.succ ⟨i, h_lt⟩)]
-        congr 1
-        simp
-        rw [Nat.add_comm (↑i) 1]
-        rw [←Nat.add_assoc]
-
-  theorem spec (c: Config e.α) (t1: ℕ) (p: ℤ):
-      e.C.comp c (t1 + e.k) p =
-        fun (t2: Fin e.k) => some (e.C_orig.comp c (t1 + t2) p)
-      := by
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [C]
-    simp
-    change (fun (t2 : Fin e.k) => some (e.C_orig.project ((e.C.nextt ⦋c⦌ (t1 + e.k) p) t2.castSucc))) = _
-    funext t2
-    rw [state_eq]
-    congr
-    simp
-    rw [Nat.add_right_comm]
-    rw [Nat.add_sub_cancel]
-
-  @[simp]
-  theorem spec' (c: Config e.α) (t1: ℕ) (p: ℤ) (t2: Fin e.k) (h: t1 > e.k):
-      e.C.comp c t1 p t2 = some (e.C_orig.comp c (t1 - e.k + t2) p) := by
-    have key := congrFun (e.spec c (t1 - e.k) p) t2
-    simp [Nat.sub_add_cancel (Nat.le_of_lt h)] at key
-    exact key
-
-end TraceKx
-
--- TODO: Replace TraceKx with TraceKx2 and rename to TraceKx
-
--- TraceKx2: Like TraceKx but outputs k+1 values (including current time step)
--- At time t1 + k, index t2 : Fin (k+1) gives output from time t1 + t2
--- So at time t, we get outputs from times t-k, t-k+1, ..., t-1, t
-structure TraceKx2 where
-  k: ℕ
-  α: Type
-  β: Type
-  [_inst_α: Alphabet α]
-  [_inst_β: Alphabet β]
-  [inst: NeZero k]
-  C_orig: CellAutomaton α β
-
-attribute [instance] TraceKx2.inst
-attribute [instance] TraceKx2._inst_α
-attribute [instance] TraceKx2._inst_β
-
-namespace TraceKx2
-
-  variable (e: TraceKx2)
-
   def C: CellAutomaton e.α (Fin (e.k + 1) → e.β？) := {
     Q := Fin (e.k + 1) → e.C_orig.Q
     δ := fun a b c =>
@@ -130,7 +33,6 @@ namespace TraceKx2
       let s := e.C_orig.embed a
       fun _ => s
     project := fun q =>
-      -- Project ALL k+1 states (including the most recent one)
       fun i => some (e.C_orig.project (q i))
   }
 
@@ -176,7 +78,6 @@ namespace TraceKx2
         rw [Nat.add_comm (↑i) 1]
         rw [←Nat.add_assoc]
 
-  -- TODO: Inline into spec
   lemma spec_at (c: Config e.α) (t1: ℕ) (p: ℤ):
       e.C.comp c (t1 + e.k) p =
         fun (t2: Fin (e.k + 1)) => some (e.C_orig.comp c (t1 + t2) p)
@@ -198,7 +99,7 @@ namespace TraceKx2
     simp [Nat.sub_add_cancel (Nat.le_of_lt h)] at key
     exact key
 
-end TraceKx2
+end TraceKx
 
 structure SpeedupAndTraceKx where
   k: ℕ
@@ -223,23 +124,23 @@ namespace SpeedupAndTraceKx
     β := e.β
     C_orig := e.C_orig
   }
-  example : (CellAutomaton e.α (Fin e.k → e.β？)) := e.T.C
+  example : (CellAutomaton e.α (Fin (e.k + 1) → e.β？)) := e.T.C
 
   def SP: SpeedupKx := {
     k := e.k
     α := e.α
-    β := Fin e.k → e.β？
+    β := Fin (e.k + 1) → e.β？
     C_orig := e.T.C
   }
-  example : (CellAutomaton (Fin e.k → e.α) (Fin e.k → (Fin e.k → e.β？))) := e.SP.C
+  example : (CellAutomaton (Fin e.k → e.α) (Fin e.k → (Fin (e.k + 1) → e.β？))) := e.SP.C
 
   def C: CellAutomaton (Fin e.k → e.α) (Fin e.k → e.β) :=
-    e.SP.C.map_project (fun f => fun i => (f 0 i).getD default)
+    e.SP.C.map_project (fun f => fun i => (f 0 i.castSucc).getD default)
 
   theorem spec1 {c: Config e.α} {t1: ℕ} {t2: Fin e.k}:
       e.C.trace (SpeedupKx.compress e.k c) (t1 + 1) t2 = e.C_orig.trace c (e.k * t1 + t2) := by
     unfold trace
-    have h_comp : ∀ t p, e.C.comp ⦋SpeedupKx.compress e.k c⦌ t p = (fun g i => (g 0 i).getD default) (e.SP.C.comp ⦋SpeedupKx.compress e.k c⦌ t p) := by
+    have h_comp : ∀ t p, e.C.comp ⦋SpeedupKx.compress e.k c⦌ t p = (fun g i => (g 0 i.castSucc).getD default) (e.SP.C.comp ⦋SpeedupKx.compress e.k c⦌ t p) := by
       intros t p
       unfold CellAutomaton.comp CellAutomaton.project_config
       simp [C]
@@ -251,8 +152,8 @@ namespace SpeedupAndTraceKx
     unfold SpeedupKx.compress
     simp only
     rw [mul_add, mul_one]
-    have h_spec_T : e.T.C.comp c (e.k * t1 + e.k) 0 = fun (t2 : Fin e.k) => some (e.C_orig.comp c (e.k * t1 + t2) 0) := by
-      convert e.T.spec c (e.k * t1) 0
+    have h_spec_T : e.T.C.comp c (e.k * t1 + e.k) 0 = fun (t2 : Fin (e.k + 1)) => some (e.C_orig.comp c (e.k * t1 + t2) 0) := by
+      convert e.T.spec_at c (e.k * t1) 0
     simp only [zero_mul, zero_add]
     erw [h_spec_T]
     simp

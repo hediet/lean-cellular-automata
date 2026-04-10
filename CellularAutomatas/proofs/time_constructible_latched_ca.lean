@@ -391,7 +391,7 @@ theorem latchedCA_correct {α β : Type} [Alphabet α] [Alphabet β]
 ## Latched CA with k-step lookback
 
 `latchedCA_k C t tc k` latches C's output from `k` steps before the timer fires.
-It uses `TraceKx` to track the last `k` outputs of C, then `latchedCA` to latch
+It uses `TraceKx` to track the last `k+1` outputs of C, then `latchedCA` to latch
 the trace when the timer fires at `t(n)`, and finally `map_project` to extract
 the oldest value (index 0) corresponding to time `t(n) - k`.
 -/
@@ -421,7 +421,7 @@ def latchedCA_k {α β : Type} [Alphabet α] [Alphabet β]
     **Proof idea**:
     1. By `latchedCA_correct`, at time `t(n) + t'` the latched trace equals
        `TraceKx.C.comp` at time `t(n)`.
-    2. By `TraceKx.spec`, `TraceKx.C.comp c (t(n)) p` at index 0 gives
+    2. By `TraceKx.spec_at`, `TraceKx.C.comp c (t(n)) p` at index 0 gives
        `some (C.comp c (t(n) - k) p)`.
     3. `map_project` extracts `(some v).getD default = v`. -/
 @[simp]
@@ -440,10 +440,10 @@ theorem latchedCA_k_spec {α β : Type} [Alphabet α] [Alphabet β]
   -- ht_pos : t w.length > 0, which implies (w.length > 0 → t w.length > 0)
   have h_latch := latchedCA_correct trace.C t tc w t' (fun _ => ht_pos)
 
-  -- Use TraceKx.spec': for t > k, trace.C.comp c t p i = some (C.comp c (t - k + i) p)
+  -- Use TraceKx.spec: for t > k, trace.C.comp c t p i = some (C.comp c (t - k + i) p)
   -- Note: trace.k = k by definition
   have hk : trace.k = k := rfl
-  have h_spec' := trace.spec' ⟬w⟭ (t w.length) 0 (0 : Fin k) (hk ▸ ht_k)
+  have h_spec' := trace.spec ⟬ w⟭ (t w.length) 0 (0 : Fin (k + 1)) (hk ▸ ht_k)
 
   -- Calculate step by step
   calc (latchedCA_k C t tc k).comp ⦋⟬w⟭⦌ (t w.length + t') 0

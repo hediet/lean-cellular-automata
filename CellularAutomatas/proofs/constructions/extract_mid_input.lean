@@ -23,9 +23,9 @@ Each input value becomes a signal moving left at speed 1/2.
 
 Position at cell 0, time t: `(t + 1) / 2`
 
-### Stage 2: TraceKx2 wrapper (`extractMidCA`)
+### Stage 2: TraceKx wrapper (`extractMidCA`)
 
-Uses `TraceKx2` with k=1 to see the current and previous output of Stage 1.
+Uses `TraceKx` with k=1 to see the current and previous output of Stage 1.
 At time n-1 (cell 0):
 - Index 0 → time n-2: value from position `(n-1)/2`
 - Index 1 → time n-1: value from position `n/2`
@@ -140,15 +140,15 @@ lemma extractMidValueCA_at_origin {α : Type} [Alphabet α] (w : Word α) (t : �
   · exact halfSpeed_value w t ht
   · exact halfSpeed_phase w t 0
 
-/-! ### Stage 2: TraceKx2 wrapper -/
+/-! ### Stage 2: TraceKx wrapper -/
 
-def extractMidTrace (α : Type) [Alphabet α] : TraceKx2 where
+def extractMidTrace (α : Type) [Alphabet α] : TraceKx where
   k := 1
   α := α？
   β := α？ × Bool
   C_orig := extractMidValueCA α
 
-/-- Project TraceKx2 output to BetaUnionSq:
+/-- Project TraceKx output to BetaUnionSq:
     - phase=true (even word): `.pair prev_val curr_val`
     - phase=false (odd word): `.single curr_val` -/
 private def extractMidProject (α : Type) [Inhabited α] :
@@ -175,17 +175,17 @@ theorem extractMidCA_spec_len1 {α : Type} [Alphabet α] [Inhabited α] (w : Wor
   -- At time 0, comp = project ∘ embed applied to word_to_config w 0 = some w[0]
   unfold extractMidCA
   simp only [map_project_comp]
-  -- Goal: extractMidProject α (TraceKx2.C.comp w 0 0) = .single w[0]
-  -- At time 0, TraceKx2.C.comp w 0 0 = TraceKx2.C.project (TraceKx2.C.embed (some w[0]))
-  -- TraceKx2.C.embed (some w[0]) = fun _ => extractMidValueCA.embed (some w[0])
+  -- Goal: extractMidProject α (TraceKx.C.comp w 0 0) = .single w[0]
+  -- At time 0, TraceKx.C.comp w 0 0 = TraceKx.C.project (TraceKx.C.embed (some w[0]))
+  -- TraceKx.C.embed (some w[0]) = fun _ => extractMidValueCA.embed (some w[0])
   --   = fun _ => { phase := false, value := some w[0] }
-  -- TraceKx2.C.project q = fun i => some (extractMidValueCA.project (q i))
+  -- TraceKx.C.project q = fun i => some (extractMidValueCA.project (q i))
   --   = fun i => some (some w[0], false)
   -- extractMidProject (fun i => some (some w[0], false)):
   --   outputs 1 = some (some w[0], false), phase = false → .single w[0]
   simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply,
     CellAutomaton.nextt_zero, CellAutomaton.embed_config]
-  simp only [extractMidTrace, TraceKx2.C, extractMidValueCA, word_to_config]
+  simp only [extractMidTrace, TraceKx.C, extractMidValueCA, word_to_config]
   have h0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < w.length := by omega
   simp only [h0.1, h0.2, and_self, ↓reduceDIte]
   simp only [extractMidProject]
@@ -200,7 +200,7 @@ theorem extractMidCA_spec {α : Type} [Alphabet α] [Inhabited α] (w : Word α)
   set n := w.length with hn
   -- Step 1: extractMidCA = map_project f (trace.C), so comp = f ∘ trace.C.comp
   show extractMidProject α ((extractMidTrace α).C.comp w (n - 1) 0) = _
-  -- Step 2: Apply TraceKx2 spec to get outputs from times n-2 and n-1
+  -- Step 2: Apply TraceKx spec to get outputs from times n-2 and n-1
   have h_trace := (extractMidTrace α).spec_at (word_to_config w) (n - 2) 0
   have h_time : n - 2 + (extractMidTrace α).k = n - 1 := by show n - 2 + 1 = n - 1; omega
   rw [h_time] at h_trace
