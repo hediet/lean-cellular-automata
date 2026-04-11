@@ -235,9 +235,8 @@ private def to_x_output (x : α) : Bool → (Fin k_factor → α？) :=
 /-- The x-prefix advice is two-stage for k = k_factor = 8.
     CA stage: `exp_prefix_CA` marks positions where i+1 is a power of 2.
     FST stage: `bFST` counts 3 marks (excluding last) then fills. -/
-theorem xPrefixAdvice_is_two_stage (x : α) :
+def xPrefixAdvice_is_two_stage (x : α) :
     (xPrefixAdvice x k_factor).is_two_stage_advice := by
-  -- Construct the two-stage advice
   refine ⟨⟨Bool, exp_prefix_CA, bFST.map_output (to_x_output x)⟩, ?_⟩
   -- Show ts.advice = xPrefixAdvice x k_factor
   apply advice_eq_iff
@@ -805,7 +804,7 @@ namespace LxPipeline
   /-! #### Stage 8: Two-stage advice elimination -/
 
   /-- Stage 8: Two-stage advice is RT-closed -/
-  theorem stage8_two_stage_rt_closed
+  def stage8_two_stage_rt_closed
       {Γ : Type} [Alphabet Γ] (adv : TwoStageAdvice e.α Γ) :
       adv.advice.rt_closed :=
     two_stage_is_rt_closed adv
@@ -997,10 +996,10 @@ namespace LxPipeline
     xPrefixAdvice_is_two_stage e.x
 
   /-- The fold advice is RT-closed (two-stage ⟹ RT-closed). -/
-  theorem foldAdvice_rt_closed : e.foldAdvice.rt_closed := by
-    obtain ⟨ts, hts⟩ := e.foldAdvice_is_two_stage
-    rw [← hts]
-    exact two_stage_is_rt_closed ts
+  def foldAdvice_rt_closed : e.foldAdvice.rt_closed := by
+    let ts := e.foldAdvice_is_two_stage
+    rw [← ts.spec]
+    exact two_stage_is_rt_closed ts.witness
 
   /-- The advice alphabet: word letter paired with compressed x-prefix info. -/
   abbrev AdvicedInput := e.α × (Fin k_factor → e.α？)
@@ -1075,41 +1074,13 @@ namespace LxPipeline
   abbrev FoldAdviceType := Fin k_factor → e.α？
 
   /-- foldAdvice is weak-RT-closed (follows from being RT-closed). -/
-  theorem foldAdvice_weak_rt_closed : e.foldAdvice.weak_rt_closed := by
+  def foldAdvice_weak_rt_closed : e.foldAdvice.weak_rt_closed := by
     have h := e.foldAdvice_rt_closed e.α id
     -- adv.lift id = adv since List.map id = id
     simp only [Advice.lift, List.map_id] at h
     exact h
 
 end LxPipeline
-
-/-!
-### Advice Elimination Utilities
-
-RT-closed advice can be eliminated: if advice is RT-closed,
-then the language defined by a CA with advice still belongs to CA_rt.
--/
-
-/-- RT-closed implies weak-RT-closed (taking π = id). -/
-lemma rt_closed_implies_weak_rt_closed {α Γ : Type} [Alphabet α] [Alphabet Γ]
-    (adv : Advice α Γ) (h : adv.rt_closed) : adv.weak_rt_closed := by
-  have := h α id
-  -- adv.lift id = adv since (List.map id w = w)
-  simp only [Advice.lift, List.map_id] at this
-  exact this
-
-/-- Advice elimination lemma: Given a CA with RT-closed advice,
-    there exists an RT CA accepting the same language.
-
-    This is the key lemma dual to `tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed`. -/
-theorem exists_CA_rt_of_rt_closed_advice
-    {α Γ : Type} [Alphabet α] [Alphabet Γ]
-    (C : CA_rt (α × Γ))
-    (adv : Advice α Γ)
-    (h_rt_closed : adv.rt_closed) :
-    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L := by
-  exact tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed
-    (rt_closed_implies_weak_rt_closed adv h_rt_closed) C
 
 /-! ### Main Theorem -/
 

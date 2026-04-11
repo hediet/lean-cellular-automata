@@ -105,7 +105,7 @@ section Stage1
     exact exp_prefix_CA_trace_spec w i hi
 
   /-- `Advice.exp1` is a CArt advice. -/
-  theorem exp1_is_cart_advice : (Advice.exp1 : Advice α Bool).is_cart_advice :=
+  def exp1_is_cart_advice : (Advice.exp1 : Advice α Bool).is_cart_advice :=
     ⟨exp_prefix_CA, exp_prefix_CA_eq_exp1⟩
 
 end Stage1
@@ -751,29 +751,30 @@ section Composition
   }
 
   /-- `Advice.exp_middle` is a two-stage advice. -/
-  theorem exp_middle_two_stage_advice : (Advice.exp_middle α).is_two_stage_advice := by
-    use ts_exp_middle
-    -- ts_exp_middle.advice = select_second_FST.scanr ∘ exp_prefix_CA.trace_rt
-    --                      = Advice.exp1.compose Advice.select_2nd
-    --                      = Advice.exp1.compose Advice.mark_second_last  (by mark_second_last_eq_select_2nd)
-    --                      = Advice.exp_middle                            (by exp_middle_eq_compose)
-    calc ts_exp_middle.advice
-        = { f := select_second_FST.scanr ∘ exp_prefix_CA.trace_rt } := rfl
-      _ = (Advice.exp1 : Advice α Bool).compose Advice.select_2nd := by
-          apply advice_eq_iff
-          funext w
-          simp only [Advice.compose, Function.comp_apply]
-          have h_exp1 : exp_prefix_CA.trace_rt w = (Advice.exp1 : Advice α Bool) w := by
-            have h := congrFun (congrArg Advice.f (exp_prefix_CA_eq_exp1 (α := α))) w
-            simp only [CArtTransducer.advice] at h
-            exact h
-          rw [h_exp1]
-          have h_sel := congrFun (congrArg Advice.f select_second_FST_eq_select_2nd) ((Advice.exp1 : Advice α Bool) w)
-          simp only [FiniteStateTransducer.advice] at h_sel
-          exact h_sel
-      _ = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by
-          rw [mark_second_last_eq_select_2nd]
-      _ = Advice.exp_middle α := exp_middle_eq_compose.symm
+  def exp_middle_two_stage_advice : (Advice.exp_middle α).is_two_stage_advice where
+    witness := ts_exp_middle
+    spec := by
+      -- ts_exp_middle.advice = select_second_FST.scanr ∘ exp_prefix_CA.trace_rt
+      --                      = Advice.exp1.compose Advice.select_2nd
+      --                      = Advice.exp1.compose Advice.mark_second_last  (by mark_second_last_eq_select_2nd)
+      --                      = Advice.exp_middle                            (by exp_middle_eq_compose)
+      calc ts_exp_middle.advice
+          = { f := select_second_FST.scanr ∘ exp_prefix_CA.trace_rt } := rfl
+        _ = (Advice.exp1 : Advice α Bool).compose Advice.select_2nd := by
+            apply advice_eq_iff
+            funext w
+            simp only [Advice.compose, Function.comp_apply]
+            have h_exp1 : exp_prefix_CA.trace_rt w = (Advice.exp1 : Advice α Bool) w := by
+              have h := congrFun (congrArg Advice.f (exp_prefix_CA_eq_exp1 (α := α))) w
+              simp only [CArtTransducer.advice] at h
+              exact h
+            rw [h_exp1]
+            have h_sel := congrFun (congrArg Advice.f select_second_FST_eq_select_2nd) ((Advice.exp1 : Advice α Bool) w)
+            simp only [FiniteStateTransducer.advice] at h_sel
+            exact h_sel
+        _ = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by
+            rw [mark_second_last_eq_select_2nd]
+        _ = Advice.exp_middle α := exp_middle_eq_compose.symm
 
 end Composition
 

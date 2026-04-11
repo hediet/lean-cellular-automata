@@ -38,7 +38,6 @@ lemma ts_prefix_mem_spec (C: CA_rt α): (ts_prefix_mem C).advice = Advice.prefix
     rfl
 
 
-theorem advice_prefix_mem_is_two_stage_advice (C: CA_rt α):
+def advice_prefix_mem_is_two_stage_advice (C: CA_rt α):
     (Advice.prefix_mem C.val.L).is_two_stage_advice := by
-  use ts_prefix_mem C
-  simp [ts_prefix_mem_spec]
+  exact ⟨ts_prefix_mem C, by simp [ts_prefix_mem_spec]⟩

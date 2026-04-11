@@ -175,9 +175,11 @@ lemma middle_reachable_card (k : ℕ) :
     omega
 
 -- 4. Conclusion
-theorem middle_not_two_stage_advice : ¬ (Advice.middle α).is_two_stage_advice := by
+theorem middle_not_two_stage_advice : IsEmpty (Advice.middle α).is_two_stage_advice := by
+  constructor
   intro h
-  rcases h with ⟨adv, h_eq⟩
+  let adv := h.witness
+  let h_eq := h.spec
   let Q := adv.M.Q
   let K := Fintype.card Q + 1
   let p_len := 2 * K
@@ -200,7 +202,8 @@ theorem middle_not_two_stage_advice : ¬ (Advice.middle α).is_two_stage_advice 
     have h_gen_sub : { l | ∃ s, l = rel_repr (Advice.middle α) p s } ⊆ possible_advice_prefixes adv p := by
       intro l hl
       rcases hl with ⟨s, rfl⟩
-      simp [←h_eq, two_stage_advice_in_possible]
+      rw [show Advice.middle α = adv.advice from h_eq.symm]
+      exact two_stage_advice_in_possible adv p s
 
     have h_S_sub_possible : S ⊆ possible_advice_prefixes adv p := by
       apply Set.Subset.trans h_S_subset h_gen_sub

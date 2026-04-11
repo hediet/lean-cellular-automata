@@ -55,66 +55,55 @@ Strong + Strong = Strong:
 -/
 
 
-theorem Advice.weak_rt_closed_compose_rt_closed
+noncomputable def Advice.weak_rt_closed_compose_rt_closed
     (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂)
     (h₁: f₁.weak_rt_closed) (h₂: f₂.rt_closed):
-    (f₁.compose f₂).weak_rt_closed where
-  map C := by
+    (f₁.compose f₂).weak_rt_closed :=
+  .of_language_eq <| by
+    -- Convert hypotheses to language-equality form
+    have h₁_eq := h₁.language_eq
+    rw [CArtWithAdvice_eq_CArt_iff]
+    intro L hL
+    rw [ℒ_oca_def] at hL
+    obtain ⟨C, hC, rfl⟩ := hL
+
     -- Step 1: Build D ∈ CA_rt((Γ₁ × α) × Γ₂) from C by remapping input
     let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
-    let D_tca := C.val.map_embed proj
+    let D_tca := C.map_embed proj
     have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
-      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
+      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact hC
     let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
 
-    -- Step 2: Use f₂.rt_closed to get (f₂.lift Prod.fst).weak_rt_closed
+    -- Step 2: Use f₂.rt_closed
     have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
-    let D₁ := h_f2_α.map D
+    have h_f2_eq := h_f2_α.language_eq
+    rw [CArtWithAdvice_eq_CArt_iff] at h_f2_eq
+    have step2 := h_f2_eq _ (by rw [ℒ_oca_def]; exact ⟨D_tca, hD_mem, rfl⟩)
+    rw [ℒ_CA_rt_iff] at step2
+    obtain ⟨D₁, hD₁_mem, hD₁_L⟩ := step2
 
     -- Step 3: Swap to get D₂ ∈ CA_rt(α × Γ₁) from D₁ ∈ CA_rt(Γ₁ × α)
-    let D₂_tca := D₁.val.map_embed Prod.swap
+    let D₂_tca := D₁.map_embed Prod.swap
     have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
-      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact D₁.prop
+      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact hD₁_mem
     let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
 
     -- Step 4: Use f₁.weak_rt_closed
-    exact h₁.map D₂
-  spec C := by
-    -- Reproduce the same definitions
-    let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
-    let D_tca := C.val.map_embed proj
-    have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
-      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
-    let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
+    rw [CArtWithAdvice_eq_CArt_iff] at h₁_eq
+    have step4 := h₁_eq _ (by rw [ℒ_oca_def]; exact ⟨D₂_tca, hD₂_mem, rfl⟩)
 
-    have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
-    let D₁ := h_f2_α.map D
-    have hD₁_L := h_f2_α.spec D
-
-    let D₂_tca := D₁.val.map_embed Prod.swap
-    have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
-      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact D₁.prop
-    let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
-
-    have step4 := h₁.spec D₂
-
-    -- Show the sets are equal
-    show (h₁.map D₂).val.L = (C.val + f₁.compose f₂).L
-    rw [step4]
+    -- Step 5: Show the sets are equal
+    convert step4 using 1
     ext w
-    simp only [Set.mem_setOf_eq]
 
-    -- Show: w ⨂ (f₁.compose f₂) w ∈ C.val.L ↔ w ⨂ f₁ w ∈ D₂.val.L
-    show w ⨂ (f₁.compose f₂).f w ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂.val.L
+    show w ⨂ (f₁.compose f₂).f w ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂.val.L
 
-    -- Unfold D₂ → D₁ → D → C
-    show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
+    show w ⨂ f₂.f (f₁.f w) ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
     rw [map_embed_L, hD₁_L, Set.mem_setOf_eq]
-    show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔
+    show w ⨂ f₂.f (f₁.f w) ∈ C.L ↔
       ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift Prod.fst).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L
     rw [map_embed_L]
 
-    -- Both sides are membership in C.val.L, so show the words are equal
     suffices word_eq :
         List.map proj (List.map Prod.swap (w ⨂ f₁.f w) ⨂ (f₂.lift Prod.fst).f (List.map Prod.swap (w ⨂ f₁.f w)))
         = w ⨂ f₂.f (f₁.f w) by
@@ -141,7 +130,7 @@ private lemma Advice.compose_lift_eq (f₁: Advice α Γ₁) (f₂: Advice Γ₁
   rfl
 
 
-theorem Advice.rt_closed_compose_rt_closed
+noncomputable def Advice.rt_closed_compose_rt_closed
     (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂)
     (h₁: f₁.rt_closed) (h₂: f₂.rt_closed):
     (f₁.compose f₂).rt_closed := by

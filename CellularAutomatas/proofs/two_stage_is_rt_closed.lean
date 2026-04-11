@@ -57,7 +57,7 @@ lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
   simp [TwoStageAdvice.from_CA_rt, TwoStageAdvice.advice]
 
 
-theorem two_stage_is_weak_rt_closed (adv: TwoStageAdvice α Γ):
+def two_stage_is_weak_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.weak_rt_closed where
   map C :=
     let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
@@ -98,12 +98,12 @@ lemma TwoStageAdvice.liftAdvice_advice (adv: TwoStageAdvice α Γ) {S: Type} [Al
   congr 1
   exact map_embed_trace_rt adv.C π w
 
-theorem two_stage_is_rt_closed (adv: TwoStageAdvice α Γ):
+def two_stage_is_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.rt_closed := by
   intro S _inst π
   rw [← adv.liftAdvice_advice π]
   exact two_stage_is_weak_rt_closed (adv.liftAdvice π)
 
-theorem cart_is_rt_closed (C: CArtTransducer α Γ):
+def cart_is_rt_closed (C: CArtTransducer α Γ):
     C.advice.rt_closed :=
   ca_to_two_stage_advice_eq C ▸ two_stage_is_rt_closed (ca_to_two_stage C)

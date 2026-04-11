@@ -38,12 +38,12 @@ theorem ca_rt_equals_lt_of_closure_under_reversal: ℒ (CA α) = ℒ (CAr α) �
 
 section advice_theorems
 
-  theorem exp_middle_two_stage_advice: (Advice.exp_middle α).is_two_stage_advice := by
+  def exp_middle_two_stage_advice: (Advice.exp_middle α).is_two_stage_advice := by
     sorry
 
 
   -- peeking into the future! Speed up theorem for two-stage advices.
-  theorem advice_shift_left_rt (extension: Word α) (adv: Advice α Γ) (h: adv.is_two_stage_advice):
+  def advice_shift_left_rt (extension: Word α) (adv: Advice α Γ) (h: adv.is_two_stage_advice):
       (adv.shift_left_advice extension).is_two_stage_advice := by
     sorry
 
@@ -60,9 +60,9 @@ section advice_theorems
 
 
   theorem CartTraceFstAdvice_classification (adv: Advice α Γ) :
-    adv.is_two_stage_advice ↔
-      adv.weak_rt_closed ∧
-      ∃ as: List { a: Advice α Γ // a.weak_rt_closed ∧ a.causal },
+    Nonempty adv.is_two_stage_advice ↔
+      Nonempty adv.weak_rt_closed ∧
+      ∃ as: List { a: Advice α Γ // Nonempty a.weak_rt_closed ∧ a.causal },
         ∀ w, adv w ∈ { a.val w | a ∈ as } :=
     by
 

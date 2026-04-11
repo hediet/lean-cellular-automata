@@ -461,7 +461,7 @@ section Advice
     /-- The mapped CA recognizes the same language as the original CA with the advice. -/
     spec : ∀ C, (map C).val.L = (C.val + f).L
 
-  def Advice.weak_rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+  abbrev Advice.weak_rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     f.WeakRtClosed
 
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
@@ -568,11 +568,21 @@ section TwoStageAdvice
 
   end TwoStageAdvice
 
-  def Advice.is_two_stage_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ): Prop :=
-    ∃ ts_adv: TwoStageAdvice α Γ, ts_adv.advice = adv
+  /-- An advice is two-stage if it can be computed by an RT transducer followed by an FST. -/
+  structure Advice.IsTwoStageAdvice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) where
+    witness : TwoStageAdvice α Γ
+    spec : witness.advice = adv
 
-  def Advice.is_cart_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ): Prop :=
-    ∃ C: CArtTransducer α Γ, C.advice = adv
+  abbrev Advice.is_two_stage_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) :=
+    adv.IsTwoStageAdvice
+
+  /-- An advice is a CArt advice if it can be computed by a single RT transducer. -/
+  structure Advice.IsCartAdvice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) where
+    witness : CArtTransducer α Γ
+    spec : witness.advice = adv
+
+  abbrev Advice.is_cart_advice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) :=
+    adv.IsCartAdvice
 
 end TwoStageAdvice
 

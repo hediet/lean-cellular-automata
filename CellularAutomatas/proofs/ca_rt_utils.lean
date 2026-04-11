@@ -74,9 +74,8 @@ lemma ca_to_two_stage_advice_eq (C: CArtTransducer α Γ):
   apply advice_eq_iff
   simp [CArtTransducer.advice]
 
-lemma Advice.is_cart_advice.is_two_stage {adv: Advice α Γ} (h: adv.is_cart_advice): adv.is_two_stage_advice :=
-  let ⟨C, hC⟩ := h
-  ⟨ca_to_two_stage C, ca_to_two_stage_advice_eq C ▸ hC⟩
+def Advice.is_cart_advice.is_two_stage {adv: Advice α Γ} (h: adv.is_cart_advice): adv.is_two_stage_advice :=
+  ⟨ca_to_two_stage h.witness, ca_to_two_stage_advice_eq h.witness ▸ h.spec⟩
 
 
 
@@ -101,41 +100,58 @@ lemma tCellAutomatonWithAdvice.L_mem_ℒ (C: CA_rt (α × Γ)) (adv: Advice α �
   simp
 
 /-- Convert structure-based `weak_rt_closed` to the Prop-level language equality. -/
-lemma Advice.WeakRtClosed.language_eq {adv: Advice α Γ} (h: adv.weak_rt_closed):
+lemma Advice.WeakRtClosed.language_eq {adv: Advice α Γ} (h: adv.WeakRtClosed):
     ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α) := by
-  ext L
-  simp only [ℒ_oca_def]
-  constructor
-  · rintro ⟨C, hC, hL⟩
-    exact ⟨(h.map ⟨C, hC⟩).val, (h.map ⟨C, hC⟩).prop, hL ▸ (h.spec ⟨C, hC⟩).symm⟩
-  · intro hL
-    rw [CA_rt_subseteq_CA_rt_with_advice adv] at hL
-    exact hL
+  rw [CArtWithAdvice_eq_CArt_iff]
+  intro L hL
+  rw [ℒ_oca_def] at hL
+  obtain ⟨C, hC, rfl⟩ := hL
+  have hspec := h.spec ⟨C, hC⟩
+  -- hspec : (h.map ⟨C, hC⟩).val.L = (⟨C, hC⟩.val + adv).L
+  -- The RHS unfolds to {w | w ⨂ adv.f w ∈ C.L} via ℒ_oca_def
+  rw [ℒ_CA_rt_iff]
+  refine ⟨(h.map ⟨C, hC⟩).val, (h.map ⟨C, hC⟩).prop, ?_⟩
+  rw [hspec]
+  rfl
 
 /-- Convert the Prop-level language equality to the structure-based `weak_rt_closed`.
     This direction requires `Classical.choice`. -/
 noncomputable def Advice.WeakRtClosed.of_language_eq {adv: Advice α Γ}
-    (h: ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)): adv.weak_rt_closed where
-  map C := by
-    have : (C.val + adv).L ∈ ℒ (CA_rt α) := by
+    (h: ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)): adv.WeakRtClosed where
+  map C :=
+    have hL : (C.val + adv).L ∈ ℒ (CA_rt α) := by
       rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
-    rw [ℒ_CA_rt_iff] at this
-    exact Classical.choice (by simpa using this)
+    have hL' : ∃ C' ∈ CA_rt α, C'.L = (C.val + adv).L := by rwa [ℒ_CA_rt_iff] at hL
+    ⟨(Classical.indefiniteDescription _ hL').val, (Classical.indefiniteDescription _ hL').prop.1⟩
   spec C := by
     have hL : (C.val + adv).L ∈ ℒ (CA_rt α) := by
       rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
-    rw [ℒ_CA_rt_iff] at hL
-    exact (Classical.choice (by simpa using hL)).prop
+    have hL' : ∃ C' ∈ CA_rt α, C'.L = (C.val + adv).L := by rwa [ℒ_CA_rt_iff] at hL
+    exact (Classical.indefiniteDescription _ hL').prop.2
 
 /-- The iff between the structure-based and Prop-level definitions. -/
 lemma advice_weak_rt_closed_iff_language_eq (adv: Advice α Γ):
-    Nonempty adv.weak_rt_closed ↔ ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α) :=
+    Nonempty adv.WeakRtClosed ↔ ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α) :=
   ⟨fun ⟨h⟩ => h.language_eq, fun h => ⟨.of_language_eq h⟩⟩
 
 /-- Backward-compatible: extract witness from `weak_rt_closed`. -/
 lemma tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed {adv: Advice α Γ} (h: adv.weak_rt_closed) (C: CA_rt (α ⨉ Γ)):
     ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L :=
   ⟨h.map C, h.spec C⟩
+
+/-- RT-closed implies weak-RT-closed (taking π = id). -/
+def Advice.rt_closed_implies_weak_rt_closed {adv: Advice α Γ} (h: adv.rt_closed): adv.weak_rt_closed := by
+  have := h α id
+  simp only [Advice.lift, List.map_id] at this
+  exact this
+
+/-- Advice elimination: given a CA with RT-closed advice,
+    there exists an RT CA accepting the same language. -/
+theorem exists_CA_rt_of_rt_closed_advice (C : CA_rt (α × Γ)) (adv : Advice α Γ)
+    (h_rt_closed : adv.rt_closed) :
+    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L :=
+  tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed
+    (Advice.rt_closed_implies_weak_rt_closed h_rt_closed) C
 
 
 

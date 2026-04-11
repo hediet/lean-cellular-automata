@@ -140,14 +140,14 @@ end PrefixStableProof
 
 
 
-theorem is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+noncomputable def is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_cart_advice :=
   ⟨_, PrefixStableProof.cart_adv_spec adv h1 h2⟩
 
-theorem is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+noncomputable def is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_two_stage_advice :=
   (is_cart_advice_of_rt_closed_and_causal adv h1 h2).is_two_stage
 
-theorem rt_closed_of_weak_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+noncomputable def rt_closed_of_weak_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.rt_closed :=
   PrefixStableProof.cart_adv_spec adv h1 h2 ▸ cart_is_rt_closed (PrefixStableProof.cart_adv adv h1)
