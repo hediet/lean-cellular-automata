@@ -575,7 +575,7 @@ theorem spec' (w : Word e.α) (i : ℤ) (hi : i < 0) (t : ℕ) (j : Fin e.k) :
   obtain ⟨w', hw'⟩ := e.neg_is_compr w i hi t
   have h := e.spec_nextt w i hi t j
   rw [hw', compr_at_compr] at h
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C]
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C]
   show e.projectQ' (e.C.nextt (w) t i) j = _
   rw [hw']
   simp only [projectQ']

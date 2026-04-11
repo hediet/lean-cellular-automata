@@ -125,8 +125,7 @@ namespace ComposeKSteps
       have h_zero : e.k - 1 - (e.k - 1) = 0 := by omega
       simp only [h_zero]
       -- Now we're in the .phase1 ⟨0, _⟩ case
-      unfold CellAutomaton.comp CellAutomaton.project_config
-      simp only [Function.comp_apply]
+      simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
       congr 1
       -- Need: C1.δ (nextt..(p-1)) (nextt..p) (nextt..(p+1)) = nextt..k p
       conv_rhs => rw [show e.k = e.k - 1 + 1 by omega, CellAutomaton.nextt_succ]
@@ -167,8 +166,7 @@ namespace ComposeKSteps
       simp only [h, ↓reduceIte]
       have ht : t < e.k := by omega
       rw [phase1_state e c t ht p]
-      unfold C
-      rfl
+      simp [C]
 
   /-- Trace version: trace at time k+t equals C2's trace on C1's projection -/
   @[simp]

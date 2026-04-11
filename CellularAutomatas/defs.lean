@@ -84,6 +84,9 @@ section CellAutomaton
     def embed_config {α β: Type} {C: CellAutomaton α β} (c: Config α) : Config C.Q :=
       fun p => C.embed (c p)
 
+    lemma embed_config_apply {α β: Type} {C: CellAutomaton α β} (c: Config α) (p: ℤ) :
+        @embed_config α β C c p = C.embed (c p) := rfl
+
     notation "⦋" w "⦌"  => embed_config w
 
     instance {C: CellAutomaton α β} : Coe (Config α) (Config C.Q) := ⟨embed_config⟩
@@ -92,9 +95,18 @@ section CellAutomaton
     def project_config {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Config β :=
       fun p => C.project (c p)
 
+    lemma project_config_apply {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (p: ℤ) :
+        C.project_config c p = C.project (c p) := rfl
+
+    /-- Function-level unfolding: `project_config c = fun p => project (c p)`. Use with `simp` or `rw`. -/
+    lemma project_config_unfold {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) :
+        C.project_config c = fun p => C.project (c p) := rfl
 
     def next {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Config C.Q :=
       fun p => C.δ (c (p - 1)) (c p) (c (p + 1))
+
+    lemma next_apply {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (p: ℤ) :
+        C.next c p = C.δ (c (p - 1)) (c p) (c (p + 1)) := rfl
 
     def nextt {α β: Type} (C: CellAutomaton α β) (c: Config C.Q): Trace (Config C.Q) :=
       fun t => Nat.iterate (C.next) t c
@@ -114,8 +126,18 @@ section CellAutomaton
       def comp (c: Config C.Q): Trace (Config β) :=
         C.project_config ∘ C.nextt c
 
+      /-- Function-level unfolding: `comp c t = project_config (nextt c t)`. Use with `simp` or `rw`. -/
+      lemma comp_unfold (c: Config C.Q) (t: ℕ) :
+          C.comp c t = C.project_config (C.nextt c t) := rfl
+
+      lemma comp_apply (c: Config C.Q) (t: ℕ) (p: ℤ) :
+          C.comp c t p = C.project (C.nextt c t p) := rfl
+
       def trace (c: Config α): Trace β :=
         (C.comp c · 0)
+
+      lemma trace_eq_comp (c: Config α) (t: ℕ) :
+          C.trace c t = C.comp (⦋c⦌) t 0 := rfl
 
     end
 
@@ -153,6 +175,14 @@ section CellAutomaton
       /-- A state is quiescent if it stays the same when it is just surrounded by itself. -/
       def quiescent (q: C.Q) := C.quiescent_set { q }
 
+      lemma quiescent_iff {q: C.Q} : C.quiescent q ↔ C.δ q q q = q := by
+        unfold quiescent quiescent_set
+        constructor
+        · intro h; exact h ⟨q, rfl⟩ ⟨q, rfl⟩ ⟨q, rfl⟩
+        · intro h ⟨_, ha⟩ ⟨_, hb⟩ ⟨_, hc⟩
+          simp only [Set.mem_singleton_iff] at ha hb hc
+          subst ha; subst hb; subst hc; exact h
+
       /-- A state is dead if no matter what, it doesn't change. -/
       def dead (q: C.Q) := ∀ (a b c: C.Q), b = q → C.δ a b c = q
 
@@ -170,6 +200,8 @@ section CellAutomaton
 
 
     end states
+
+    -- API lemmas above (comp_unfold, comp_apply, project_config_unfold, project_config_apply,\n    -- next_apply, trace_eq_comp, embed_config_apply, quiescent_iff, etc.) provide the preferred\n    -- interface. Prefer `simp only [comp_unfold]` over `unfold CellAutomaton.comp`.
 
   end CellAutomaton
 
@@ -197,6 +229,9 @@ section LCellAutomaton
 
   def word_to_config {α : Type} (w : Word α) : Config α？ :=
     fun p => if h : p ≥ 0 ∧ p < w.length then some w[p.toNat] else none
+
+  lemma word_to_config_apply {α : Type} (w : Word α) (p: ℤ) :
+      word_to_config w p = if h : p ≥ 0 ∧ p < w.length then some w[p.toNat] else none := rfl
 
   notation "⟬" w "⟭" => word_to_config w
 
@@ -242,6 +277,33 @@ def BorderedConfig {α : Type} (borderLeft : α) (v w : Word α) (borderRight : 
     else
       borderLeft
 
+lemma BorderedConfig_apply {α : Type} (borderLeft : α) (v w : Word α) (borderRight : α) (p: ℤ) :
+    BorderedConfig borderLeft v w borderRight p =
+    if h : 0 ≤ p ∧ p < w.length then w[p.toNat]
+    else if h2 : -(v.length : ℤ) ≤ p ∧ p < 0 then v[(-p - 1).toNat]
+    else if p ≥ w.length then borderRight
+    else borderLeft := rfl
+
+@[simp] lemma BorderedConfig_word {α : Type} {borderLeft borderRight : α} {v w : Word α} {p: ℤ}
+    (h : 0 ≤ p ∧ p < w.length) :
+    BorderedConfig borderLeft v w borderRight p = w[p.toNat] := by
+  unfold BorderedConfig; simp [h]
+
+@[simp] lemma BorderedConfig_mirror {α : Type} {borderLeft borderRight : α} {v w : Word α} {p: ℤ}
+    (hw : ¬(0 ≤ p ∧ p < w.length)) (hv : -(v.length : ℤ) ≤ p ∧ p < 0) :
+    BorderedConfig borderLeft v w borderRight p = v[(-p - 1).toNat] := by
+  unfold BorderedConfig; simp [hw, hv]
+
+@[simp] lemma BorderedConfig_right {α : Type} {borderLeft borderRight : α} {v w : Word α} {p: ℤ}
+    (hw : ¬(0 ≤ p ∧ p < w.length)) (hv : ¬(-(v.length : ℤ) ≤ p ∧ p < 0)) (hr : p ≥ w.length) :
+    BorderedConfig borderLeft v w borderRight p = borderRight := by
+  unfold BorderedConfig; simp [hw, hv, hr]
+
+@[simp] lemma BorderedConfig_left {α : Type} {borderLeft borderRight : α} {v w : Word α} {p: ℤ}
+    (hw : ¬(0 ≤ p ∧ p < w.length)) (hv : ¬(-(v.length : ℤ) ≤ p ∧ p < 0)) (hr : ¬(p ≥ (w.length : ℤ))) :
+    BorderedConfig borderLeft v w borderRight p = borderLeft := by
+  unfold BorderedConfig; simp [hw, hv, hr]
+
 /-- Notation for bordered configurations: `[#₁ | v ‖ w | #₂]` -/
 -- Using ‖ to separate v and w since | is reserved
 notation:max "[" b₁ " | " v " ‖ " w " | " b₂ "]" => BorderedConfig b₁ v w b₂
@@ -249,6 +311,9 @@ notation:max "[" b₁ " | " v " ‖ " w " | " b₂ "]" => BorderedConfig b₁ v 
 /-- Simplified notation when borders are the same -/
 def BorderedConfigSame {α : Type} (border : α) (v w : Word α) : Config α :=
   BorderedConfig border v w border
+
+@[simp] lemma BorderedConfigSame_eq {α : Type} (border : α) (v w : Word α) (p: ℤ) :
+    BorderedConfigSame border v w p = BorderedConfig border v w border p := rfl
 
 notation:max "[" b " | " v " ‖ " w "]" => BorderedConfigSame b v w
 
@@ -309,6 +374,14 @@ section CAClasses
     def OCAr_rt := OCAr α |> t_rt α
     def OCAr_2n := OCAr α |> t_2n α
     def OCAr_lt := OCAr α |> t_lt α
+
+    /-- OCA at time 2*(n-1), reading at position -(n-1).
+        The left-independent (right-to-left) computation cone at position -(n-1)
+        covers cells -(n-1) to n-1, giving access to the full input word. -/
+    def OCA_2n_neg2n := { C ∈ tCellAutomata α |
+      C.left_independent ∧
+      (∀ n, C.t n = 2 * (n - 1)) ∧
+      (C.p = fun (n : ℕ) => -((n : ℤ) - 1)) }
 
 end CAClasses
 
@@ -385,6 +458,12 @@ section Advice
 
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_rt_closed
+
+  def Advice.weak_lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+    ℒ (CA_lt (α × Γ) + f) = ℒ (CA_lt α)
+
+  def Advice.lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+    ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_lt_closed
 
 end Advice
 

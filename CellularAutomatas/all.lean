@@ -1,6 +1,6 @@
 import CellularAutomatas.defs
 import CellularAutomatas.results
-import CellularAutomatas.results_unproven
+import CellularAutomatas.verification_candidates
 -- import CellularAutomatas.proofs.common
 import CellularAutomatas.proofs.is_two_stage_of_rt_closed_and_causal
 import CellularAutomatas.proofs.advice_prefix_mem_rt_closed

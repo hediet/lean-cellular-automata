@@ -29,17 +29,15 @@ namespace CellAutomaton.idCA
   theorem comp_spec (c: Config α) (t: ℕ):
       (idCA α).comp c t = c := by
     funext p
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply]
+    rw [CellAutomaton.comp_apply]
     rw [nextt_eq]
     rfl
 
   @[simp]
   theorem trace_spec (c: Config α) (t: ℕ):
       (idCA α).trace c t = c 0 := by
-    unfold CellAutomaton.trace
-    simp [embed_config]
-    rfl
+    rw [CellAutomaton.trace_eq_comp, comp_spec]
+    simp [embed_config, idCA]
 
 end CellAutomaton.idCA
 

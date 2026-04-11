@@ -140,14 +140,13 @@ namespace SpeedupKx
   theorem spec {c: Config e.α}:
       ∀ t, e.C.comp ⦋(compress e.k c)⦌ t = compress e.k (e.C_orig.comp c (e.k * t)) := by
     intro t
-    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
     funext p
     let c_orig : Config e.C_orig.Q := c
     have h_comm : (⦋compress e.k c⦌: Config e.C.Q) = compress e.k c_orig := by
       funext p j
       simp [compress, CellAutomaton.embed_config, C]
       rfl
-    dsimp [CellAutomaton.embed_config] at h_comm ⊢
     change e.C.project ((e.C.nextt (e.C.embed_config (compress e.k c)) t) p) = _
     have h_eq : e.C.nextt ⦋compress e.k c⦌ t = e.C.nextt (compress e.k c_orig) t := by
       congr 1

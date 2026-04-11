@@ -146,7 +146,7 @@ section DiagLeft
 
   lemma diag_left_spec (t: ℕ) (p: ℤ):
       diag_left.comp [()] t p = decide ((t : ℤ) = -2 * p) := by
-    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+    simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp_apply]
     rw [diag_left_state]
     unfold diag_left_expected_state diag_left
     split_ifs with h1 h2
@@ -157,8 +157,7 @@ section DiagLeft
   /-- For empty input, diag_left outputs false at all times -/
   lemma diag_left_comp_empty (t: ℕ) (p: ℤ):
       diag_left.comp ([] : Word Unit) t p = false := by
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply]
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply]
     -- The empty word embeds to all-idle state
     have embed_eq : ∀ q : ℤ, CellAutomaton.embed_config (C := diag_left) (word_to_config ([] : Word Unit)) q = Q.idle := by
       intro q

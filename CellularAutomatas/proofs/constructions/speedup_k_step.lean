@@ -83,7 +83,8 @@ section
     ((Sp C).trace w t) (C.nextt w t (-1)) = C.trace w (t + 1) := by
     unfold CellAutomaton.trace CellAutomaton.comp
     simp only [Function.comp_apply]
-    unfold CellAutomaton.project_config Sp
+    simp only [CellAutomaton.project_config_apply]
+    unfold Sp
     simp only
     have := snd_prop (C := C) w t 0 (by simp; omega : (t : ℤ) + 0 + 1 ≥ w.length)
     simp only at this

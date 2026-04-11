@@ -83,11 +83,10 @@ namespace TraceKx
         fun (t2: Fin (e.k + 1)) => some (e.C_orig.comp c (t1 + t2) p)
       := by
     funext t2
-    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
     simp only [C]
     show some (e.C_orig.project (e.C.nextt ⦋c⦌ (t1 + e.k) p t2)) = _
     rw [state_eq]
-    simp only [Function.comp_apply]
     congr 1
     rw [Nat.add_right_comm]
     rw [Nat.add_sub_cancel]
@@ -98,6 +97,8 @@ namespace TraceKx
     have key := congrFun (e.spec_at c (t1 - e.k) p) t2
     simp [Nat.sub_add_cancel (Nat.le_of_lt h)] at key
     exact key
+
+  attribute [irreducible] C
 
 end TraceKx
 
@@ -118,7 +119,7 @@ namespace SpeedupAndTraceKx
 
   variable (e: SpeedupAndTraceKx)
 
-  def T: TraceKx := {
+  private def T: TraceKx := {
     k := e.k
     α := e.α
     β := e.β
@@ -126,7 +127,7 @@ namespace SpeedupAndTraceKx
   }
   example : (CellAutomaton e.α (Fin (e.k + 1) → e.β？)) := e.T.C
 
-  def SP: SpeedupKx := {
+  private def SP: SpeedupKx := {
     k := e.k
     α := e.α
     β := Fin (e.k + 1) → e.β？
@@ -142,7 +143,7 @@ namespace SpeedupAndTraceKx
     unfold trace
     have h_comp : ∀ t p, e.C.comp ⦋SpeedupKx.compress e.k c⦌ t p = (fun g i => (g 0 i.castSucc).getD default) (e.SP.C.comp ⦋SpeedupKx.compress e.k c⦌ t p) := by
       intros t p
-      unfold CellAutomaton.comp CellAutomaton.project_config
+      simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
       simp [C]
       rfl
     rw [h_comp]
@@ -158,6 +159,7 @@ namespace SpeedupAndTraceKx
     erw [h_spec_T]
     simp
 
+  attribute [irreducible] C
 
 end SpeedupAndTraceKx
 

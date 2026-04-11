@@ -229,7 +229,7 @@ private lemma liftCA_L_eq_lift (C : tCellAutomaton α) (ht : ∀ n, C.t n ≥ n 
       have h_acc_false : (liftCA C).accepts w = false := by
         unfold tCellAutomaton.accepts
         unfold liftCA at h_bool_false ⊢
-        simp only [CellAutomaton.comp, Function.comp, CellAutomaton.project_config, hp',
+        simp only [CellAutomaton.comp_apply, Function.comp, CellAutomaton.project_config_apply, hp',
                    h_bool_false, Bool.and_false]
       have h_acc_true : (liftCA C).accepts w = true := hw
       rw [h_acc_false] at h_acc_true
@@ -248,7 +248,7 @@ private lemma liftCA_L_eq_lift (C : tCellAutomaton α) (ht : ∀ n, C.t n ≥ n 
     have h_lift_eq : (liftCA C).accepts (v.map some) = C.accepts v := by
       unfold tCellAutomaton.accepts
       have hp' : C.p v.length = 0 := hp v.length
-      simp only [List.length_map, liftCA, CellAutomaton.comp, Function.comp,
+      simp only [List.length_map, liftCA, CellAutomaton.comp_apply, Function.comp,
                  CellAutomaton.project_config, hp']
       have h_bool := liftCA_Bool_true_for_map_some C v (C.t v.length)
       have h_q := liftCA_Q_component C v (C.t v.length) (C.p v.length)
@@ -267,7 +267,7 @@ private lemma liftCA_L_eq_lift (C : tCellAutomaton α) (ht : ∀ n, C.t n ≥ n 
     have h_lift_eq : (liftCA C).accepts (v.map some) = C.accepts v := by
       unfold tCellAutomaton.accepts
       have hp' : C.p v.length = 0 := hp v.length
-      simp only [List.length_map, liftCA, CellAutomaton.comp, Function.comp,
+      simp only [List.length_map, liftCA, CellAutomaton.comp_apply, Function.comp,
                  CellAutomaton.project_config, hp']
       have h_bool := liftCA_Bool_true_for_map_some C v (C.t v.length)
       have h_q := liftCA_Q_component C v (C.t v.length) (C.p v.length)

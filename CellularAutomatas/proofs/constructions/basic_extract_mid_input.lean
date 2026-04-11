@@ -134,7 +134,8 @@ lemma extractMidValueCA_at_origin {α : Type} [Alphabet α] (w : Word α) (t : �
     (ht : (t + 1) / 2 < w.length) :
     (extractMidValueCA α).comp (word_to_config w) t 0 =
       (some (w[(t + 1) / 2]'ht), decide (t % 2 = 1)) := by
-  unfold CellAutomaton.comp CellAutomaton.project_config extractMidValueCA
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
+  unfold extractMidValueCA
   simp only [Function.comp_apply]
   congr 1
   · exact halfSpeed_value w t ht
@@ -183,7 +184,7 @@ theorem extractMidCA_spec_len1 {α : Type} [Alphabet α] [Inhabited α] (w : Wor
   --   = fun i => some (some w[0], false)
   -- extractMidProject (fun i => some (some w[0], false)):
   --   outputs 1 = some (some w[0], false), phase = false → .single w[0]
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply,
+  simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp_apply,
     CellAutomaton.nextt_zero, CellAutomaton.embed_config]
   simp only [extractMidTrace, TraceKx.C, extractMidValueCA, word_to_config]
   have h0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < w.length := by omega

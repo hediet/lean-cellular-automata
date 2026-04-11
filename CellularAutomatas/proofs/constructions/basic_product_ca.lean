@@ -8,16 +8,13 @@ open CellAutomaton
 @[simp]
 lemma comp_of_map_project {α β γ: Type} {C: CellAutomaton α β} (f: β → γ) (c: Config α):
       (C.map_project f).comp c t i = f (C.comp c t i) := by
-  rfl
+  simp only [comp_apply, map_project_nextt]; rfl
 
 @[simp]
 lemma trace_of_map_project {α β γ: Type} {C: CellAutomaton α？ β} (f: β → γ) (w: Word α):
       (C.map_project f).trace w = f ∘ (C.trace w) := by
   funext i
-  unfold trace comp project_config
-  simp
-  unfold map_project
-  rfl
+  simp only [trace_eq_comp, comp_apply, map_project_nextt, Function.comp_apply]; rfl
 
 @[simp]
 lemma trace_rt_of_map_project {α β γ: Type} {C: CellAutomaton α？ β} (f: β → γ) (w: Word α):
@@ -43,27 +40,18 @@ namespace ProdCA
   lemma comp [Alphabet γ] {f: P → CellAutomaton α γ}
       (w: Config α) (t: ℕ) (i: ℤ):
       (ProdCA f).comp w t i = fun b => (f b).comp w t i := by
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    unfold CellAutomaton.nextt
+    simp only [CellAutomaton.comp_apply]
 
     have nextt_proj (c: Config (ProdCA f).Q) (t: ℕ) (i: ℤ) (b: P):
-        (ProdCA f).next^[t] c i b = (f b).next^[t] (fun j => c j b) i := by
+        (ProdCA f).nextt c t i b = (f b).nextt (fun j => c j b) t i := by
+      have h_delta : ∀ (X Y Z : (ProdCA f).Q),
+          (ProdCA f).δ X Y Z b = (f b).δ (X b) (Y b) (Z b) := fun _ _ _ => rfl
       induction t generalizing i c with
-      | zero => rfl
+      | zero => simp only [nextt_zero]
       | succ t ih =>
-        rw [Function.iterate_succ]
-        rw [Function.iterate_succ]
-        dsimp
-        rw [ih]
-        dsimp [CellAutomaton.next, ProdCA]
-        rfl
+        simp only [nextt_succ, next_apply, h_delta, ih]
 
-    funext b
-    simp
-    conv in (ProdCA f).project =>
-      simp [ProdCA]
-    rw [nextt_proj]
-    congr
+    funext b; exact congrArg ((f b).project) (nextt_proj _ t i b)
 
 
   def zipMany {γ: P -> Type v} [∀ b, Inhabited (γ b)] (f: (b: P) → Word (γ b)) : Word ((b: P) -> (γ b)) :=
@@ -84,12 +72,19 @@ namespace ProdCA
   @[simp]
   lemma trace_rt [Alphabet γ] (f: P → CellAutomaton (Option α) γ) (w: Word α):
       (ProdCA f).trace_rt w = zipMany (fun b => (f b).trace_rt w) := by
-    unfold CellAutomaton.trace_rt CellAutomaton.trace
-    simp [zipMany]
-    unfold embed_config word_to_config
-    intro t ht
-    funext b
-    grind
+    apply List.ext_getElem
+    · unfold CellAutomaton.trace_rt; simp [zipMany]
+    intro i h1 h2
+    unfold CellAutomaton.trace_rt at h1 ⊢
+    simp only [List.getElem_map, List.getElem_range] at *
+    have h_i_lt : i < w.length := by simpa using h1
+    ext b
+    simp only [trace_eq_comp, ProdCA.comp]
+    simp only [zipMany_get]
+    simp only [CellAutomaton.trace_rt, show (List.map ((f b).trace ⟬w⟭) (List.range w.length)).getD i default
+        = (f b).trace ⟬w⟭ i from by
+      rw [List.getD_eq_getElem?_getD, List.getElem?_map, List.getElem?_range (by omega)]; simp]
+    simp only [trace_eq_comp]
 
 end ProdCA
 
@@ -111,15 +106,14 @@ infixr:90 " ⨂ "  => ca_zip
 lemma ca_zip_comp {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
     {C1: CellAutomaton α β1} {C2: CellAutomaton α β2} {c: Config α} {t: ℕ} {i: ℤ}:
     (C1 ⨂ C2).comp c t i = ((C1.comp c t i), (C2.comp c t i)) := by
-  simp [ca_zip]
+  simp only [ca_zip, comp_of_map_project, ProdCA.comp]
 
 
 @[simp]
 lemma ca_zip_trac {α β1 β2} [Alphabet α] [Alphabet β1] [Alphabet β2]
     {C1: CellAutomaton α β1} {C2: CellAutomaton α β2} {c: Config α} {t: ℕ}:
     (C1 ⨂ C2).trace c t = ((C1.trace c t), (C2.trace c t)) := by
-  unfold trace
-  simp
+  simp only [trace_eq_comp, ca_zip_comp]
 
 
 @[simp]

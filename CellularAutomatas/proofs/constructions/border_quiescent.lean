@@ -413,7 +413,7 @@ theorem spec (w : Word e.α) (hw : w.length > 0) (t : ℕ) (i : ℤ) :
       if i ∈ WordConeLeftIndep w t
       then e.C_orig.comp w t i
       else e.C_orig.project e.C_orig.border := by
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply]
   rw [spec_internal e w hw t i]
   split_ifs with hi <;> rfl
 

@@ -31,12 +31,12 @@ section flip
   lemma CellAutomaton.flip_embed_config {α β: Type} (C: CellAutomaton α β) (c: Config α):
       C.flip.embed_config c = (C.embed_config c.flip).flip := by
     funext p
-    simp [embed_config, Config.flip, CellAutomaton.flip]
+    simp only [embed_config_apply, Config.flip_apply, CellAutomaton.flip, neg_neg]
 
   lemma CellAutomaton.flip_next {α β: Type} (C: CellAutomaton α β) (c: Config C.Q):
       C.flip.next c = (C.next c.flip).flip := by
     funext p
-    simp [CellAutomaton.next, CellAutomaton.flip, Config.flip]
+    simp only [next_apply, Config.flip_apply, CellAutomaton.flip]
     ring_nf
 
   lemma CellAutomaton.flip_nextt {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ):
@@ -51,20 +51,21 @@ section flip
 
   @[simp] theorem CellAutomaton.flip_comp {α β: Type} (C: CellAutomaton α β) (c: Config C.Q) (t: ℕ) (p: ℤ):
       C.flip.comp c t p = C.comp c.flip t (-p) := by
-    show C.flip.project_config (C.flip.nextt c t) p = C.project_config (C.nextt c.flip t) (-p)
+    simp only [comp_apply]
     rw [C.flip_nextt]
-    simp only [CellAutomaton.project_config, Config.flip_apply, CellAutomaton.flip]
+    simp only [Config.flip_apply, CellAutomaton.flip]
 
   lemma CellAutomaton.flip_embed_config' {α β: Type} (C: CellAutomaton α β) (c: Config α):
       (C.embed_config c).flip = C.embed_config c.flip := by
     funext p
-    simp [embed_config, Config.flip]
+    simp only [embed_config_apply, Config.flip_apply]
 
   @[simp] theorem CellAutomaton.flip_trace {α β: Type} (C: CellAutomaton α β) (c: Config α) (t: ℕ):
       C.flip.trace c t = C.trace c.flip t := by
-    unfold trace
-    simp
-    rfl
+    simp only [trace_eq_comp, flip_comp, neg_zero]
+    have : (@embed_config _ _ C.flip c).flip = @embed_config _ _ C c.flip := by
+      funext p; simp only [Config.flip_apply, embed_config_apply, CellAutomaton.flip]
+    rw [this]
 
 end flip
 

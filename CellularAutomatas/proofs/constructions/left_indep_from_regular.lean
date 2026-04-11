@@ -137,7 +137,7 @@ theorem spec_combined (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
 theorem spec_even (c : Config e.α) (t : ℕ) (i : ℤ) :
     e.C.comp c (2*t) i = .single (e.C_orig.comp c t (i + t)) := by
   have eq_config : (embed_config (C := e.C) c) = fun j => Q'.single (embed_config (C := e.C_orig) c j) := rfl
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C, projectQ',
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C, projectQ',
     eq_config]
   have h := (spec_combined e (embed_config c) t i).1
   simp only [C] at h
@@ -146,7 +146,7 @@ theorem spec_even (c : Config e.α) (t : ℕ) (i : ℤ) :
 theorem spec_odd (c : Config e.α) (t : ℕ) (i : ℤ) :
     e.C.comp c (2*t + 1) i = .pair (e.C_orig.comp c t (i + t)) (e.C_orig.comp c t (i + t + 1)) := by
   have eq_config : (embed_config (C := e.C) c) = fun j => Q'.single (embed_config (C := e.C_orig) c j) := rfl
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C, projectQ',
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C, projectQ',
     eq_config]
   have h := (spec_combined e (embed_config c) t i).2
   simp only [C] at h

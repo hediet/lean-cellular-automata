@@ -299,10 +299,10 @@ lemma borderNormalizeCA_lSim_invariant {α β : Type} [Alphabet α] [Alphabet β
       simp only [borderNormalizeCA]
       by_cases hw : w.length > 0
       · have h : word_to_config w 0 = some w[0] := by simp [word_to_config, hw]
-        simp [h]
+        simp only [borderNormalizeCA, h]
       · have hw0 : w.length = 0 := by omega
         have h : word_to_config w 0 = none := by simp [word_to_config, hw0]
-        simp [h]
+        simp only [borderNormalizeCA, h]
   | succ t ih =>
     simp only [CellAutomaton.nextt_succ]
     unfold CellAutomaton.next

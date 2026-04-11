@@ -176,7 +176,7 @@ namespace CompressToDiag
   theorem spec (w: Word e.α) (hw : w.length > 0) (p: ℕ):
       e.C.comp w (2*p + 3) p =
         some (triple_at (e.C_orig.trace w) (3 * p)) := by
-    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C]
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C]
 
     have h_self0 := e.C_self_tracks_speedup w (2*p+3) p ⟨0, by decide⟩ (by omega)
     have h_self1 := e.C_self_tracks_speedup w (2*p+3) p ⟨1, by decide⟩ (by omega)
@@ -204,21 +204,21 @@ namespace CompressToDiag
       show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).1 ⟨0, _⟩))).2
           = e.C_orig.comp (w) (3 * p) 0
       rw [h_self0]
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+      simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply]
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
       -- For p = 0: use g2_initial_spec; for p > 0: use g2_spec(p-1)
       by_cases hp : p = 0
       · subst hp
         simp only [mul_zero, Nat.cast_zero]
         have := e.speedup.g2_initial_spec w hw
-        simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at this
+        simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply] at this
         rw [h_eq] at this; exact this
       · have hp' : p > 0 := Nat.pos_of_ne_zero hp
         have hg2 := e.speedup.g2_spec w hw (p - 1)
         simp only [show 2 * (p - 1) + 2 = 2 * p by omega,
           show 3 * (p - 1) + 3 = 3 * p by omega,
           Nat.cast_sub hp', Nat.cast_one, show (p - 1 : ℤ) + 1 = p by omega] at hg2
-        simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2
+        simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply] at hg2
         rw [h_eq] at hg2; exact congrArg Prod.snd hg2
     | ⟨1, _⟩ =>
       simp only [triple_at, CellAutomaton.trace]
@@ -226,7 +226,7 @@ namespace CompressToDiag
       show (e.speedup.g1 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).1 ⟨1, _⟩)))
           = e.C_orig.comp (w) (3 * p + 1) 0
       rw [h_self1]
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg1 ⊢
+      simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply] at hg1 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
       rw [h_eq] at hg1; exact hg1
     | ⟨2, _⟩ =>
@@ -235,7 +235,7 @@ namespace CompressToDiag
       show (e.speedup.g2 (e.speedup.C.project ((e.C.nextt (w) (2 * p + 3) ↑p).2 ⟨3, _⟩))).1
           = e.C_orig.comp (w) (3 * p + 2) 0
       rw [h_right3]
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply] at hg2 ⊢
+      simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply] at hg2 ⊢
       have h_eq : e.speedup.C_orig = e.C_orig := rfl
       rw [h_eq] at hg2; exact congrArg Prod.fst hg2
 

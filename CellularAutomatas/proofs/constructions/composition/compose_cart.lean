@@ -141,8 +141,7 @@ namespace TraceToTraceRtAndBorder
 
   theorem spec_mark_border (w: Word e.α) (t: ℕ) (p: ℤ):
       e.C_mark_border.comp w t p = (p + t < 0 || p + t ≥ w.length) := by
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply]
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply]
     have next_val : ∀ (c: Config e.C_mark_border.Q) (p: ℤ), e.C_mark_border.next c p = c (p+1) := by
       intro c p
       unfold CellAutomaton.next

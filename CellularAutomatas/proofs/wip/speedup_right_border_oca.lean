@@ -451,7 +451,7 @@ lemma OCA_lt_subset_OCA_2n : ℒ (OCA_lt α) ⊆ ℒ (OCA_2n α) := by
             | succ t ih =>
               simp only [CellAutomaton.nextt_succ, CellAutomaton.next, C'_CA, δ_id]
               exact ih
-          simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C',
+          simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C',
                      hC_time, hCA_p, CellAutomaton.nextt_zero] at hw ⊢
           rw [h_id_preserves]
           exact hw
@@ -467,9 +467,9 @@ lemma OCA_lt_subset_OCA_2n : ℒ (OCA_lt α) ⊆ ℒ (OCA_2n α) := by
             | succ t ih =>
               simp only [CellAutomaton.nextt_succ, CellAutomaton.next, C'_CA, δ_id]
               exact ih
-          simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C',
+          simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C',
                      hC_time, hCA_p, CellAutomaton.nextt_zero]
-          simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply, C'] at hw
+          simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply, C'] at hw
           rw [h_id_preserves] at hw
           exact hw
     | inr hc1 =>

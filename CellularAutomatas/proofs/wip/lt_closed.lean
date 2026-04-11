@@ -16,15 +16,7 @@ section LTClosed
   variable {α : Type} [Alphabet α]
   variable {Γ : Type} [Alphabet Γ]
 
-  /-- An advice is weak-LT-closed if it doesn't increase the LT language class.
-      Analogous to `Advice.weak_rt_closed`. -/
-  def Advice.weak_lt_closed (f : Advice α Γ) :=
-    ℒ (CA_lt (α × Γ) + f) = ℒ (CA_lt α)
-
-  /-- An advice is LT-closed if it is weak-LT-closed for every product alphabet.
-      Analogous to `Advice.rt_closed`. -/
-  def Advice.lt_closed (f : Advice α Γ) :=
-    ∀ {β : Type} [Alphabet β] (π: β -> α), (f.lift π).weak_lt_closed
+  -- Advice.weak_lt_closed and Advice.lt_closed are defined in defs.lean
 
   lemma lt_closed_implies_weak_lt_closed {f : Advice α Γ} (h : f.lt_closed) : f.weak_lt_closed := by
     have := h id

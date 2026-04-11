@@ -327,7 +327,7 @@ lemma shiftCA_accepts_eq (C : LCellAutomaton α) (w : Word α) (hw : w.length �
   have h' : C.project (extractComp2 C ((shiftCA C).nextt ⦋w⦌ (2 * (w.length - 1)) 0)) =
             C.project (C.nextt ⦋w⦌ (w.length - 1) (w.length - 1)) := congrArg C.project h
   -- comp = project ∘ nextt
-  unfold comp
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
   simp only [shiftCA, extractComp2] at h'
   exact h'
 
@@ -371,7 +371,7 @@ theorem shiftTCA_L_eq (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) :
     -- For C: project C.border
     -- Both equal C.project C.border
     simp only [List.length_nil, Nat.zero_sub, Nat.mul_zero, Int.ofNat_zero,
-               comp,
+               CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold,
                shiftCA, CellAutomaton.border]
     -- After simp, both sides should be C.project C.border = true ↔ C.project C.border = true
     rfl

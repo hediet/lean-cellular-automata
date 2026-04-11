@@ -20,6 +20,7 @@ import CellularAutomatas.proofs.two_stage_is_rt_closed
 import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 import CellularAutomatas.proofs.rt_closed
 import CellularAutomatas.proofs.constructions.basic_exp_word
+import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.rt_eq_2n_iff_rt_eq_rt_rev
 
 open CellularAutomatas
 
@@ -263,3 +264,30 @@ theorem result_rt_closed_compose_rt_closed
   Advice.rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
 
 end AdviceResults
+
+/-!
+## Part III: RT = 2n ⟺ RT = RT-reversed
+
+These results establish the equivalence between ℒ(CA_rt) = ℒ(CA_2n) and
+ℒ(CA_rt) = ℒᴿ(CA_rt) (real-time languages are closed under reversal).
+-/
+
+section RTEquivalence
+
+/-!
+### Result 12: ℒ(CA_rt) = ℒ(CA_2n) ⟺ ℒ(CA_rt) = ℒᴿ(CA_rt)
+
+The two central open questions about real-time cellular automata are equivalent:
+- (A) Real-time = 2n-time for all alphabets
+- (B) Real-time languages are closed under reversal for all alphabets
+
+Note: The (⇐) direction requires reversal closure over all alphabets (including
+Option β) because the proof lifts words to Option β for padding.
+-/
+
+theorem result_rt_eq_2n_iff_rt_eq_rt_rev :
+    (∀ (β : Type) [Alphabet β], ℒ (CA_rt β) = ℒ (CA_2n β)) ↔
+    (∀ (γ : Type) [Alphabet γ], ℒ (CA_rt γ) = ℒ_rev (CA_rt γ)) :=
+  rt_eq_2n_iff_rt_eq_rt_rev
+
+end RTEquivalence

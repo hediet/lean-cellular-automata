@@ -25,7 +25,7 @@ def c_is_border (α) [Alphabet α]: CellAutomaton α？ Bool :=
 @[simp]
 lemma c_is_border_spec {α} [Alphabet α] (w: Word α):
     (c_is_border α).comp w t 0 = (w == []) := by
-  unfold comp
+  unfold CellAutomaton.comp
   erw [Function.id_comp]
 
   induction t with

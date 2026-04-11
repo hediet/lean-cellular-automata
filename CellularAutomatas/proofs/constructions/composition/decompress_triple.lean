@@ -92,8 +92,7 @@ namespace DecompressTriple
     state.2.1 = o ∧ state.2.2 = v := by
 
     -- Rewrite comp hypotheses to project form
-    unfold CellAutomaton.comp CellAutomaton.project_config at h0 h1 h2
-    simp only [Function.comp_apply] at h0 h1 h2
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold] at h0 h1 h2
 
     obtain ⟨t', rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : t ≠ 0)
     -- Now t = t' + 1 (i.e. Nat.succ t')
@@ -197,8 +196,7 @@ namespace DecompressTriple
     -- The output is v[counter] = v[o]
     -- project (_, counter, stored) = stored counter
     -- By hs, counter = o and stored = v, so output = v o
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply]
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
     change e.C.project (e.C.nextt ⦋c⦌ (t + o) 0) = v o
     -- The state at time t+o is (_, o, v) by hs
     -- project (_, o, v) = v o
@@ -212,7 +210,7 @@ namespace DecompressTriple
       e.C.trace c (3 * t1 + t2 + k) = (e.C_orig.trace c (3 * t1 + k)).get (by
         have := h (3 * t1)
         simp only [beq_iff_eq, Nat.mul_mod_right] at this
-        simp [trace, CellAutomaton.comp] at this ⊢
+        simp [trace, CellAutomaton.comp_apply] at this ⊢
         exact this
       ) t2 := by
     -- h_cond gives: output at t+k exists iff t % 3 == 0
@@ -223,7 +221,7 @@ namespace DecompressTriple
     have h_isSome : (e.C_orig.comp c (3 * t1 + k) 0).isSome := by
       have := h (3 * t1)
       simp only [beq_iff_eq, Nat.mul_mod_right] at this
-      simp [trace, CellAutomaton.comp] at this ⊢
+      simp [trace, CellAutomaton.comp_apply] at this ⊢
       exact this
     set v := (e.C_orig.comp c (3 * t1 + k) 0).get h_isSome with hv_def
     -- We need to show the hypotheses of spec are satisfied

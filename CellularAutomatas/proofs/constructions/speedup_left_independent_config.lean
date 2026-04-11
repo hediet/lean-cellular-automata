@@ -814,7 +814,7 @@ theorem spec_diagonal (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t
 private theorem spec' (c : Config e.Q) (i : ℤ) (hi : i < 0) (t : ℕ) (ht : (t : ℤ) ≥ -i) (j : Fin e.k) :
     e.C'.comp (e.compress' c) t i j =
     e.C_orig.comp c ((t - (e.k - 1 : ℕ) * i - j).toNat) (e.k * i + j) := by
-  simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply]
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, Function.comp_apply]
   rw [e.spec_diagonal c i hi t ht]
   simp only [C']
 

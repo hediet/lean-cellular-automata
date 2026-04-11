@@ -25,7 +25,7 @@ namespace CellAutomaton.leftEdgeCA
       (leftEdgeCA α).comp w 1 = ⟬[()]⟭ := by
     have hw' : w.length > 0 := by cases w <;> simp_all
     funext p
-    unfold CellAutomaton.comp CellAutomaton.project_config
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
     simp only [Function.comp_apply, CellAutomaton.nextt_succ, CellAutomaton.nextt_zero]
     unfold CellAutomaton.next CellAutomaton.embed_config leftEdgeCA word_to_config
     simp only [ge_iff_le, List.length_singleton]
@@ -44,8 +44,7 @@ namespace CellAutomaton.leftEdgeCA
   theorem comp_empty (t: ℕ):
       (leftEdgeCA α).comp ([] : Word α) t = ⟬[]⟭ := by
     funext p
-    unfold CellAutomaton.comp CellAutomaton.project_config
-    simp only [Function.comp_apply]
+    simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
     -- The empty word embeds to all-false state
     have embed_eq : ∀ q : ℤ, (leftEdgeCA α).embed_config ([] : Word α) q = false := by
       intro q

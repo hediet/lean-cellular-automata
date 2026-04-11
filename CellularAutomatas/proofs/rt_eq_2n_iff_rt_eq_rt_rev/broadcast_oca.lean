@@ -43,17 +43,17 @@ namespace BroadcastOCA
 variable (e : BroadcastOCA)
 
 /-- Signal state: 0=waiting, 1=ready (fires next step), 2=fired -/
-abbrev Signal := Fin 3
+private abbrev Signal := Fin 3
 
 /-- Signal transition: propagates at speed 1/2 from right to left -/
-def signalStep (s_c s_r : Signal) : Signal :=
+private def signalStep (s_c s_r : Signal) : Signal :=
   if s_c = 2 then 2
   else if s_c = 1 then 2
   else if s_r = 2 then 1
   else 0
 
 /-- Combined state: original state, signal, and memoized result -/
-abbrev Q' := e.C_orig.Q × Signal × Option e.β
+private abbrev Q' := e.C_orig.Q × Signal × Option e.β
 
 instance : Fintype e.Q' := inferInstance
 instance : DecidableEq e.Q' := inferInstance
@@ -61,13 +61,13 @@ instance : Inhabited e.Q' := ⟨(default, 0, none)⟩
 instance : Alphabet e.Q' := {}
 
 /-- Since C_orig is left-independent, define two-argument transition -/
-def δ₂ (b c : e.C_orig.Q) : e.C_orig.Q := e.C_orig.δ default b c
+private def δ₂ (b c : e.C_orig.Q) : e.C_orig.Q := e.C_orig.δ default b c
 
-lemma δ₂_eq (a b c : e.C_orig.Q) : e.C_orig.δ a b c = e.δ₂ b c :=
+private lemma δ₂_eq (a b c : e.C_orig.Q) : e.C_orig.δ a b c = e.δ₂ b c :=
   e.h_left_indep a b c default
 
 /-- Combined transition function -/
-def δ' (_ center right : e.Q') : e.Q' :=
+private def δ' (_ center right : e.Q') : e.Q' :=
   let (q_c, s_c, m_c) := center
   let (q_r, s_r, m_r) := right
   let new_q := e.δ₂ q_c q_r
@@ -79,7 +79,7 @@ def δ' (_ center right : e.Q') : e.Q' :=
   (new_q, new_s, new_m)
 
 /-- Embed function: border waits, inner fires immediately with initial memo -/
-def embed' (a : e.τ？) : e.Q' :=
+private def embed' (a : e.τ？) : e.Q' :=
   match a with
   | none => (e.C_orig.embed none, 0, none)
   | some x => (e.C_orig.embed (some x), 2, some (e.C_orig.project (e.C_orig.embed (some x))))
@@ -92,7 +92,7 @@ def C : CellAutomaton e.τ？ e.β where
   project := fun (q, _, m) => m.getD (e.C_orig.project q)
 
 /-- δ' is left-independent (ignores first argument) -/
-lemma δ'_left_indep : ∀ a b c a', e.δ' a b c = e.δ' a' b c := by
+private lemma δ'_left_indep : ∀ a b c a', e.δ' a b c = e.δ' a' b c := by
   intros; rfl
 
 theorem C_left_independent : e.C.left_independent := e.δ'_left_indep
@@ -100,17 +100,17 @@ theorem C_left_independent : e.C.left_independent := e.δ'_left_indep
 /-! ## Helper definitions and lemmas -/
 
 /-- Helper: extract components from C.nextt -/
-def nextt_q (c : Config e.C.Q) (t : ℕ) (p : ℤ) : e.C_orig.Q :=
+private def nextt_q (c : Config e.C.Q) (t : ℕ) (p : ℤ) : e.C_orig.Q :=
   (e.C.nextt c t p).1
 
-def nextt_s (c : Config e.C.Q) (t : ℕ) (p : ℤ) : Signal :=
+private def nextt_s (c : Config e.C.Q) (t : ℕ) (p : ℤ) : Signal :=
   (e.C.nextt c t p).2.1
 
-def nextt_m (c : Config e.C.Q) (t : ℕ) (p : ℤ) : Option e.β :=
+private def nextt_m (c : Config e.C.Q) (t : ℕ) (p : ℤ) : Option e.β :=
   (e.C.nextt c t p).2.2
 
 /-- The q-component of C tracks C_orig exactly -/
-lemma nextt_q_eq (c : Config e.τ？) (t : ℕ) (p : ℤ) :
+private lemma nextt_q_eq (c : Config e.τ？) (t : ℕ) (p : ℤ) :
     e.nextt_q (embed_config (C := e.C) c) t p = e.C_orig.nextt (embed_config c) t p := by
   induction t generalizing p with
   | zero =>
@@ -133,13 +133,13 @@ lemma nextt_q_eq (c : Config e.τ？) (t : ℕ) (p : ℤ) :
 /-! ## Signal behavior lemmas -/
 
 /-- At initial time, border positions have signal=0, inner positions have signal=2 -/
-lemma nextt_s_zero (c : Config e.τ？) (p : ℤ) :
+private lemma nextt_s_zero (c : Config e.τ？) (p : ℤ) :
     e.nextt_s ⦋c⦌ 0 p = if (c p).isSome then 2 else 0 := by
   simp only [nextt_s, nextt_zero, embed_config, embed', C]
   cases c p <;> rfl
 
 /-- At initial time, inner positions have memo = some (initial projection) -/
-lemma nextt_m_zero_inner (c : Config e.τ？) (p : ℤ) (h : (c p).isSome) :
+private lemma nextt_m_zero_inner (c : Config e.τ？) (p : ℤ) (h : (c p).isSome) :
     e.nextt_m ⦋c⦌ 0 p = some (e.C_orig.project (e.C_orig.embed (c p))) := by
   simp only [nextt_m, nextt_zero, embed_config, embed', C]
   cases hcp : c p with
@@ -147,7 +147,7 @@ lemma nextt_m_zero_inner (c : Config e.τ？) (p : ℤ) (h : (c p).isSome) :
   | some x => simp
 
 /-- Signal stays at 2 once reached -/
-lemma signal_stays_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
+private lemma signal_stays_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
     (h : e.nextt_s ⦋c⦌ t p = 2) : e.nextt_s ⦋c⦌ (t + 1) p = 2 := by
   simp only [nextt_s] at h ⊢
   simp only [nextt_succ, next, C, δ', signalStep]
@@ -155,7 +155,7 @@ lemma signal_stays_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
   simp only [h, ite_true]
 
 /-- Signal goes from 1 to 2 in one step -/
-lemma signal_ready_to_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
+private lemma signal_ready_to_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
     (h : e.nextt_s ⦋c⦌ t p = 1) : e.nextt_s ⦋c⦌ (t + 1) p = 2 := by
   simp only [nextt_s] at h ⊢
   simp only [nextt_succ, next, C, δ', signalStep]
@@ -167,7 +167,7 @@ lemma signal_ready_to_fired (c : Config e.τ？) (t : ℕ) (p : ℤ)
   rfl
 
 /-- Signal at position -k before time 2k-1 is 0 (only needs hborder) -/
-lemma signal_before_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1) (t : ℕ) (ht : t < 2 * k - 1)
+private lemma signal_before_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1) (t : ℕ) (ht : t < 2 * k - 1)
     (hborder : ∀ p : ℤ, p < 0 → (c p) = none) :
     e.nextt_s ⦋c⦌ t (-(k : ℤ)) = 0 := by
   -- Induction on t
@@ -217,7 +217,7 @@ lemma signal_before_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1) (t : ℕ
     · simp only [C] at hr ⊢; simp [hr]
 
 /-- Signal at position -k (k ≥ 1) is 1 at time 2k-1 and 2 at time 2k -/
-lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
+private lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
     (hborder : ∀ p : ℤ, p < 0 → (c p) = none)
     (h0 : (c 0).isSome) :
     e.nextt_s ⦋c⦌ (2 * k - 1) (-(k : ℤ)) = 1 ∧ e.nextt_s ⦋c⦌ (2 * k) (-(k : ℤ)) = 2 := by
@@ -288,14 +288,14 @@ lemma signal_ready_and_fires (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
         exact e.signal_ready_to_fired c (2 * (k'' + 2) - 1) (-((k'' + 2 : ℕ) : ℤ)) h_ready
 
 /-- Signal at position -k (k ≥ 1) is 1 at time 2k-1 -/
-lemma signal_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
+private lemma signal_ready (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
     (hborder : ∀ p : ℤ, p < 0 → (c p) = none)
     (h0 : (c 0).isSome) :
     e.nextt_s ⦋c⦌ (2 * k - 1) (-(k : ℤ)) = 1 :=
   (e.signal_ready_and_fires c k hk hborder h0).1
 
 /-- Signal at position -k (k ≥ 1) is 2 at time 2k -/
-lemma signal_fires_at_2k (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
+private lemma signal_fires_at_2k (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
     (hborder : ∀ p : ℤ, p < 0 → (c p) = none)
     (h0 : (c 0).isSome) :
     e.nextt_s ⦋c⦌ (2 * k) (-(k : ℤ)) = 2 :=
@@ -304,7 +304,7 @@ lemma signal_fires_at_2k (c : Config e.τ？) (k : ℕ) (hk : k ≥ 1)
 /-! ## Memo behavior lemmas -/
 
 /-- Memo propagates diagonally from right neighbor when signal ≠ 1 -/
-lemma memo_propagate (c : Config e.τ？) (t : ℕ) (p : ℤ)
+private lemma memo_propagate (c : Config e.τ？) (t : ℕ) (p : ℤ)
     (h_s_not_1 : e.nextt_s ⦋c⦌ t p ≠ 1)
     (h_m_right : (e.nextt_m ⦋c⦌ t (p + 1)).isSome) :
     e.nextt_m ⦋c⦌ (t + 1) p = e.nextt_m ⦋c⦌ t (p + 1) := by
@@ -314,7 +314,7 @@ lemma memo_propagate (c : Config e.τ？) (t : ℕ) (p : ℤ)
   simp only [δ', h_s_not_1, ↓reduceIte, h_m_right, ↓reduceIte]
 
 /-- When signal = 1, memo captures the q-component's projection -/
-lemma memo_capture_at_signal (c : Config e.τ？) (t : ℕ) (p : ℤ)
+private lemma memo_capture_at_signal (c : Config e.τ？) (t : ℕ) (p : ℤ)
     (h_s_1 : e.nextt_s ⦋c⦌ t p = 1) :
     e.nextt_m ⦋c⦌ (t + 1) p =
     some (e.C_orig.project (e.C.δ (e.C.nextt ⦋c⦌ t (p - 1)) (e.C.nextt ⦋c⦌ t p) (e.C.nextt ⦋c⦌ t (p + 1))).1) := by
@@ -324,7 +324,7 @@ lemma memo_capture_at_signal (c : Config e.τ？) (t : ℕ) (p : ℤ)
   simp only [δ', h_s_1, ↓reduceIte]
 
 /-- Main memo diagonal lemma - key for proving the spec -/
-lemma memo_diagonal (c : Config e.τ？) (T r : ℕ)
+private lemma memo_diagonal (c : Config e.τ？) (T r : ℕ)
     (hborder : ∀ p : ℤ, p < 0 → (c p) = none)
     (h0 : (c 0).isSome)
     (hT : T ≥ 1) :
@@ -407,6 +407,8 @@ theorem spec (c : Config e.τ？) (T : ℕ) (r : ℕ)
   have h_memo := e.memo_diagonal c T r hborder h0 hT
   unfold nextt_m C at h_memo
   rw [h_memo, Option.getD_some]
+
+attribute [irreducible] C
 
 end BroadcastOCA
 

@@ -129,7 +129,7 @@ lemma g2_initial_spec (w: Word e.α) (h: w.length > 0):
     rw [e.step3.spec]
     have : e.step3.C_orig = e.step2.C := by rfl
     rw [this]
-    simp only [mul_zero, zero_sub, CellAutomaton.comp, CellAutomaton.project_config,
+    simp only [mul_zero, zero_sub, CellAutomaton.comp_apply, CellAutomaton.project_config_apply,
       CellAutomaton.nextt_zero, Function.comp_apply]
     have h0 : (-↑(0:ℕ) : ℤ) = 0 := by norm_num
     rw [h0]

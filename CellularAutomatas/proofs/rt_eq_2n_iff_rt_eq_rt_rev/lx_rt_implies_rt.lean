@@ -197,7 +197,7 @@ lemma comp_shift {α β : Type} [Alphabet α] [Alphabet β]
     C.comp ⟪v||w⟫ t p = C.comp ⟬v ++ w⟭ t (p + v.length) := by
   -- ⟪v||w⟫ is defined as: fun p => ⟬v ++ w⟭ (p + |v|)
   -- So ⦋⟪v||w⟫⦌ = fun p => ⦋⟬v ++ w⟭⦌ (p + |v|)
-  simp only [CellAutomaton.comp, Function.comp_apply, CellAutomaton.project_config]
+  simp only [CellAutomaton.comp_apply, Function.comp_apply, CellAutomaton.project_config_apply]
   -- Key: embed_config is pointwise, so shift commutes
   have h_config_eq : (embed_config (C := C) ⟪v||w⟫) = fun i => (embed_config (C := C) ⟬v ++ w⟭) (i + v.length) := by
     funext q
@@ -1018,7 +1018,7 @@ namespace LxPipeline
   theorem C₇₀_trace_eq (w : Word e.AdvicedInput) (t : ℕ) :
       e.C₇₀.trace w t =
       (e.C₇.map_project (· 0)).trace (w.map e.foldInputEncode) t := by
-    simp only [C₇₀, CellAutomaton.trace, CellAutomaton.comp, Function.comp,
+    simp only [C₇₀, CellAutomaton.trace, CellAutomaton.comp_apply, Function.comp,
                CellAutomaton.project_config, CellAutomaton.map_project,
                CellAutomaton.map_embed]
     -- Goal: project the nextt at position 0, showing both sides equal
@@ -1058,7 +1058,7 @@ namespace LxPipeline
     -- Step 2: (w ⨂ foldAdvice.f w).map foldInputEncode = encoded_word w
     rw [← e.encoded_word_eq_annotated w hn]
     -- Step 3: (C₇.map_project (· 0)).trace(encoded_word w)(n-1) = C₇.trace(encoded_word w)(n-1) 0
-    simp only [CellAutomaton.map_project, CellAutomaton.trace, CellAutomaton.comp,
+    simp only [CellAutomaton.map_project, CellAutomaton.trace, CellAutomaton.comp_apply,
                CellAutomaton.project_config, Function.comp]
     -- Step 4: = C_orig.comp(⟬x^m w⟭, m+n-1, 0) by stage7_full_spec
     exact e.stage7_full_spec w hn
@@ -1224,7 +1224,7 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
         ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
         ((toRtCa e.C₇₀).val.t (w ⨂ e.foldAdvice.f w).length)
         ((toRtCa e.C₇₀).val.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
-      simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp,
+      simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp_apply,
                  CellAutomaton.project_config, Function.comp]
 
     have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔

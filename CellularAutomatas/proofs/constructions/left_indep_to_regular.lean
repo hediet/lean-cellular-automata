@@ -33,12 +33,12 @@ namespace LeftIndepToRegular
 variable (e : LeftIndepToRegular)
 
 /-- Since C is left-independent, we can substitute any value for the left neighbor. -/
-lemma left_indep_subst (a a' b c : e.C_orig.Q) :
+private lemma left_indep_subst (a a' b c : e.C_orig.Q) :
     e.C_orig.δ a b c = e.C_orig.δ a' b c :=
   e.h_left_indep a b c a'
 
 /-- The transition function for C': δ'(a,b,c) = δ(q, δ(q,a,b), δ(q,b,c)) -/
-def δ' (a b c : e.C_orig.Q) : e.C_orig.Q :=
+private def δ' (a b c : e.C_orig.Q) : e.C_orig.Q :=
   e.C_orig.δ a (e.C_orig.δ a a b) (e.C_orig.δ a b c)
 
 /-- The compressed CA C'. -/
@@ -50,7 +50,7 @@ def C : CellAutomaton e.α e.β := {
 }
 
 /-- One step of C' equals two steps of C_orig, shifted by 1 position. -/
-lemma one_step_shift (c : Config e.C_orig.Q) (i : ℤ) :
+private lemma one_step_shift (c : Config e.C_orig.Q) (i : ℤ) :
     e.C.next c i = e.C_orig.nextt c 2 (i - 1) := by
   unfold CellAutomaton.next C δ'
   simp only [CellAutomaton.nextt_succ, CellAutomaton.nextt_zero]
@@ -62,7 +62,7 @@ lemma one_step_shift (c : Config e.C_orig.Q) (i : ℤ) :
   rw [left_indep_subst e (c (i-1)) (c (i-1-1)) (c (i-1)) (c i)]
   ring_nf
 
-theorem spec_nextt (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
+private theorem spec_nextt (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
     e.C.nextt c t i = e.C_orig.nextt c (2 * t) (i - t) := by
   induction t generalizing i with
   | zero => simp
@@ -93,10 +93,11 @@ theorem spec_nextt (c : Config e.C_orig.Q) (t : ℕ) (i : ℤ) :
 
 theorem spec (c : Config e.α) (t : ℕ) (i : ℤ) :
     e.C.comp c t i = e.C_orig.comp c (2 * t) (i - t) := by
-  unfold CellAutomaton.comp CellAutomaton.project_config
-  simp only [Function.comp_apply]
+  simp only [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold]
   congr 1
   exact spec_nextt e ⦋c⦌ t i
+
+attribute [irreducible] C
 
 end LeftIndepToRegular
 

@@ -33,7 +33,7 @@ lemma nextt_congr {α β} (C: CellAutomaton α β) (c1 c2: Config C.Q) (t: ℕ) 
     -- The goal is now nextt (next c1) t i = nextt (next c2) t i
     apply ih
     intro j hj
-    unfold CellAutomaton.next
+    simp only [CellAutomaton.next_apply]
     congr 1
     · apply h
       constructor <;> omega
@@ -72,8 +72,8 @@ lemma CellAutomaton.trace_rt_is_causal {α β: Type} [Alphabet β] (C: CellAutom
   apply List.ext_getElem (by simp)
   intro t h1 h2
   simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range, List.getElem_take]
-  unfold CellAutomaton.trace CellAutomaton.comp CellAutomaton.project_config
-  simp only [Function.comp_apply]
+  unfold CellAutomaton.trace
+  simp only [comp_apply, Function.comp_apply]
   congr 1
   have ht : t < (w.take i).length := by simpa using h1
   conv_rhs => rw [show w = (w.take i) ++ (w.drop i) from (List.take_append_drop i w).symm]
@@ -110,12 +110,12 @@ lemma map_embed_trace_rt {α β γ: Type} (C: CellAutomaton β？ γ) (f: α →
   apply List.ext_getElem
   · simp
   intro i hi1 hi2
-  simp only [trace_rt, List.getElem_map, List.getElem_range, trace, comp]
+  simp only [trace_rt, List.getElem_map, List.getElem_range, trace_eq_comp, comp_apply]
   -- Show that nextt is the same for all positions
   have h_embed_eq : ∀ p : ℤ, @embed_config _ _ (C.map_embed (Option.map f)) (word_to_config w) p =
                             @embed_config _ _ C (word_to_config (w.map f)) p := by
     intro p
-    simp [embed_config, word_to_config, map_embed]
+    simp [embed_config, word_to_config_apply, map_embed]
   -- The nextt values are the same because δ is the same and embed_config is the same
   have h_nextt_eq : ∀ t : ℕ, ∀ p : ℤ,
       (C.map_embed (Option.map f)).nextt ⦋w⦌ t p = C.nextt ⦋w.map f⦌ t p := by
@@ -124,7 +124,7 @@ lemma map_embed_trace_rt {α β γ: Type} (C: CellAutomaton β？ γ) (f: α →
     | zero => intro p; exact h_embed_eq p
     | succ t ih =>
       intro p
-      simp only [nextt, Function.iterate_succ_apply', next, map_embed]
+      simp only [nextt_succ, next_apply, map_embed]
       congr 1 <;> exact ih _
   -- project is the same for map_embed
   simp only [map_embed]
@@ -189,7 +189,9 @@ lemma trace_rt_neq_empty {C: CellAutomaton (Option α) β} {w: Word α}: (C.trac
 
 lemma trace_rt_L {C: CA_rt α} {w: Word α} (h: w ≠ []):
   (C.val.trace_rt w).getLast (by simp [h]) = true ↔ w ∈ C.val.L := by
-  simp [List.getLast_eq_getElem, CellAutomaton.trace_rt, trace_L]
+  rw [List.getLast_eq_getElem]
+  simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range, List.length_map, List.length_range]
+  exact trace_L
 
 
 
@@ -199,7 +201,7 @@ lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val
   have h_len : i < w.length := by simpa using h
   simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range]
   unfold CellAutomaton.trace
-  simp only [CA_rt_L_iff]
+  simp only [comp_apply, CA_rt_L_iff]
   simp only [List.length_take]
   rw [min_eq_left (by omega)]
   simp only [Nat.add_sub_cancel]
@@ -211,11 +213,8 @@ lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val
 
   conv =>
     lhs
-    dsimp [CellAutomaton.comp, CellAutomaton.project_config]
     rw [hw]
     rw [LCellAutomaton.scan_temporal_independence_at_0 (t := i) (ht := by simp [p]; omega)]
-
-  rfl
 
 lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
     (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
@@ -271,7 +270,7 @@ lemma LCellAutomaton.nextt_succ_eq (C: CellAutomaton α β) (c: Config C.Q): C.n
 /-
 lemma LCellAutomaton.comp_succ_eq (C: LCellAutomaton α): C.comp w (t + 1) = C.next (C.comp w t) := by
   funext i
-  simp [LCellAutomaton.comp, LCellAutomaton.nextt_succ_eq]
+  simp [LCellAutomaton.comp_unfold, LCellAutomaton.nextt_succ_eq]
 -/
 
 
@@ -332,11 +331,11 @@ lemma map_embed_L {α} (C: tCellAutomaton α) (f: β → α) (w: Word β):
     rw [tCellAutomaton.elem_L_iff]
     rw [tCellAutomaton.elem_L_iff]
     rw [this]
-    simp
+    congr 1
+    simp [CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold, tCellAutomaton.map_embed, map_embed_nextt]
     rfl
-  unfold CellAutomaton.embed_config
+  unfold CellAutomaton.embed_config word_to_config
   funext p
-  unfold word_to_config
   simp [tCellAutomaton.map_embed, CellAutomaton.map_embed]
 
 
@@ -375,23 +374,26 @@ lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
         CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (if h: p ∈ w.range then  (some (w.get' p h)) else none) := by rfl
 
     lemma embed_word_at_eq1 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: p ∈ w.range):
-        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (some (w.get' p h)) := by simp [embed_word_at_eq, h]
+        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed (some (w.get' p h)) := by
+      rw [embed_word_at_eq]; simp [h]
 
     lemma embed_word_at_eq2 {α β: Type} (w: Word α) {C: CellAutomaton α？ β} (p: ℤ) (h: ¬(p ∈ w.range)):
-        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed none := by simp [embed_word_at_eq, h]
+        CellAutomaton.embed_config (C := C) (word_to_config w) p = C.embed none := by
+      rw [embed_word_at_eq]; simp [h]
 
   end
 
   @[simp]
   lemma project_config_at {α β: Type} [Alphabet α] [Alphabet β] {C: CellAutomaton α？ β} (p: ℤ) {c: Config C.Q}:
-    C.project_config c p = C.project (c p) := by rfl
+    C.project_config c p = C.project (c p) := project_config_apply C c p
 
   lemma comp_word_eq_project_nextt {α β: Type} {C: CellAutomaton α？ β} (w: Word α) (t: ℕ):
-      C.comp w t = C.project_config (C.nextt w t) := by rfl
+      C.comp w t = C.project_config (C.nextt w t) := by
+    simp only [CellAutomaton.comp_unfold]
 
   lemma comp_config_eq_project_nextt {α β: Type} {C: CellAutomaton α β} (c: Config α) (t: ℕ):
-      C.comp c t = C.project_config (C.nextt c t) := by rfl
-
+      C.comp c t = C.project_config (C.nextt c t) := by
+    simp only [CellAutomaton.comp_unfold]
 
 
 

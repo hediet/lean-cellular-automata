@@ -106,7 +106,7 @@ theorem ca_rt_subset_ca_2n : ℒ (CA_rt α) ⊆ ℒ (CA_2n α) := by
       -- For non-empty w (length = 1): latchedCA_k at time 0: nextt gives embed_config,
       -- latched = none (position 0 is not border), so project falls through.
       -- For empty w (length = 0): latched is pre-set to correct value.
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp,
+      simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
                  CellAutomaton.nextt_zero]
       -- latchedCA_k = map_project of latchedCA of TraceKx.C
       unfold latchedCA_k CellAutomaton.map_project CellAutomaton.embed_config
@@ -242,7 +242,7 @@ lemma ca_2n_proper_subset_ca_2n : ℒ (CA_2n_proper α) ⊆ ℒ (CA_2n α) := by
                  Nat.mul_zero, Nat.zero_sub]
       -- Goal: comp ⟬[]⟭ 0 0 = true ↔ (SpBDk 3 2 C.toCellAutomaton).comp ⟬[]⟭ 0 0 = true
       -- At time 0 on empty word, SpBDk is identity on the border projection
-      simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp,
+      simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
                  CellAutomaton.nextt_zero, CellAutomaton.embed_config]
       -- Both sides are (project ∘ embed)(word_to_config [] 0)
       -- word_to_config [] 0 = none
@@ -354,7 +354,7 @@ lemma padLCA_comp_eq (C : CellAutomaton α？ β) (w : Word α) (m : ℕ)
     (t : ℕ) (p : ℤ) :
     (padLCA C).comp ⦋(w.map some ++ List.replicate m none : Word (Option α))⦌ t p =
     C.comp ⦋w⦌ t p := by
-  simp only [CellAutomaton.comp, Function.comp, CellAutomaton.project_config,
+  simp only [CellAutomaton.comp_apply, Function.comp, CellAutomaton.project_config_apply,
              padLCA, CellAutomaton.map_embed_nextt]
   congr 1
   exact congrFun (congrArg _ (padLCA_embed_config_eq C w m)) p
@@ -653,7 +653,7 @@ lemma exists_main_ca_for_Lrev_x_proper (C : tCellAutomaton α) (hC : C ∈ CA_2n
     -- At time 0, comp = project(embed_config(word_to_config w) 0)
     -- For empty word, word_to_config [] p = none for all p
     -- SpBD wraps D_pad but for none (border) input at time 0, gives same result
-    simp only [CellAutomaton.comp, CellAutomaton.project_config, Function.comp,
+    simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
                CellAutomaton.nextt_zero]
     -- Goal: D_fast.project(D_fast.embed_config(word_to_config []) 0)
     --     = D_pad.project(D_pad.embed_config(word_to_config []) 0)
