@@ -130,7 +130,7 @@ private lemma halfSpeed_value {α : Type} [Alphabet α] (w : Word α) (t : ℕ)
   simpa using this
 
 /-- Combined spec for `extractMidValueCA` output at cell 0. -/
-lemma extractMidValueCA_at_origin {α : Type} [Alphabet α] (w : Word α) (t : ℕ)
+private lemma extractMidValueCA_at_origin {α : Type} [Alphabet α] (w : Word α) (t : ℕ)
     (ht : (t + 1) / 2 < w.length) :
     (extractMidValueCA α).comp (word_to_config w) t 0 =
       (some (w[(t + 1) / 2]'ht), decide (t % 2 = 1)) := by
@@ -170,65 +170,58 @@ def extractMidCA (α : Type) [Alphabet α] [Inhabited α] : CellAutomaton α？ 
 
 /-! ### Main Spec -/
 
-/-- For length-1 words, at time 0 the CA outputs `.single w[0]`. -/
-theorem extractMidCA_spec_len1 {α : Type} [Alphabet α] [Inhabited α] (w : Word α) (hw : w.length = 1) :
-    (extractMidCA α).comp w 0 0 = BetaUnionSq.single (w[0]'(by omega)) := by
-  -- At time 0, comp = project ∘ embed applied to word_to_config w 0 = some w[0]
-  unfold extractMidCA
-  simp only [map_project_comp]
-  -- Goal: extractMidProject α (TraceKx.C.comp w 0 0) = .single w[0]
-  -- At time 0, TraceKx.C.comp w 0 0 = TraceKx.C.project (TraceKx.C.embed (some w[0]))
-  -- TraceKx.C.embed (some w[0]) = fun _ => extractMidValueCA.embed (some w[0])
-  --   = fun _ => { phase := false, value := some w[0] }
-  -- TraceKx.C.project q = fun i => some (extractMidValueCA.project (q i))
-  --   = fun i => some (some w[0], false)
-  -- extractMidProject (fun i => some (some w[0], false)):
-  --   outputs 1 = some (some w[0], false), phase = false → .single w[0]
-  simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp_apply,
-    CellAutomaton.nextt_zero, CellAutomaton.embed_config]
-  simp only [extractMidTrace, TraceKx.C, extractMidValueCA, word_to_config]
-  have h0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < w.length := by omega
-  simp only [h0.1, h0.2, and_self, ↓reduceDIte]
-  simp only [extractMidProject]
-  rfl
-
-theorem extractMidCA_spec {α : Type} [Alphabet α] [Inhabited α] (w : Word α) (hw : w.length ≥ 2) :
+theorem extractMidCA_spec {α : Type} [Alphabet α] [Inhabited α] (w : Word α) (hw : w.length ≥ 1) :
     (extractMidCA α).comp w (w.length - 1) 0 =
       if w.length % 2 = 0 then
         BetaUnionSq.pair (w[w.length / 2 - 1]'(by omega)) (w[w.length / 2]'(by omega))
       else
         BetaUnionSq.single (w[w.length / 2]'(by omega)) := by
-  set n := w.length with hn
-  -- Step 1: extractMidCA = map_project f (trace.C), so comp = f ∘ trace.C.comp
-  show extractMidProject α ((extractMidTrace α).C.comp w (n - 1) 0) = _
-  -- Step 2: Apply TraceKx spec to get outputs from times n-2 and n-1
-  have h_trace := (extractMidTrace α).spec_at (word_to_config w) (n - 2) 0
-  have h_time : n - 2 + (extractMidTrace α).k = n - 1 := by show n - 2 + 1 = n - 1; omega
-  rw [h_time] at h_trace
-  rw [h_trace]
-  -- Goal: extractMidProject α (fun t2 => some (C_orig.comp ⦋w⦌ (n-2+↑t2) 0)) = ...
-  simp only [extractMidProject]
-  -- Step 3: Evaluate the inner CA at both time steps
-  have h_val1 : (extractMidTrace α).C_orig.comp (word_to_config w) (n - 2 + 1) 0 =
-      (some (w[(n - 2 + 1 + 1) / 2]'(by omega)), decide ((n - 2 + 1) % 2 = 1)) :=
-    extractMidValueCA_at_origin w (n - 2 + 1) (by omega)
-  have h_val0 : (extractMidTrace α).C_orig.comp (word_to_config w) (n - 2) 0 =
-      (some (w[(n - 2 + 1) / 2]'(by omega)), decide ((n - 2) % 2 = 1)) :=
-    extractMidValueCA_at_origin w (n - 2) (by omega)
-  simp only [Fin.val_one, Fin.val_zero, Nat.add_zero, h_val1, h_val0]
-  -- Step 4: Case-split on parity and simplify
-  by_cases hp : n % 2 = 0
-  · -- Even: phase at n-1 is true → .pair
-    have h1 : (n - 2 + 1) % 2 = 1 := by omega
-    have h2 : ¬((n - 2) % 2 = 1) := by omega
-    simp only [h1, decide_true]
-    have hi1 : (n - 2 + 1) / 2 = n / 2 - 1 := by omega
-    have hi2 : (n - 2 + 1 + 1) / 2 = n / 2 := by omega
-    simp only [hi1, hi2, ← hn, hp, ↓reduceIte]
-  · -- Odd: phase at n-1 is false → .single
-    have h1 : ¬((n - 2 + 1) % 2 = 1) := by omega
-    simp only [h1, decide_false]
-    have hi : (n - 2 + 1 + 1) / 2 = n / 2 := by omega
-    simp [hi, ← hn, hp]
+  -- Handle length-1 separately (the n-2 trick underflows)
+  by_cases h1 : w.length = 1
+  · -- length 1: odd, so result is .single w[0]
+    simp only [h1, Nat.reduceMod, Nat.reduceDiv, ↓reduceIte, Nat.reduceSub]
+    show (extractMidCA α).comp w 0 0 = _
+    unfold extractMidCA
+    simp only [map_project_comp]
+    simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp_apply,
+      CellAutomaton.nextt_zero, CellAutomaton.embed_config]
+    simp only [extractMidTrace, TraceKx.C, extractMidValueCA, word_to_config]
+    have h0 : (0 : ℤ) ≥ 0 ∧ (0 : ℤ) < w.length := by omega
+    simp only [h0.1, h0.2, and_self, ↓reduceDIte, extractMidProject]
+    rfl
+  · -- w.length ≥ 2
+    have hw : w.length ≥ 2 := by omega
+    set n := w.length with hn
+    -- Step 1: extractMidCA = map_project f (trace.C), so comp = f ∘ trace.C.comp
+    show extractMidProject α ((extractMidTrace α).C.comp w (n - 1) 0) = _
+    -- Step 2: Apply TraceKx spec to get outputs from times n-2 and n-1
+    have h_trace := (extractMidTrace α).spec_at (word_to_config w) (n - 2) 0
+    have h_time : n - 2 + (extractMidTrace α).k = n - 1 := by show n - 2 + 1 = n - 1; omega
+    rw [h_time] at h_trace
+    rw [h_trace]
+    -- Goal: extractMidProject α (fun t2 => some (C_orig.comp ⦋w⦌ (n-2+↑t2) 0)) = ...
+    simp only [extractMidProject]
+    -- Step 3: Evaluate the inner CA at both time steps
+    have h_val1 : (extractMidTrace α).C_orig.comp (word_to_config w) (n - 2 + 1) 0 =
+        (some (w[(n - 2 + 1 + 1) / 2]'(by omega)), decide ((n - 2 + 1) % 2 = 1)) :=
+      extractMidValueCA_at_origin w (n - 2 + 1) (by omega)
+    have h_val0 : (extractMidTrace α).C_orig.comp (word_to_config w) (n - 2) 0 =
+        (some (w[(n - 2 + 1) / 2]'(by omega)), decide ((n - 2) % 2 = 1)) :=
+      extractMidValueCA_at_origin w (n - 2) (by omega)
+    simp only [Fin.val_one, Fin.val_zero, Nat.add_zero, h_val1, h_val0]
+    -- Step 4: Case-split on parity and simplify
+    by_cases hp : n % 2 = 0
+    · -- Even: phase at n-1 is true → .pair
+      have h1 : (n - 2 + 1) % 2 = 1 := by omega
+      have h2 : ¬((n - 2) % 2 = 1) := by omega
+      simp only [h1, decide_true]
+      have hi1 : (n - 2 + 1) / 2 = n / 2 - 1 := by omega
+      have hi2 : (n - 2 + 1 + 1) / 2 = n / 2 := by omega
+      simp only [hi1, hi2, ← hn, hp, ↓reduceIte]
+    · -- Odd: phase at n-1 is false → .single
+      have h1 : ¬((n - 2 + 1) % 2 = 1) := by omega
+      simp only [h1, decide_false]
+      have hi : (n - 2 + 1 + 1) / 2 = n / 2 := by omega
+      simp [hi, ← hn, hp]
 
 end CellularAutomatas

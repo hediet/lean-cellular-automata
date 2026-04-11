@@ -75,13 +75,15 @@ lemma L_c_in_rt (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
   exact this
 
 
-noncomputable def CA_L_c (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) : CA_rt α :=
-  Classical.choose (L_c_in_rt adv h c)
+def CA_L_c (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) : CA_rt α :=
+  let C := h.map (CA_adv_L_c α c)
+  ⟨C.val, C.prop⟩
 
 @[simp]
 lemma CA_L_c_spec (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
-    (CA_L_c adv h c).val.L = L_c adv c :=
-  Classical.choose_spec (L_c_in_rt adv h c)
+    (CA_L_c adv h c).val.L = L_c adv c := by
+  show (h.map (CA_adv_L_c α c)).val.L = L_c adv c
+  rw [h.spec (CA_adv_L_c α c), CA_adv_L_c_spec]
 
 
 

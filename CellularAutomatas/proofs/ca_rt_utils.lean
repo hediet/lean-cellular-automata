@@ -94,37 +94,48 @@ def zip_spec [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice α β
 
 infixl:65 " ⨂ " => zip_two_stage
 
-
-
-
-
-
-
-
-lemma advice_weak_rt_closed_iff (adv: Advice α Γ):
-    adv.weak_rt_closed ↔ (∀ (C : CA_rt (α ⨉ Γ)), {w | w ⨂ adv w ∈ C.val.L} ∈ ℒ (CA_rt α)) := by
-  unfold Advice.weak_rt_closed
-  rw [subset_antisymm_iff]
-  simp only [CA_rt_subseteq_CA_rt_with_advice adv, and_true]
-  rw [Set.subset_def]
-  simp [ℒ_oca_def]
-  grind
-
 lemma tCellAutomatonWithAdvice.L_mem_ℒ (C: CA_rt (α × Γ)) (adv: Advice α Γ): (C.val + adv).L ∈ ℒ (CA_rt (α ⨉ Γ) + adv) := by
   unfold ℒ
   simp only [HAdd.hAdd, Set.mem_setOf_eq, DefinesLanguage.L, exists_exists_and_eq_and]
   use C
   simp
 
-lemma tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed {adv: Advice α Γ} (h: adv.weak_rt_closed) (C: CA_rt (α ⨉ Γ)):
-    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L := by
-  have : (C.val + adv).L ∈ ℒ (CA_rt α) := by
-    unfold Advice.weak_rt_closed at h
-    rw [←h]
-    exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
+/-- Convert structure-based `weak_rt_closed` to the Prop-level language equality. -/
+lemma Advice.WeakRtClosed.language_eq {adv: Advice α Γ} (h: adv.weak_rt_closed):
+    ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α) := by
+  ext L
+  simp only [ℒ_oca_def]
+  constructor
+  · rintro ⟨C, hC, hL⟩
+    exact ⟨(h.map ⟨C, hC⟩).val, (h.map ⟨C, hC⟩).prop, hL ▸ (h.spec ⟨C, hC⟩).symm⟩
+  · intro hL
+    rw [CA_rt_subseteq_CA_rt_with_advice adv] at hL
+    exact hL
 
-  rw [ℒ_CA_rt_iff] at this
-  simp [this]
+/-- Convert the Prop-level language equality to the structure-based `weak_rt_closed`.
+    This direction requires `Classical.choice`. -/
+noncomputable def Advice.WeakRtClosed.of_language_eq {adv: Advice α Γ}
+    (h: ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)): adv.weak_rt_closed where
+  map C := by
+    have : (C.val + adv).L ∈ ℒ (CA_rt α) := by
+      rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
+    rw [ℒ_CA_rt_iff] at this
+    exact Classical.choice (by simpa using this)
+  spec C := by
+    have hL : (C.val + adv).L ∈ ℒ (CA_rt α) := by
+      rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
+    rw [ℒ_CA_rt_iff] at hL
+    exact (Classical.choice (by simpa using hL)).prop
+
+/-- The iff between the structure-based and Prop-level definitions. -/
+lemma advice_weak_rt_closed_iff_language_eq (adv: Advice α Γ):
+    Nonempty adv.weak_rt_closed ↔ ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α) :=
+  ⟨fun ⟨h⟩ => h.language_eq, fun h => ⟨.of_language_eq h⟩⟩
+
+/-- Backward-compatible: extract witness from `weak_rt_closed`. -/
+lemma tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed {adv: Advice α Γ} (h: adv.weak_rt_closed) (C: CA_rt (α ⨉ Γ)):
+    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L :=
+  ⟨h.map C, h.spec C⟩
 
 
 

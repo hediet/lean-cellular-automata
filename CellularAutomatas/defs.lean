@@ -453,8 +453,16 @@ section Advice
   instance [Alphabet α] : DefinesLanguage (tCellAutomatonWithAdvice α) α where
     L ca := tCellAutomatonWithAdvice.L ca
 
+  /-- An advice `f` is weak-RT-closed if for every CA_rt over the extended alphabet,
+      there exists a CA_rt over the base alphabet recognizing the same language. -/
+  structure Advice.WeakRtClosed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) where
+    /-- Maps each CA_rt over the extended alphabet to a CA_rt over the base alphabet. -/
+    map : CA_rt (α × Γ) → CA_rt α
+    /-- The mapped CA recognizes the same language as the original CA with the advice. -/
+    spec : ∀ C, (map C).val.L = (C.val + f).L
+
   def Advice.weak_rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-    ℒ (CA_rt (α × Γ) + f) = ℒ (CA_rt α)
+    f.WeakRtClosed
 
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_rt_closed

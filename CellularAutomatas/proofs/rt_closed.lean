@@ -58,67 +58,79 @@ Strong + Strong = Strong:
 theorem Advice.weak_rt_closed_compose_rt_closed
     (f₁: Advice α Γ₁) (f₂: Advice Γ₁ Γ₂)
     (h₁: f₁.weak_rt_closed) (h₂: f₂.rt_closed):
-    (f₁.compose f₂).weak_rt_closed := by
-  rw [advice_weak_rt_closed_iff]
-  intro C
+    (f₁.compose f₂).weak_rt_closed where
+  map C := by
+    -- Step 1: Build D ∈ CA_rt((Γ₁ × α) × Γ₂) from C by remapping input
+    let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
+    let D_tca := C.val.map_embed proj
+    have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
+      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
+    let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
 
-  -- Step 1: Build D ∈ CA_rt((Γ₁ × α) × Γ₂) from C by remapping input
-  -- D accepts w iff C accepts w with components projected: ((γ₁,a),γ₂) ↦ (a,γ₂)
-  let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
-  let D_tca := C.val.map_embed proj
-  have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
-    simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
-  let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
+    -- Step 2: Use f₂.rt_closed to get (f₂.lift Prod.fst).weak_rt_closed
+    have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
+    let D₁ := h_f2_α.map D
 
-  -- Step 2: Use f₂.rt_closed to get (f₂.lift Prod.fst).weak_rt_closed
-  have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
-  rw [advice_weak_rt_closed_iff] at h_f2_α
-  have step2 := h_f2_α D
-  rw [ℒ_CA_rt_iff] at step2
-  obtain ⟨D₁, hD₁_mem, hD₁_L⟩ := step2
+    -- Step 3: Swap to get D₂ ∈ CA_rt(α × Γ₁) from D₁ ∈ CA_rt(Γ₁ × α)
+    let D₂_tca := D₁.val.map_embed Prod.swap
+    have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
+      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact D₁.prop
+    let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
 
-  -- Step 3: Swap to get D₂ ∈ CA_rt(α × Γ₁) from D₁ ∈ CA_rt(Γ₁ × α)
-  let D₂_tca := D₁.map_embed Prod.swap
-  have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
-    simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact hD₁_mem
-  let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
+    -- Step 4: Use f₁.weak_rt_closed
+    exact h₁.map D₂
+  spec C := by
+    -- Reproduce the same definitions
+    let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
+    let D_tca := C.val.map_embed proj
+    have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
+      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact C.prop
+    let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
 
-  -- Step 4: Use f₁.weak_rt_closed
-  rw [advice_weak_rt_closed_iff] at h₁
-  have step4 := h₁ D₂
+    have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
+    let D₁ := h_f2_α.map D
+    have hD₁_L := h_f2_α.spec D
 
-  -- Step 5: Show the sets are equal
-  convert step4 using 1
-  ext w
-  simp only [Set.mem_setOf_eq]
+    let D₂_tca := D₁.val.map_embed Prod.swap
+    have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
+      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact D₁.prop
+    let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
 
-  -- Show: w ⨂ (f₁.compose f₂) w ∈ C.val.L ↔ w ⨂ f₁ w ∈ D₂.val.L
-  show w ⨂ (f₁.compose f₂).f w ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂.val.L
+    have step4 := h₁.spec D₂
 
-  -- Unfold D₂ → D₁ → D → C
-  show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
-  rw [map_embed_L, hD₁_L, Set.mem_setOf_eq]
-  show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔
-    ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift Prod.fst).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L
-  rw [map_embed_L]
+    -- Show the sets are equal
+    show (h₁.map D₂).val.L = (C.val + f₁.compose f₂).L
+    rw [step4]
+    ext w
+    simp only [Set.mem_setOf_eq]
 
-  -- Both sides are membership in C.val.L, so show the words are equal
-  suffices word_eq :
-      List.map proj (List.map Prod.swap (w ⨂ f₁.f w) ⨂ (f₂.lift Prod.fst).f (List.map Prod.swap (w ⨂ f₁.f w)))
-      = w ⨂ f₂.f (f₁.f w) by
-    constructor
-    · intro h; rwa [word_eq]
-    · intro h; rwa [← word_eq]
-  apply List.ext_getElem
-  · simp
-  intro i h1 h2
-  simp only [List.getElem_zip, List.getElem_map, Advice.lift, Prod.swap, proj]
-  refine Prod.ext ?_ ?_
-  · simp
-  · simp only
-    congr 1
-    congr 1
-    simp [List.map_fst_zip]
+    -- Show: w ⨂ (f₁.compose f₂) w ∈ C.val.L ↔ w ⨂ f₁ w ∈ D₂.val.L
+    show w ⨂ (f₁.compose f₂).f w ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂.val.L
+
+    -- Unfold D₂ → D₁ → D → C
+    show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
+    rw [map_embed_L, hD₁_L, Set.mem_setOf_eq]
+    show w ⨂ f₂.f (f₁.f w) ∈ C.val.L ↔
+      ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift Prod.fst).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L
+    rw [map_embed_L]
+
+    -- Both sides are membership in C.val.L, so show the words are equal
+    suffices word_eq :
+        List.map proj (List.map Prod.swap (w ⨂ f₁.f w) ⨂ (f₂.lift Prod.fst).f (List.map Prod.swap (w ⨂ f₁.f w)))
+        = w ⨂ f₂.f (f₁.f w) by
+      constructor
+      · intro h; rwa [word_eq]
+      · intro h; rwa [← word_eq]
+    apply List.ext_getElem
+    · simp
+    intro i h1 h2
+    simp only [List.getElem_zip, List.getElem_map, Advice.lift, Prod.swap, proj]
+    refine Prod.ext ?_ ?_
+    · simp
+    · simp only
+      congr 1
+      congr 1
+      simp [List.map_fst_zip]
 
 
 -- Lift preserves composition: (f₁.compose f₂).lift π = (f₁.lift π).compose f₂

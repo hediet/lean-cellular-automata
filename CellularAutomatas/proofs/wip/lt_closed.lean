@@ -135,7 +135,7 @@ section LTRTEquivalence
           _ ↔ w ∈ Language.rev C.L := Iff.rfl
       -- By weak-rt-closure, (C_proj + rev).L ∈ ℒ(CA_rt α)
       change Language.rev C.L ∈ _
-      rw [← key, ← h]
+      rw [← key, ← h.language_eq]
       exact ⟨_, ⟨C_proj, hC, rfl⟩, rfl⟩
     -- Main proof: set equality (same structure as lt_closed_under_rev)
     ext L

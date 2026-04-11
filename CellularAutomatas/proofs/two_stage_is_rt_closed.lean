@@ -58,22 +58,15 @@ lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
 
 
 theorem two_stage_is_weak_rt_closed (adv: TwoStageAdvice α Γ):
-    adv.advice.weak_rt_closed := by
-  rw [advice_weak_rt_closed_iff]
+    adv.advice.weak_rt_closed where
+  map C :=
+    let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
+    fix_empty ([] ∈ C.val.L) combined.to_CA_rt
+  spec C := by
+    let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
+    let C' := fix_empty ([] ∈ C.val.L) combined.to_CA_rt
 
-  intro C
-  rw [ℒ_CA_rt_iff]
-
-  let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
-  let C' := fix_empty ([] ∈ C.val.L) combined.to_CA_rt
-
-  use C'
-  constructor
-
-  · show C'.val ∈ CA_rt α
-    simp [C']
-
-  · show C'.val.L = {w | w ⨂ adv.advice.f w ∈ C.val.L}
+    show C'.val.L = {w | w ⨂ adv.advice.f w ∈ C.val.L}
     ext w
     show w ∈ C'.val.L ↔ w ⨂ adv.advice.f w ∈ C.val.L
 

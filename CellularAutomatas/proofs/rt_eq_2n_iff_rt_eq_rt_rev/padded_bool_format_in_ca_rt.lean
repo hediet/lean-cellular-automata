@@ -180,13 +180,15 @@ def midpointFalseCA : CellAutomaton Bool？ Bool :=
 /-- For length-1 words, the rightmost extracted value is w[0]. -/
 private lemma betaUnionSqRight_extractMid_len1 (w : Word Bool) (hw : w.length = 1) :
     betaUnionSqRight ((extractMidCA Bool).comp (↑w) 0 0) = w[0]'(by omega) := by
-  rw [extractMidCA_spec_len1 w hw]
+  have h := extractMidCA_spec w (by omega)
+  simp only [hw] at h
+  rw [h]
   simp [betaUnionSqRight]
 
 /-- At time n-1, cell 0 outputs `!w[n/2]` for words of length ≥ 2. -/
 private lemma betaUnionSqRight_extractMid (w : Word Bool) (hw : w.length ≥ 2) :
     betaUnionSqRight ((extractMidCA Bool).comp (↑w) (w.length - 1) 0) = w[w.length / 2]'(by omega) := by
-  have h := extractMidCA_spec w hw
+  have h := extractMidCA_spec w (by omega)
   unfold betaUnionSqRight
   rw [h]
   by_cases hp : w.length % 2 = 0 <;> simp [hp]
