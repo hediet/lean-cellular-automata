@@ -39,7 +39,7 @@
 
 // Lean file reference
 #let leanfile(name) = {
-  text(size: 9pt, fill: luma(80))[`#name`]
+  text(size: 9pt, fill: luma(80))[#raw(name)]
 }
 
 = Proof: $L_x (L) in cal(L)(op("CA")_op("RT")) ==> L in cal(L)(op("CA")_op("RT"))$
@@ -80,6 +80,8 @@ This lifts $L$ to $op("Option")(Sigma)$ by padding with `none` symbols before em
 
 == Theorem
 
+$ L_x (L) in cal(L)(op("CA")_op("RT")) ==> L in cal(L)(op("CA")_op("RT")) $
+
 #lean("theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
     L_x L ∈ ℒ (CA_rt (Option α)) → L ∈ ℒ (CA_rt α)")
 
@@ -94,24 +96,46 @@ $ w in L <==> x^m w in L_x (L) <==> C.comp(angle.l x^m w angle.r, m + n - 1, 0) 
 
 The goal is to construct $CAfinal$ that evaluates the right-hand side using only $angle.l w angle.r$ as input. This is done through an 8-step pipeline. The choice of $m$ as a power of $2$ is essential: it ensures $8 divides m$ (compression alignment in $C_4$) and makes the boundary position $m\/8$ detectable by a two-stage advice ($CAfinal$).
 
+#set page(flipped: true)
+
 #figure(
   table(
     columns: (auto, auto, auto, 1fr, auto),
     align: (left, center, center, left, left),
     stroke: 0.5pt,
     table.header[*Construction*][*CA*][*OCA*][*Configuration*][*Acceptance $(t, p)$*],
-    [Hypothesis], $C$, [], $angle.l x^m w angle.r$, [$(m+n-1, 0)$],
-    [Regular → OCA], $C_1$, [✓], $angle.l x^m w angle.r$, [$(2(m+n-1), -(m+n-1))$],
-    [Broadcast \ ($r = 7(n-1) - 2m$)], $C_2$, [✓], $angle.l x^m w angle.r$, [$(2(m+n-1)+r,$ $-(m+n-1)-r)$ $= (9(n-1),$ $m-8(n-1))$],
-    [Shift], $C_2$, [✓], [$[x^m || w]$ \ where $[v || w](i) := angle.l v w angle.r (i + |v|)$], [$(9(n-1), -8(n-1))$],
-    [8-Compression], $C_4$, [✓], [$compressLeft_8 ([x^m || w])$ \ \ where $compressLeft_k (c)(i) :=$ \ $Single(c(i))$ if $i >= 0$ \ $Spatial(j |-> c(k i + j))$ if $i < 0$], [$(2(n-1), -(n-1))$, \ component 0],
-    [OCA → Regular], $C_5$, [], $compressLeft_8 ([x^m || w])$, [$(n-1, 0)$],
-    [Fold], $C_6$, [], [$fold(compressLeft_8 ([x^m || w]))$ \ \ where $fold(c)(i) :=$ \ $some(c(i), c(-i-1))$ if $i >= 0$ \ $noneOp$ if $i < 0$], [$(n-1, 0)$],
-    [Border Normalize], $C_7$, [], [$angle.l encodedWord(w) angle.r$ \ \ where $encodedWord(w)_i :=$ \ $fold(compressLeft_8 ([x^m || w]))(i)$ \ for $0 <= i < n$], [$(n-1, 0)$],
-    [Advice Elimination], $CAfinal$, [], [$angle.l w angle.r$ \ \ since $encodedWord(w) = (w times.circle adv(w)).op("map")(encode)$ \ where $adv(w)_i = (\_ |-> some(x))$ if $i < m\/k$, \ else $(\_ |-> noneOp)$. \ The advice is two-stage and hence RT-closed, so it can be eliminated.], [$(n-1, 0)$],
+    [Hypothesis], $C$, [],
+      $angle.l x^m w angle.r$,
+      [$(m+n-1, 0)$],
+    [Regular → OCA], $C_1$, [✓],
+      $angle.l x^m w angle.r$,
+      [$(2(m+n-1), -(m+n-1))$],
+    [Broadcast \ ($r = 7(n-1) - 2m$)], $C_2$, [✓],
+      $angle.l x^m w angle.r$,
+      [$(9(n-1), m-8(n-1))$],
+    [Shift], $C_2$, [✓],
+      [$[x^m || w]$ \ _where_ $[v || w](i) := angle.l v w angle.r (i + |v|)$],
+      [$(9(n-1), -8(n-1))$],
+    [8-Compression], $C_4$, [✓],
+      [$compressLeft_8 ([x^m || w])$ \ _where_ $compressLeft_k (c)(i) := Single(c(i))$ if $i >= 0$; $Spatial(j |-> c(k i + j))$ if $i < 0$],
+      [$(2(n-1), -(n-1))$, \ component 0],
+    [OCA → Regular], $C_5$, [],
+      $compressLeft_8 ([x^m || w])$,
+      [$(n-1, 0)$],
+    [Fold], $C_6$, [],
+      [$fold(compressLeft_8 ([x^m || w]))$ \ _where_ $fold(c)(i) := some(c(i), c(-i-1))$ if $i >= 0$; $noneOp$ if $i < 0$],
+      [$(n-1, 0)$],
+    [Border Normalize], $C_7$, [],
+      [$angle.l encodedWord(w) angle.r$ \ _where_ $encodedWord(w)_i := fold(compressLeft_8 ([x^m || w]))(i)$ for $0 <= i < n$],
+      [$(n-1, 0)$],
+    [Advice Elimination], $CAfinal$, [],
+      [$angle.l w angle.r$ \ _since_ $encodedWord(w) = (w times.circle adv(w)).op("map")(encode)$ where $adv(w)_i = (\_ |-> some(x))$ if $i < m\/k$, else $(\_ |-> noneOp)$. Two-stage $=>$ RT-closed $=>$ eliminable.],
+      [$(n-1, 0)$],
   ),
-  caption: [Pipeline overview. Here $k = 8$ is the compression factor. "OCA" marks one-way (left-independent) CAs. The broadcast requires $r >= 0$, which holds since $m <= 2(n-1)$.]
+  caption: [Pipeline overview. $k = 8$. "OCA" = one-way (left-independent). Broadcast requires $r >= 0$, which holds since $m <= 2(n-1)$.]
 )
+
+#set page(flipped: false)
 
 The pipeline is valid for $n >= 9$. For $n < 9$, $CAfinal$ may disagree with $L$, but only on finitely many words. Since $cal(L)(op("CA")_op("RT"))$ is closed under finite symmetric difference, $L in cal(L)(op("CA")_op("RT"))$.
 
@@ -281,28 +305,3 @@ However, the alphabet $Sigma$ is finite, so there are only finitely many words o
     C.L ∈ ℒ (CA_rt α) → (symmDiff C.L L).Finite → L ∈ ℒ (CA_rt α)")
 
 $qed$
-
-== Formalization Status
-
-All components are *completely sorry-free*.
-
-#figure(
-  table(
-    columns: 3,
-    align: (left, left, left),
-    stroke: 0.5pt,
-    table.header[*CA*][*Construction*][*File*],
-    [$C_1$], [RegularToLeftIndep], leanfile("left_indep_from_regular.lean"),
-    [$C_2$], [BroadcastOCA], leanfile("broadcast_oca.lean"),
-    [$C_2$], [Shift], leanfile("ca_rt_utils.lean"),
-    [$C_4$], [8-Compression], leanfile("speedup_left_independent_config.lean"),
-    [$C_5$], [LeftIndepToRegular], leanfile("left_indep_to_regular.lean"),
-    [$C_6$], [Fold], leanfile("basic_fold.lean"),
-    [$C_7$], [Border Normalize], leanfile("basic_border_normalization.lean"),
-    [$CAfinal$], [Two-Stage Advice], leanfile("x_prefix_advice_two_stage.lean"),
-    [---], [Main theorem], leanfile("lx_rt_implies_rt.lean"),
-    [---], [Two-stage → RT-closed], leanfile("is_two_stage_of_rt_closed_and_causal.lean"),
-    [---], [Finite symm diff closure], leanfile("ca_rt_finite_closure.lean"),
-  ),
-  caption: [Formalization files. All are sorry-free.]
-)
