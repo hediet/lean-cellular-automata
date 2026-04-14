@@ -992,7 +992,7 @@ namespace LxPipeline
 
   /-- The fold advice is two-stage (RT transducer marks powers of 2,
       then FST computes compressed cells). -/
-  theorem foldAdvice_is_two_stage : e.foldAdvice.is_two_stage_advice :=
+  def foldAdvice_is_two_stage : e.foldAdvice.is_two_stage_advice :=
     xPrefixAdvice_is_two_stage e.x
 
   /-- The fold advice is RT-closed (two-stage ⟹ RT-closed). -/

@@ -91,20 +91,38 @@ namespace PrefixStableProof
 
   variable (adv: Advice α Γ) (h1: adv.weak_rt_closed)
 
-
-  noncomputable def first_true_or_default (q: Γ → Bool) : Γ :=
-    let valid_c := Finset.univ.filter (fun c => q c)
-    valid_c.toList.head?.getD default
+  -- Computably select the unique element where q returns true, or default if none.
+  -- When the filter has exactly one element, Finset.choose extracts it computably
+  -- via Quot.recOnSubsingleton (result is the same regardless of list representative).
+  def first_true_or_default (q: Γ → Bool) : Γ :=
+    let filtered := Finset.univ.filter (fun c => q c)
+    if h : filtered.card = 1
+    then
+      -- card = 1 implies ∃! a, a ∈ filtered ∧ True
+      have h_unique : ∃! a, a ∈ filtered ∧ True := by
+        rw [Finset.card_eq_one] at h
+        obtain ⟨a, ha⟩ := h
+        exact ⟨a, ⟨by simp [ha], trivial⟩, fun b ⟨hb, _⟩ => by simp [ha] at hb; exact hb⟩
+      filtered.choose (fun _ => True) h_unique
+    else default
 
   lemma first_true_or_default_spec (x: Γ): first_true_or_default (fun c => decide (x = c)) = x := by
     unfold first_true_or_default
-    have : (Finset.univ.filter (fun c => decide (x = c))) = {x} := by
-      ext
-      simp [eq_comm]
-    rw [this]
-    simp
+    simp only
+    have h_card : (Finset.univ.filter (fun c => decide (x = c))).card = 1 := by
+      have : Finset.univ.filter (fun c => decide (x = c)) = {x} := by ext c; simp [eq_comm]
+      rw [this]; simp
+    rw [dif_pos h_card]
+    generalize_proofs hp
+    have h_spec := Finset.choose_spec (fun (_ : Γ) => True)
+      (Finset.univ.filter (fun c => decide (x = c))) hp
+    have h_mem := h_spec.1
+    rw [Finset.mem_filter] at h_mem
+    have h_eq : decide (x = Finset.choose _ _ hp) = true := h_mem.2
+    rw [decide_eq_true_eq] at h_eq
+    exact h_eq.symm
 
-  noncomputable def cart_adv : CArtTransducer α Γ :=
+  def cart_adv : CArtTransducer α Γ :=
     (ProdCA (fun c => (CA_L_c adv h1 c).val.toCellAutomaton)).map_project first_true_or_default
 
   lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
@@ -140,14 +158,14 @@ end PrefixStableProof
 
 
 
-noncomputable def is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+def is_cart_advice_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_cart_advice :=
   ⟨_, PrefixStableProof.cart_adv_spec adv h1 h2⟩
 
-noncomputable def is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+def is_two_stage_of_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.is_two_stage_advice :=
   (is_cart_advice_of_rt_closed_and_causal adv h1 h2).is_two_stage
 
-noncomputable def rt_closed_of_weak_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
+def rt_closed_of_weak_rt_closed_and_causal (adv: Advice α Γ) (h1: adv.weak_rt_closed) (h2: adv.causal):
     adv.rt_closed :=
   PrefixStableProof.cart_adv_spec adv h1 h2 ▸ cart_is_rt_closed (PrefixStableProof.cart_adv adv h1)
