@@ -55,6 +55,7 @@ theorem result_left_indep_to_regular
     e.C.comp c t i = C.comp c (2 * t) (i - t) := by
   intro e
   exact LeftIndepToRegular.spec e c t i
+#print axioms result_left_indep_to_regular
 
 theorem result_regular_to_left_indep
     {β : Type} [Alphabet β] (C : CellAutomaton α β)
@@ -63,11 +64,13 @@ theorem result_regular_to_left_indep
     e.C.comp c (2*t) i = .single (C.comp c t (i + t)) := by
   intro e
   exact RegularToLeftIndep.spec_even e c t i
+#print axioms result_regular_to_left_indep
 
 theorem result_regular_to_left_indep_is_left_indep
     {β : Type} [Alphabet β] (C : CellAutomaton α β) :
     (RegularToLeftIndep.mk C).C.left_independent :=
   RegularToLeftIndep.C_left_independent _
+#print axioms result_regular_to_left_indep_is_left_indep
 
 /-!
 ### Result 2: k-Step Left-Independent Speedup
@@ -86,6 +89,7 @@ theorem result_left_indep_speedup
     C.comp w (t - ((k - 1) * i) - j).toNat (k * i + j) := by
   intro e
   exact LeftIndepSpeedup.spec e w hw t i hi2 hi j
+#print axioms result_left_indep_speedup
 
 /-!
 ### Result 3: Quiescent Border for Left-Independent CAs
@@ -105,17 +109,20 @@ theorem result_quiescent_border_left_indep
       else C.project C.border := by
   intro e
   exact QuiescentBorderLeftIndep.spec e w hw t i
+#print axioms result_quiescent_border_left_indep
 
 theorem result_quiescent_border_left_indep_is_quiescent
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
     let e := QuiescentBorderLeftIndep.mk C h_left_indep
     e.C.quiescent e.C.border :=
   QuiescentBorderLeftIndep.C_border_quiescent _
+#print axioms result_quiescent_border_left_indep_is_quiescent
 
 theorem result_quiescent_border_left_indep_preserves_left_indep
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
     (QuiescentBorderLeftIndep.mk C h_left_indep).C.left_independent :=
   QuiescentBorderLeftIndep.C_left_indep _
+#print axioms result_quiescent_border_left_indep_preserves_left_indep
 
 /-!
 ### Result 4: Dead Border Construction
@@ -131,6 +138,7 @@ theorem result_dead_border
     e.C.trace w t = C.trace w t := by
   intro e
   exact @DeadBorder.spec_comp_trace e w t h
+#print axioms result_dead_border
 
 theorem result_dead_border_is_dead
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (c_const : ℕ) :
@@ -138,11 +146,11 @@ theorem result_dead_border_is_dead
     e.C.dead e.C.border := by
   intro e
   exact @DeadBorder.spec_left_border_dead e
-
-
+#print axioms result_dead_border_is_dead
 
 theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } :=
   CellularAutomatas.exp_word_length_rt
+#print axioms exp_word_length_rt
 
 end BaseResults
 
@@ -167,6 +175,7 @@ theorem result_rt_transducers_closed_under_composition
     (C1 : CellAutomaton α？ β) (C2 : CellAutomaton β？ γ) :
     (C2.compose_trace_rt C1).trace_rt = C2.trace_rt ∘ C1.trace_rt :=
   CellAutomaton.compose_trace_rt_spec C2 C1
+#print axioms result_rt_transducers_closed_under_composition
 
 /-!
 ### Result 6: Two-Stage Advice is RT-Closed (Strong)
@@ -178,7 +187,7 @@ def result_two_stage_is_rt_closed
     (adv : TwoStageAdvice α Γ) :
     adv.advice.rt_closed :=
   two_stage_is_rt_closed adv
-
+#print axioms result_two_stage_is_rt_closed
 
 /-!
 ### Result 7: Prefix-Membership Advice is Two-Stage (hence RT-Closed)
@@ -191,6 +200,7 @@ def result_advice_prefix_mem_is_two_stage_advice:
     ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
   intro C h
   exact advice_prefix_mem_is_two_stage_advice ⟨ C, h ⟩
+#print axioms result_advice_prefix_mem_is_two_stage_advice
 
 /-!
 ### Result 8: Weak-RT-Closed ∧ Causal ⟹ CArt Advice (hence Two-Stage, hence RT-Closed)
@@ -203,6 +213,7 @@ def result_is_cart_advice_of_rt_closed_and_causal:
     ∀ adv: Advice α Γ, adv.weak_rt_closed → adv.causal → adv.is_cart_advice := by
   intro adv h1 h2
   exact is_cart_advice_of_rt_closed_and_causal adv h1 h2
+#print axioms result_is_cart_advice_of_rt_closed_and_causal
 
 /-!
 ### Result 8b: Weak-RT-Closed ∧ Causal ⟹ RT-Closed (Strong)
@@ -215,6 +226,7 @@ noncomputable def result_rt_closed_of_weak_rt_closed_and_causal:
     ∀ adv: Advice α Γ, adv.weak_rt_closed → adv.causal → adv.rt_closed := by
   intro adv h1 h2
   exact rt_closed_of_weak_rt_closed_and_causal adv h1 h2
+#print axioms result_rt_closed_of_weak_rt_closed_and_causal
 
 /-!
 ### Result 9: Two-Stage Advice is Closed Under Composition
@@ -228,6 +240,7 @@ theorem result_two_stage_closed_under_composition
     (a1 : TwoStageAdvice α Γ') (a2 : TwoStageAdvice Γ' Γ) :
     (compose_two_stage a2 a1: TwoStageAdvice α Γ).advice.f = a2.advice.f ∘ a1.advice.f :=
   compose_two_stage_spec a1 a2
+#print axioms result_two_stage_closed_under_composition
 
 /-!
 ### Result 10: Middle Advice is NOT Two-Stage
@@ -238,6 +251,7 @@ The advice f_mid that marks position ⌊n/2⌋ cannot be expressed as a two-stag
 theorem result_middle_not_two_stage_advice:
     IsEmpty (Advice.middle α).is_two_stage_advice := by
   exact middle_not_two_stage_advice
+#print axioms result_middle_not_two_stage_advice
 
 /-!
 ### Result 11: RT-Closed Advices are Closed Under Composition
@@ -255,6 +269,7 @@ noncomputable def result_weak_rt_closed_compose_rt_closed
     (h₁: f₁.weak_rt_closed) (h₂: f₂.rt_closed):
     (f₁.compose f₂).weak_rt_closed :=
   Advice.weak_rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
+#print axioms result_weak_rt_closed_compose_rt_closed
 
 noncomputable def result_rt_closed_compose_rt_closed
     {Γ' : Type} [Alphabet Γ']
@@ -262,6 +277,7 @@ noncomputable def result_rt_closed_compose_rt_closed
     (h₁: f₁.rt_closed) (h₂: f₂.rt_closed):
     (f₁.compose f₂).rt_closed :=
   Advice.rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
+#print axioms result_rt_closed_compose_rt_closed
 
 end AdviceResults
 
@@ -289,5 +305,6 @@ theorem result_rt_eq_2n_iff_rt_eq_rt_rev :
     (∀ (β : Type) [Alphabet β], ℒ (CA_rt β) = ℒ (CA_2n β)) ↔
     (∀ (γ : Type) [Alphabet γ], ℒ (CA_rt γ) = ℒ_rev (CA_rt γ)) :=
   rt_eq_2n_iff_rt_eq_rt_rev
+#print axioms result_rt_eq_2n_iff_rt_eq_rt_rev
 
 end RTEquivalence

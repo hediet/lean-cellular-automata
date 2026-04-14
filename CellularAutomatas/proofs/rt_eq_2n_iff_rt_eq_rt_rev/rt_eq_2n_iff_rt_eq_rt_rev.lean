@@ -911,6 +911,4 @@ theorem rt_eq_2n_iff_rt_eq_rt_rev :
       rw [← h γ]
     exact rt_eq_rt_rev_implies_rt_eq_2n β h_rev
 
-#print axioms rt_eq_2n_iff_rt_eq_rt_rev
-
 end CellularAutomatas
