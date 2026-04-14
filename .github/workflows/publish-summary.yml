@@ -1,9 +1,9 @@
-name: Publish Summary PDF
+name: Publish PDFs
 
 on:
   push:
     branches: [main]
-    paths: [docs/summary.typ]
+    paths: ['docs/*.typ']
   workflow_dispatch:
 
 permissions:
@@ -25,18 +25,27 @@ jobs:
           curl -fsSL https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-unknown-linux-musl.tar.xz | tar xJ
           sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
 
-      - name: Compile PDF
-        run: typst compile docs/summary.typ docs/summary.pdf
+      - name: Compile PDFs
+        run: |
+          typst compile docs/summary.typ docs/summary.pdf
+          typst compile docs/lx-rt-implies-rt-proof.typ docs/lx-rt-implies-rt-proof.pdf
 
       - name: Prepare pages
         run: |
           mkdir -p _site
           cp docs/summary.pdf _site/summary.pdf
+          cp docs/lx-rt-implies-rt-proof.pdf _site/lx-rt-implies-rt-proof.pdf
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
-          <head><meta http-equiv="refresh" content="0; url=summary.pdf"></head>
-          <body><a href="summary.pdf">summary.pdf</a></body>
+          <head><title>Cellular Automata - Documents</title></head>
+          <body>
+            <h1>Documents</h1>
+            <ul>
+              <li><a href="summary.pdf">Project Summary</a></li>
+              <li><a href="lx-rt-implies-rt-proof.pdf">Proof: Lx(L) ∈ CA_RT ⟹ L ∈ CA_RT</a></li>
+            </ul>
+          </body>
           </html>
           EOF
 
