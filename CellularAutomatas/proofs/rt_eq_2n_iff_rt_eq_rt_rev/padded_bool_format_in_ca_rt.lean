@@ -204,8 +204,7 @@ private lemma midpointFalseCA_spec' (w : Word Bool) (hw : w.length ≥ 2) :
 theorem midpointFalse_in_ca_rt : MidpointFalse ∈ ℒ (CA_rt Bool) := by
   rw [ℒ_CA_rt_iff]
   let C_rt := fix_empty true (toRtCa midpointFalseCA)
-  use C_rt.val
-  refine ⟨C_rt.property, ?_⟩
+  refine ⟨C_rt, ?_⟩
   ext w
   rw [fix_empty_spec]
   by_cases hw : w = []
@@ -258,13 +257,13 @@ theorem padded_bool_format_in_ca_rt : PaddedBoolFormat ∈ ℒ (CA_rt Bool) := b
   have h₁ := monotoneBool_in_ca_rt
   have h₂ := midpointFalse_in_ca_rt
   rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
+  obtain ⟨C₁, hC₁_L⟩ := h₁
+  obtain ⟨C₂, hC₂_L⟩ := h₂
   let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b))
-  refine ⟨C'.val, C'.property, ?_⟩
+  refine ⟨C', ?_⟩
   ext w
   rw [Set.mem_inter_iff, ← hC₁_L, ← hC₂_L]
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
+  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff (C := C₁), CA_rt_L_iff (C := C₂)]
   show ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b)).comp
     ⦋w⦌ (w.length - 1) 0 = true ↔
     C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧

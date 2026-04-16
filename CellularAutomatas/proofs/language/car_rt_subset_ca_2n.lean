@@ -66,10 +66,8 @@ def shiftCA (C : LCellAutomaton α) : LCellAutomaton α where
 instance (C : LCellAutomaton α) : Alphabet (ShiftState C) := inferInstance
 
 /-- The timed version of shiftCA for CA_2n. -/
-def shiftTCA (C : tCellAutomaton α) : tCellAutomaton α where
+def shiftTCA (C : CAr_rt α) : CA_2n α where
   toCellAutomaton := shiftCA C.toCellAutomaton
-  t n := 2 * (n - 1)
-  p _ := 0
 
 /-! ## Helper definitions -/
 
@@ -333,60 +331,34 @@ lemma shiftCA_accepts_eq (C : LCellAutomaton α) (w : Word α) (hw : w.length �
 
 /-! ## Main theorems -/
 
-/-- The shiftTCA is in CA_2n. -/
-lemma shiftTCA_in_CA_2n (C : tCellAutomaton α) (_hC : C ∈ CAr_rt α) :
-    shiftTCA C ∈ CA_2n α := by
-  simp only [CA_2n, t_2n, CA, tCellAutomata,
-             Set.mem_setOf_eq, Set.mem_univ, true_and]
-  constructor
-  · rfl
-  · intro n; rfl
-
+omit [Alphabet α] in
 /-- The language of shiftTCA equals the language of C. -/
-theorem shiftTCA_L_eq (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) :
+theorem shiftTCA_L_eq (C : CAr_rt α) :
     (shiftTCA C).L = C.L := by
   ext w
   simp only [tCellAutomaton.L]
   unfold tCellAutomaton.accepts shiftTCA
-  -- Get the time and position functions from CAr_rt
-  have h_t : C.t w.length = w.length - 1 := hC.2 w.length
-  have h_p : C.p w.length = ↑w.length - 1 := by
-    simp only [CAr_rt, t_rt, tCellAutomata, Set.mem_setOf_eq] at hC
-    have h := congr_fun hC.1.2 w.length
-    omega
-  -- The goal reduces to comparing comp at shifted coordinates
-  -- shiftTCA reads at (t=2(n-1), p=0), C reads at (t=n-1, p=n-1)
-  -- By shiftCA_accepts_eq, these are equal for non-empty words
+  -- shiftTCA (CA_2n) reads at (t = 2(n-1), p = 0)
+  -- C (CAr_rt)       reads at (t = n-1,    p = n-1)
   show (shiftCA C.toCellAutomaton).comp w (2 * (w.length - 1)) 0 = true ↔
-       C.comp w (C.t w.length) (C.p w.length) = true
-  rw [h_t, h_p]
+       C.comp w (w.length - 1) (↑w.length - 1) = true
   by_cases hw : w.length = 0
   · -- Empty word case: both sides project C.border
-    -- For empty word, time and position are both 0 (or 0 - 1 = -1)
     have hw' : w = [] := List.eq_nil_of_length_eq_zero hw
     subst hw'
-    -- comp [] 0 p = project (nextt ⦋[]⦌ 0 p) = project (embed_config [] p) = project (embed none)
-    -- For shiftCA: project = C.project ∘ (·.2.1), and embed none = (C.border, C.border, true)
-    -- So (shiftCA C).project ((shiftCA C).embed none) = C.project C.border
-    -- For C: project C.border
-    -- Both equal C.project C.border
     simp only [List.length_nil, Nat.zero_sub, Nat.mul_zero, Int.ofNat_zero,
                CellAutomaton.comp_unfold, CellAutomaton.project_config_unfold,
                shiftCA, CellAutomaton.border]
-    -- After simp, both sides should be C.project C.border = true ↔ C.project C.border = true
     rfl
   · -- Non-empty word case: use shiftCA_accepts_eq
     have hw' : w.length ≥ 1 := Nat.one_le_iff_ne_zero.mpr hw
-    rw [shiftCA_accepts_eq C.toCellAutomaton w hw']
+    constructor <;> intro h
+    · rwa [shiftCA_accepts_eq C.toCellAutomaton w hw'] at h
+    · rwa [shiftCA_accepts_eq C.toCellAutomaton w hw']
 
 /-- ℒ(CAr_rt) ⊆ ℒ(CA_2n): Right-reading RT languages are contained in 2n-time languages. -/
 theorem car_rt_subset_ca_2n : ℒ (CAr_rt α) ⊆ ℒ (CA_2n α) := by
-  intro L hL
-  obtain ⟨C, hC, hCL⟩ := hL
-  use shiftTCA C
-  constructor
-  · exact shiftTCA_in_CA_2n C hC
-  · calc L = C.L := hCL
-      _ = (shiftTCA C).L := (shiftTCA_L_eq C hC).symm
+  intro L ⟨C, hC⟩
+  exact ⟨shiftTCA C, hC.trans (shiftTCA_L_eq C).symm⟩
 
 end CellularAutomatas

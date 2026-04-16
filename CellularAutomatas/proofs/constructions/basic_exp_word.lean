@@ -683,13 +683,11 @@ def exp_final_project (s : exp_composed.State) : Bool :=
   | .phase2 q => exp_core.project q
   | _ => false
 
-def exp_word_ca : tCellAutomaton Unit := {
+def exp_word_ca : CA_rt Unit := {
   Q := exp_composed.State,
   δ := exp_composed.C.δ,
   embed := exp_composed.C.embed,
   project := exp_final_project,
-  t := fun n => n - 1,
-  p := fun _ => 0,
 }
 
 /-! ## Computational Verification -/
@@ -805,11 +803,8 @@ lemma exp_word_ca_correct (w : Word Unit) :
 
 /-! ## Main Theorem -/
 
-theorem exp_word_length_rt : ∃ C : CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } := by
-  use ⟨exp_word_ca, by
-    simp only [CA_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq, Set.mem_univ, true_and]
-    exact ⟨funext (fun _ => rfl), fun _ => rfl⟩
-  ⟩
+theorem exp_word_length_rt : ∃ C : CA_rt Unit, C.L = { w | ∃ n, w.length = 2 ^ n } := by
+  use exp_word_ca
   ext w
   simp only [tCellAutomaton.L]
   exact exp_word_ca_correct w

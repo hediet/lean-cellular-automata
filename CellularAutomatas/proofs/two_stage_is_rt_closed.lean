@@ -22,7 +22,7 @@ def TwoStageAdvice.to_CA_rt {α} [Alphabet α] (adv: TwoStageAdvice α Bool): CA
 
 @[simp]
 lemma TwoStageAdvice.to_CA_rt_L {α} [Alphabet α] (adv: TwoStageAdvice α Bool):
-    adv.to_CA_rt.val.L = adv.L := by
+    adv.to_CA_rt.L = adv.L := by
   ext w
 
   unfold TwoStageAdvice.to_CA_rt
@@ -46,13 +46,13 @@ lemma TwoStageAdvice.to_CA_rt_L {α} [Alphabet α] (adv: TwoStageAdvice α Bool)
 def TwoStageAdvice.from_CA_rt {α} [Alphabet α] (C: CA_rt α): TwoStageAdvice α Bool :=
   {
     β := Bool
-    C := C.val.toCellAutomaton
+    C := C.toCellAutomaton
     M := FiniteStateTransducer.M_id Bool
   }
 
 @[simp]
 lemma TwoStageAdvice.from_CA_rt_spec {α} [Alphabet α] (C: CA_rt α):
-    (TwoStageAdvice.from_CA_rt C).advice = C.val.trace_rt := by
+    (TwoStageAdvice.from_CA_rt C).advice = C.trace_rt := by
   funext w
   simp [TwoStageAdvice.from_CA_rt, TwoStageAdvice.advice]
 
@@ -61,28 +61,28 @@ def two_stage_is_weak_rt_closed (adv: TwoStageAdvice α Γ):
     adv.advice.weak_rt_closed where
   map C :=
     let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
-    fix_empty ([] ∈ C.val.L) combined.to_CA_rt
+    fix_empty ([] ∈ C.L) combined.to_CA_rt
   spec C := by
     let combined := (TwoStageAdvice.from_CA_rt C) ⊚ ((ca_to_two_stage (ca_trace_id_word α)) ⨂ adv)
-    let C' := fix_empty ([] ∈ C.val.L) combined.to_CA_rt
+    let C' := fix_empty ([] ∈ C.L) combined.to_CA_rt
 
-    show C'.val.L = {w | w ⨂ adv.advice.f w ∈ C.val.L}
+    show C'.L = {w | w ⨂ adv.advice.f w ∈ C.L}
     ext w
-    show w ∈ C'.val.L ↔ w ⨂ adv.advice.f w ∈ C.val.L
+    show w ∈ C'.L ↔ w ⨂ adv.advice.f w ∈ C.L
 
     by_cases h_empty: w = []
     · unfold C'
       simp [h_empty]
 
     calc
-      w ∈ C'.val.L
-      _ ↔ w ∈ (fix_empty (decide ([] ∈ C.val.L)) combined.to_CA_rt).val.L := by simp [C']
+      w ∈ C'.L
+      _ ↔ w ∈ (fix_empty ([] ∈ C.L) combined.to_CA_rt).L := by simp [C']
       _ ↔ w ∈ combined.L := by simp [h_empty]
       _ ↔ List.getLast? (combined.advice w) = some true := by
         unfold TwoStageAdvice.L
         rw [Set.mem_setOf_eq]
-      _ ↔ w ⨂ adv.advice w ∈ C.val.L := by
-        rw [elemL_iff_trace_rt (by simp)]
+      _ ↔ w ⨂ adv.advice.f w ∈ C.L := by
+        rw [elemL_iff_trace_rt]
         simp [combined, h_empty]
 
 def TwoStageAdvice.liftAdvice (adv: TwoStageAdvice α Γ) {S: Type} [Alphabet S] (π: S → α): TwoStageAdvice S Γ where

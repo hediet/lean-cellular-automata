@@ -49,80 +49,61 @@ variable {α : Type} [Alphabet α]
 These are the base lemmas that form the foundation of the equivalence.
 -/
 
-/-- Right-reading CA classes (read at position n-1 instead of 0). -/
--- CAr_rt is imported from ca_rt_rev_eq_car_rt
-abbrev CAr_2n (α : Type) [Alphabet α] := CAr α |> t_2n α
-
 /-- ℒ(CA_rt) ⊆ ℒ(CA_2n): Real-time languages are contained in 2n-time languages.
 
-**Proof**: Given C ∈ CA_rt (reads at time n-1, position 0), build a CA that:
+**Proof**: Given C : CA_rt (reads at time n-1, position 0), build a CA that:
 1. Runs C with `latchedCA_k` using `identityTimeConstructible` (t(n) = n) and k = 1.
 2. `latchedCA_k_spec` gives: at time n + t', output = C.comp at time n - 1.
 3. Setting t' = n - 2 gives time 2*(n-1), output = C.comp at time n - 1. -/
 theorem ca_rt_subset_ca_2n : ℒ (CA_rt α) ⊆ ℒ (CA_2n α) := by
-  intro L ⟨C, hC_mem, hL_eq⟩
-  -- Extract membership data from CA_rt
-  have hC_CA : C ∈ CA α := by
-    simp only [CA_rt, t_rt] at hC_mem; exact hC_mem.1
-  have hC_t : ∀ n, C.t n = n - 1 := by
-    simp only [CA_rt, t_rt] at hC_mem; exact hC_mem.2
-  have hC_p : C.p = fun _ => 0 := by
-    simp only [CA, tCellAutomata, Set.mem_univ, true_and] at hC_CA; exact hC_CA
+  intro L ⟨C, hL_eq⟩
   -- Build C' using latchedCA_k with t = id, k = 1
   refine ⟨{
     toCellAutomaton := latchedCA_k C.toCellAutomaton id identityTimeConstructible 1
-    t := fun n => 2 * (n - 1)
-    p := fun _ => 0
-  }, ?_, ?_⟩
-  · -- C' ∈ CA_2n α
-    show _ ∈ CA_2n α
-    simp only [CA_2n, t_2n, CA, tCellAutomata, Set.mem_univ, true_and]
-    exact ⟨rfl, fun _ => rfl⟩
-  · -- L = C'.L
-    rw [hL_eq]
-    ext w
-    show C.accepts w = true ↔
-      (latchedCA_k C.toCellAutomaton id identityTimeConstructible 1).comp
-        ⦋⟬w⟭⦌ (2 * (w.length - 1)) 0 = true
-    simp only [tCellAutomaton.accepts]
-    rw [hC_t, congr_fun hC_p]
-    -- latchedCA_k_spec: at time id(n) + t', output = C.comp at time n - 1
-    -- We need 2*(n-1) = n + t' for some t', i.e., t' = n - 2
-    -- This works for n ≥ 2; for n ≤ 1 both sides are time 0.
-    by_cases hn : w.length ≥ 2
-    · -- n ≥ 2: use latchedCA_k_spec with t' = n - 2
-      have key := latchedCA_k_spec C.toCellAutomaton id identityTimeConstructible 1 w
-                    (w.length - 2)
-      simp only [id_eq] at key
-      have h_time : w.length + (w.length - 2) = 2 * (w.length - 1) := by omega
-      rw [h_time] at key
-      rw [key (by omega) (by omega)]
-    · -- n ≤ 1: both 2*(n-1) = 0 and n-1 = 0, so both sides are C.comp at time 0
-      push_neg at hn
-      have h_eq : 2 * (w.length - 1) = 0 := by omega
-      have h_eq' : w.length - 1 = 0 := by omega
-      rw [h_eq, h_eq']
-      -- At time 0, both sides reduce to C.project (C.embed (word_to_config w 0)).
-      -- For non-empty w (length = 1): latchedCA_k at time 0: nextt gives embed_config,
-      -- latched = none (position 0 is not border), so project falls through.
-      -- For empty w (length = 0): latched is pre-set to correct value.
-      simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
-                 CellAutomaton.nextt_zero]
-      -- latchedCA_k = map_project of latchedCA of TraceKx.C
-      unfold latchedCA_k CellAutomaton.map_project CellAutomaton.embed_config
-      simp only [Function.comp, latchedCA, TraceKx.C]
-      -- The initial latched value depends on whether position 0 is border and id 0 = 0
-      -- Since id 0 = 0, border cells are pre-latched.
-      -- For w.length = 0: all positions are borders, result is pre-latched value
-      -- For w.length = 1: position 0 is some w[0], not border, latched = none
-      by_cases hw : w.length = 0
-      · -- Empty word: all border, pre-latched
-        simp only [word_to_config, hw, id_eq]
-        split_ifs <;> simp_all
-      · -- Length 1: position 0 is inside the word, not border
-        have h1 : w.length = 1 := by omega
-        simp only [word_to_config, h1, id_eq]
-        split_ifs with h_in <;> simp_all [Option.getD_none]
+  }, ?_⟩
+  -- L = C'.L
+  rw [hL_eq]
+  ext w
+  show C.toCellAutomaton.comp ⦋⟬w⟭⦌ (w.length - 1) 0 = true ↔
+    (latchedCA_k C.toCellAutomaton id identityTimeConstructible 1).comp
+      ⦋⟬w⟭⦌ (2 * (w.length - 1)) 0 = true
+  -- latchedCA_k_spec: at time id(n) + t', output = C.comp at time n - 1
+  -- We need 2*(n-1) = n + t' for some t', i.e., t' = n - 2
+  -- This works for n ≥ 2; for n ≤ 1 both sides are time 0.
+  by_cases hn : w.length ≥ 2
+  · -- n ≥ 2: use latchedCA_k_spec with t' = n - 2
+    have key := latchedCA_k_spec C.toCellAutomaton id identityTimeConstructible 1 w
+                  (w.length - 2)
+    simp only [id_eq] at key
+    have h_time : w.length + (w.length - 2) = 2 * (w.length - 1) := by omega
+    rw [h_time] at key
+    rw [key (by omega) (by omega)]
+  · -- n ≤ 1: both 2*(n-1) = 0 and n-1 = 0, so both sides are C.comp at time 0
+    push_neg at hn
+    have h_eq : 2 * (w.length - 1) = 0 := by omega
+    have h_eq' : w.length - 1 = 0 := by omega
+    rw [h_eq, h_eq']
+    -- At time 0, both sides reduce to C.project (C.embed (word_to_config w 0)).
+    -- For non-empty w (length = 1): latchedCA_k at time 0: nextt gives embed_config,
+    -- latched = none (position 0 is not border), so project falls through.
+    -- For empty w (length = 0): latched is pre-set to correct value.
+    simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
+               CellAutomaton.nextt_zero]
+    -- latchedCA_k = map_project of latchedCA of TraceKx.C
+    unfold latchedCA_k CellAutomaton.map_project CellAutomaton.embed_config
+    simp only [Function.comp, latchedCA, TraceKx.C]
+    -- The initial latched value depends on whether position 0 is border and id 0 = 0
+    -- Since id 0 = 0, border cells are pre-latched.
+    -- For w.length = 0: all positions are borders, result is pre-latched value
+    -- For w.length = 1: position 0 is some w[0], not border, latched = none
+    by_cases hw : w.length = 0
+    · -- Empty word: all border, pre-latched
+      simp only [word_to_config, hw, id_eq]
+      split_ifs <;> simp_all
+    · -- Length 1: position 0 is inside the word, not border
+      have h1 : w.length = 1 := by omega
+      simp only [word_to_config, h1, id_eq]
+      split_ifs with h_in <;> simp_all [Option.getD_none]
 
 /-- ℒᴿ(CA_rt) ⊆ ℒ(CA_2n): Reversals of RT languages are contained in 2n-time languages.
 
@@ -133,9 +114,11 @@ theorem ca_rt_rev_subset_ca_2n : ℒ_rev (CA_rt α) ⊆ ℒ (CA_2n α) := by
 
 /-! ### CA_2n_proper: CAs that read at time 2n (instead of 2*(n-1)) -/
 
+/-- Acceptance schema for CA_2n_proper: t(n) = 2n, p = 0. -/
+def time_2n_proper_schema : AcceptanceSchema := ⟨fun n => 2 * n, fun _ => 0⟩
+
 /-- CA class where output is read at time 2n. -/
-def CA_2n_proper (α : Type) [Alphabet α] : Set (tCellAutomaton α) :=
-  { C ∈ CA α | ∀ n, C.t n = 2 * n }
+abbrev CA_2n_proper (α : Type) [Alphabet α] := tCellAutomaton time_2n_proper_schema α
 
 /-- ℒ(CA_2n) ⊆ ℒ(CA_2n_proper): Every language recognized at time 2*(n-1) can also
     be recognized at time 2n.
@@ -146,50 +129,43 @@ def CA_2n_proper (α : Type) [Alphabet α] : Set (tCellAutomaton α) :=
     For n = 0: both 2*(0-1) = 0 and 2*0 = 0. ComposeKSteps at time 0 < 2 returns
     `default = false`, but the empty word case matches since both read at time 0. -/
 lemma ca_2n_subset_ca_2n_proper : ℒ (CA_2n α) ⊆ ℒ (CA_2n_proper α) := by
-  intro L ⟨C, hC_mem, hL_eq⟩
-  have hC_t : ∀ n, C.t n = 2 * (n - 1) := by
-    simp only [CA_2n, t_2n] at hC_mem; exact hC_mem.2
-  have hC_p : C.p = fun _ => 0 := by
-    have := hC_mem.1; simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this; exact this
+  intro L ⟨C, hL_eq⟩
   -- D waits 2 identity steps, then runs C.
   -- At time t ≥ 2: D.comp w t 0 = C.comp w (t - 2) 0.
   -- At time t < 2: D returns default (= false), which may be wrong for the empty word.
   let D := (CellAutomaton.idCA α？).composeKSteps C.toCellAutomaton 2
   -- Fix empty word: c_is_border detects w = [] at any time.
   let contains_empty : Bool := C.toCellAutomaton.comp ⦋⟬([] : Word α)⟭⦌ 0 0
-  let C' : tCellAutomaton α := {
+  let C' : CA_2n_proper α := {
     toCellAutomaton := (D ⨂ c_is_border α).map_project
       (fun (a, b) => if b then contains_empty else a)
-    t := fun n => 2 * n
-    p := fun _ => 0
   }
-  refine ⟨C', ⟨?_, fun _ => rfl⟩, ?_⟩
-  · -- C' ∈ CA α: p = 0
-    show C' ∈ CA α
-    simp only [CA, tCellAutomata, Set.mem_univ, Set.mem_setOf_eq, true_and, C']
-  · -- L = C'.L
-    subst hL_eq; ext w
-    show w ∈ tCellAutomaton.L C ↔ w ∈ tCellAutomaton.L C'
-    rw [tCellAutomaton.elem_L_iff (C := C), tCellAutomaton.elem_L_iff (C := C')]
-    simp only [C', hC_t, hC_p]
-    erw [comp_of_map_project]
-    rw [ca_zip_comp]
-    simp only [c_is_border_spec]
-    -- Goal: C.comp w (2*(n-1)) 0 = true ↔
-    --       (if w == [] then contains_empty else D.comp w (2*n) 0) = true
-    by_cases hw : w = []
-    · -- Empty word: both CAs read at time 0, contains_empty = C.comp [] 0 0
-      subst hw; simp [contains_empty]
-    · -- Non-empty word: |w| ≥ 1, so 2*|w| ≥ 2 and ComposeKSteps fires
-      have h_ne : (w == []) = false := by cases w <;> simp_all
-      have h_pos : 0 < w.length := by cases w with | nil => exact absurd rfl hw | cons _ _ => simp
-      have h_ge : 2 * w.length ≥ 2 := by omega
-      have h_time : 2 * w.length - 2 = 2 * (w.length - 1) := by omega
-      simp only [h_ne, ↓reduceIte, D, CellAutomaton.composeKSteps_comp, h_ge, ↓reduceIte,
-                 CellAutomaton.idCA.comp_spec, h_time]
-      -- Remaining: simplify `if false = true` and align coercions
-      simp only [Bool.false_eq_true, ↓reduceIte]
-      rfl
+  refine ⟨C', ?_⟩
+  -- L = C'.L
+  subst hL_eq; ext w
+  show w ∈ tCellAutomaton.L C ↔ w ∈ tCellAutomaton.L C'
+  rw [tCellAutomaton.elem_L_iff (C := C), tCellAutomaton.elem_L_iff (C := C')]
+  show C.toCellAutomaton.comp ⦋⟬w⟭⦌ (2 * (w.length - 1)) 0 = true ↔
+    ((D ⨂ c_is_border α).map_project
+      (fun (a, b) => if b then contains_empty else a)).comp ⦋⟬w⟭⦌ (2 * w.length) 0 = true
+  erw [comp_of_map_project]
+  rw [ca_zip_comp]
+  simp only [c_is_border_spec]
+  -- Goal: C.comp w (2*(n-1)) 0 = true ↔
+  --       (if w == [] then contains_empty else D.comp w (2*n) 0) = true
+  by_cases hw : w = []
+  · -- Empty word: both CAs read at time 0, contains_empty = C.comp [] 0 0
+    subst hw; simp [contains_empty]
+  · -- Non-empty word: |w| ≥ 1, so 2*|w| ≥ 2 and ComposeKSteps fires
+    have h_ne : (w == []) = false := by cases w <;> simp_all
+    have h_pos : 0 < w.length := by cases w with | nil => exact absurd rfl hw | cons _ _ => simp
+    have h_ge : 2 * w.length ≥ 2 := by omega
+    have h_time : 2 * w.length - 2 = 2 * (w.length - 1) := by omega
+    simp only [h_ne, ↓reduceIte, D, CellAutomaton.composeKSteps_comp, h_ge, ↓reduceIte,
+               CellAutomaton.idCA.comp_spec, h_time]
+    -- Remaining: simplify `if false = true` and align coercions
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    rfl
 
 /-- ℒ(CA_2n_proper) ⊆ ℒ(CA_2n): Every language recognized at time 2n can also
     be recognized at time 2*(n-1).
@@ -198,62 +174,51 @@ lemma ca_2n_subset_ca_2n_proper : ℒ (CA_2n α) ⊆ ℒ (CA_2n_proper α) := by
     At time 2*(n-1): sped-up CA gives C.comp at time 2*(n-1) + 2 = 2n. ✓
     For n = 0: both times are 0, SpBDk at time 0 = C at time 0 (definitional). -/
 lemma ca_2n_proper_subset_ca_2n : ℒ (CA_2n_proper α) ⊆ ℒ (CA_2n α) := by
-  intro L ⟨C, hC_mem, hC_L⟩
-  have hC_t : ∀ n, C.t n = 2 * n := hC_mem.2
-  have hC_p : C.p = fun _ => 0 := by
-    have := hC_mem.1; simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this; exact this
-  let C' : tCellAutomaton α := {
+  intro L ⟨C, hC_L⟩
+  let C' : CA_2n α := {
     toCellAutomaton := SpBDk 3 2 C.toCellAutomaton
-    t := fun n => 2 * (n - 1)
-    p := fun _ => 0
   }
-  refine ⟨C', ⟨?_, fun _ => rfl⟩, ?_⟩
-  · -- C' ∈ CA α
-    simp only [C', CA, tCellAutomata, Set.mem_univ, Set.mem_setOf_eq, true_and]
-  · -- C'.L = C.L
-    subst hC_L; ext w
-    -- w ∈ C.L ↔ w ∈ C'.L
-    -- C.L: accepts w ↔ C.comp w (2n) 0 = true
-    -- C'.L: accepts w ↔ (SpBDk 3 2 C.toCellAutomaton).comp w (2*(n-1)) 0 = true
-    show w ∈ tCellAutomaton.L C ↔ w ∈ tCellAutomaton.L C'
-    rw [tCellAutomaton.elem_L_iff (C := C), tCellAutomaton.elem_L_iff (C := C')]
-    simp only [C', hC_t, hC_p]
-    -- Goal: C.toCellAutomaton.comp ⟬w⟭ (2n) 0 = true ↔
-    --       (SpBDk 3 2 C.toCellAutomaton).comp ⟬w⟭ (2*(n-1)) 0 = true
-    by_cases hn : w.length ≥ 1
-    · -- n ≥ 1: use SpBDk speedup
-      have h_speed := SpBDk_trace_eq 3 2 C.toCellAutomaton w (2 * (w.length - 1))
-                        (by omega) (by omega)
-      simp only [CellAutomaton.trace] at h_speed
-      have h_time : 2 * (w.length - 1) + 2 = 2 * w.length := by omega
-      rw [h_time] at h_speed
-      -- h_speed: (SpBDk ..).comp ⟬w⟭ (2*(n-1)) 0 = C.toCellAutomaton.comp ⟬w⟭ (2n) 0
-      rw [h_speed]
-    · -- n = 0: both times are 0, SpBDk at time 0 = C at time 0
-      push_neg at hn
-      have hw0 : w.length = 0 := by omega
-      have hw : w = [] := List.eq_nil_of_length_eq_zero hw0
-      subst hw
-      -- Goal: [] ∈ C.L ↔ [] ∈ C'.L
-      -- C reads at time 2*0 = 0, C' reads at time 2*(0-1) = 0
-      -- Both read at time 0, position 0: project(embed(none))
-      -- C' uses SpBDk which at time 0 on empty word is definitionally same as C
-      simp only [List.length_nil,
-                 Nat.mul_zero, Nat.zero_sub]
-      -- Goal: comp ⟬[]⟭ 0 0 = true ↔ (SpBDk 3 2 C.toCellAutomaton).comp ⟬[]⟭ 0 0 = true
-      -- At time 0 on empty word, SpBDk is identity on the border projection
-      simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
-                 CellAutomaton.nextt_zero, CellAutomaton.embed_config]
-      -- Both sides are (project ∘ embed)(word_to_config [] 0)
-      -- word_to_config [] 0 = none
-      -- SpBDk's embed of none goes through dead border layers but projects the same
-      simp only [SpBDk, Function.iterate_succ, Function.iterate_zero, Function.comp_apply,
-                 SpBD, SpB, CellAutomaton.map_project, withDeadBorder, DeadBorder.C,
-                 Function.comp, Sp, CellAutomaton.border]
-      -- The SpBDk chain on border input reduces to C's border projection
-      -- This is definitionally true but simp can't fully reduce DeadBorder.C's match
-      -- Use the same rfl trick that works in exists_main_ca_for_Lrev_x_proper
-      rfl
+  refine ⟨C', ?_⟩
+  -- C'.L = C.L
+  subst hC_L; ext w
+  show w ∈ tCellAutomaton.L C ↔ w ∈ tCellAutomaton.L C'
+  rw [tCellAutomaton.elem_L_iff (C := C), tCellAutomaton.elem_L_iff (C := C')]
+  show C.toCellAutomaton.comp ⦋⟬w⟭⦌ (2 * w.length) 0 = true ↔
+    (SpBDk 3 2 C.toCellAutomaton).comp ⦋⟬w⟭⦌ (2 * (w.length - 1)) 0 = true
+  by_cases hn : w.length ≥ 1
+  · -- n ≥ 1: use SpBDk speedup
+    have h_speed := SpBDk_trace_eq 3 2 C.toCellAutomaton w (2 * (w.length - 1))
+                      (by omega) (by omega)
+    simp only [CellAutomaton.trace] at h_speed
+    have h_time : 2 * (w.length - 1) + 2 = 2 * w.length := by omega
+    rw [h_time] at h_speed
+    -- h_speed: (SpBDk ..).comp ⟬w⟭ (2*(n-1)) 0 = C.toCellAutomaton.comp ⟬w⟭ (2n) 0
+    rw [h_speed]
+  · -- n = 0: both times are 0, SpBDk at time 0 = C at time 0
+    push_neg at hn
+    have hw0 : w.length = 0 := by omega
+    have hw : w = [] := List.eq_nil_of_length_eq_zero hw0
+    subst hw
+    -- Goal: [] ∈ C.L ↔ [] ∈ C'.L
+    -- C reads at time 2*0 = 0, C' reads at time 2*(0-1) = 0
+    -- Both read at time 0, position 0: project(embed(none))
+    -- C' uses SpBDk which at time 0 on empty word is definitionally same as C
+    simp only [List.length_nil,
+               Nat.mul_zero, Nat.zero_sub]
+    -- Goal: comp ⟬[]⟭ 0 0 = true ↔ (SpBDk 3 2 C.toCellAutomaton).comp ⟬[]⟭ 0 0 = true
+    -- At time 0 on empty word, SpBDk is identity on the border projection
+    simp only [CellAutomaton.comp_apply, CellAutomaton.project_config_apply, Function.comp,
+               CellAutomaton.nextt_zero, CellAutomaton.embed_config]
+    -- Both sides are (project ∘ embed)(word_to_config [] 0)
+    -- word_to_config [] 0 = none
+    -- SpBDk's embed of none goes through dead border layers but projects the same
+    simp only [SpBDk, Function.iterate_succ, Function.iterate_zero, Function.comp_apply,
+               SpBD, SpB, CellAutomaton.map_project, withDeadBorder, DeadBorder.C,
+               Function.comp, Sp, CellAutomaton.border]
+    -- The SpBDk chain on border input reduces to C's border projection
+    -- This is definitionally true but simp can't fully reduce DeadBorder.C's match
+    -- Use the same rfl trick that works in exists_main_ca_for_Lrev_x_proper
+    rfl
 
 /-- ℒ(CA_2n) = ℒ(CA_2n_proper). -/
 theorem ca_2n_eq_ca_2n_proper : ℒ (CA_2n α) = ℒ (CA_2n_proper α) :=
@@ -375,51 +340,16 @@ private lemma ca_rt_inter_two {β : Type} [Alphabet β] (L₁ L₂ : Language β
     (h₁ : L₁ ∈ ℒ (CA_rt β)) (h₂ : L₂ ∈ ℒ (CA_rt β)) :
     (L₁ ∩ L₂ : Set (Word β)) ∈ ℒ (CA_rt β) := by
   rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
+  obtain ⟨C₁, hC₁_L⟩ := h₁
+  obtain ⟨C₂, hC₂_L⟩ := h₂
   let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b))
-  refine ⟨C'.val, C'.property, ?_⟩
+  refine ⟨C', ?_⟩
   ext w
   rw [Set.mem_inter_iff, ← hC₁_L, ← hC₂_L]
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
+  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff (C := C₁), CA_rt_L_iff (C := C₂)]
   change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && b)).comp ⦋w⦌ (w.length - 1) 0 = true
     ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧ C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
   simp only [comp_of_map_project, ca_zip_comp, Bool.and_eq_true]
-
-/-- CA_rt is closed under union.
-    Proof: product CA with `||` on outputs. -/
-private lemma ca_rt_union_two {β : Type} [Alphabet β] (L₁ L₂ : Language β)
-    (h₁ : L₁ ∈ ℒ (CA_rt β)) (h₂ : L₂ ∈ ℒ (CA_rt β)) :
-    (L₁ ∪ L₂ : Set (Word β)) ∈ ℒ (CA_rt β) := by
-  rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
-  let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a || b))
-  refine ⟨C'.val, C'.property, ?_⟩
-  ext w
-  rw [Set.mem_union, ← hC₁_L, ← hC₂_L]
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
-  change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a || b)).comp ⦋w⦌ (w.length - 1) 0 = true
-    ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∨ C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
-  simp only [comp_of_map_project, ca_zip_comp, Bool.or_eq_true]
-
-/-- CA_rt is closed under set difference.
-    Proof: product CA with `a && !b` on outputs. -/
-private lemma ca_rt_diff_two {β : Type} [Alphabet β] (L₁ L₂ : Language β)
-    (h₁ : L₁ ∈ ℒ (CA_rt β)) (h₂ : L₂ ∈ ℒ (CA_rt β)) :
-    L₁ \ L₂ ∈ ℒ (CA_rt β) := by
-  rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
-  let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && !b))
-  refine ⟨C'.val, C'.property, ?_⟩
-  ext w
-  rw [Set.mem_diff, ← hC₁_L, ← hC₂_L]
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
-  change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && !b)).comp ⦋w⦌ (w.length - 1) 0 = true
-    ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧ ¬(C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true)
-  simp only [comp_of_map_project, ca_zip_comp, Bool.and_eq_true, Bool.not_eq_true']
-  simp only [Bool.eq_false_iff]
 
 -- Note: MonotoneFormat is imported from monotone_format_in_ca_rt.lean
 
@@ -487,15 +417,13 @@ lemma paddedFormat_eq_preimage :
     Uses the preimage characterization and lifts from CA_rt Bool via map_embed. -/
 lemma padded_format_in_ca_rt : PaddedFormat α ∈ ℒ (CA_rt (Option α)) := by
   rw [paddedFormat_eq_preimage]
-  obtain ⟨C, hC_rt, hC_L⟩ := padded_bool_format_in_ca_rt
-  let C' : tCellAutomaton (Option α) := C.map_embed Option.isSome
-  refine ⟨C', ?_, ?_⟩
-  · rw [c_map_embed_in_ca_rt_iff_c_in_ca_rt]
-    exact hC_rt
-  · ext w
-    show w.map Option.isSome ∈ PaddedBoolFormat ↔ w ∈ (C.map_embed Option.isSome).L
-    simp only [map_embed_L, hC_L]
-    rfl
+  obtain ⟨C, hC_L⟩ := padded_bool_format_in_ca_rt
+  refine ⟨(C : CA_rt Bool).map_embed Option.isSome, ?_⟩
+  ext w
+  show w ∈ { w | w.map Option.isSome ∈ PaddedBoolFormat }
+    ↔ w ∈ ((C : CA_rt Bool).map_embed Option.isSome).L
+  rw [map_embed_L, show PaddedBoolFormat = C.L from hC_L]
+  rfl
 
 /-- A variant of `latchedCA` that outputs a default value `d` before the latch fires,
     instead of the current CA output. This ensures no false positives before the timer.
@@ -573,13 +501,9 @@ theorem latchedCA_strict_before {α β : Type} [Alphabet α] [Alphabet β]
     For empty word (n=0): `t(0) = 0`, pre-latched at embed time.
 
     **Depends on**: `latchedCA_correct`, `scaleTimeConstructible' 2`, `SpBD_trace_eq`. -/
-lemma exists_main_ca_for_Lrev_x_proper (C : tCellAutomaton α) (hC : C ∈ CA_2n_proper α) :
-    ∃ D ∈ CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
+lemma exists_main_ca_for_Lrev_x_proper (C : CA_2n_proper α) :
+    ∃ D : CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
       ((w.map some ++ List.replicate k none) ∈ D.L ↔ w ∈ C.L) := by
-  have hC_t : ∀ n, C.t n = 2 * n := hC.2
-  have hC_p : C.p = fun _ => 0 := by
-    have := hC.1; simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this; exact this
-
   -- Build CA: SpBD 3 (padLCA(latchedCA C (2*n) tc))
   -- Timer t(n) = 2*n from scaleTimeConstructible' 2
   -- latchedCA captures C's output at time 2n
@@ -608,11 +532,12 @@ lemma exists_main_ca_for_Lrev_x_proper (C : tCellAutomaton α) (hC : C ∈ CA_2n
                       (fun hw => by show 2 * w.length > 0; omega)
     rw [h_latch]
     -- Now: C.toCellAutomaton.comp ⟬w⟭ (2n) 0 = true ↔ w ∈ C.L
-    -- Since C reads at time 2n at position 0
-    rw [show (w ∈ C.L) ↔ (w ∈ tCellAutomaton.L C) from Iff.rfl,
-        tCellAutomaton.elem_L_iff, hC_t, congr_fun hC_p]
+    -- Since C reads at time 2n at position 0 (by definition of time_2n_proper_schema)
+    show C.toCellAutomaton.comp ⦋⟬w⟭⦌ (2 * w.length) 0 = true ↔ w ∈ C.L
+    rw [tCellAutomaton.elem_L_iff (C := C)]
+    rfl
 
-  refine ⟨D.val, D.property, ?_⟩
+  refine ⟨D, ?_⟩
   intro w k hk
   -- Input word: u = w.map some ++ none^k, length N = n + k
   -- RT time: N - 1 = n + k - 1
@@ -720,20 +645,20 @@ lemma exists_main_ca_for_Lrev_x_proper (C : tCellAutomaton α) (hC : C ∈ CA_2n
   rw [h_time_eq]
   exact h_latch_C w (k - w.length)
 
-/-- For C ∈ CA_2n, construct D via the axiom `ca_2n_eq_ca_2n_proper`. -/
-lemma exists_main_ca_for_Lrev_x (C : tCellAutomaton α) (hC : C ∈ CA_2n α) :
-    ∃ D ∈ CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
+/-- For C : CA_2n, construct D via the lemma `ca_2n_eq_ca_2n_proper`. -/
+lemma exists_main_ca_for_Lrev_x (C : CA_2n α) :
+    ∃ D : CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
       ((w.map some ++ List.replicate k none) ∈ D.L ↔ w ∈ C.L) := by
-  -- By axiom, ℒ(CA_2n) = ℒ(CA_2n_proper), so C.L ∈ ℒ(CA_2n_proper)
+  -- C.L ∈ ℒ(CA_2n) ⊆ ℒ(CA_2n_proper), so there is a CA_2n_proper C' with same language.
   have hL : C.L ∈ ℒ (CA_2n_proper α) := by
     rw [← ca_2n_eq_ca_2n_proper]
-    exact ⟨C, hC, rfl⟩
-  obtain ⟨C', hC'_mem, hC'_L⟩ := hL
+    exact ⟨C, rfl⟩
+  obtain ⟨C', hC'_L⟩ := hL
   -- Use the proper-time construction on C'
-  obtain ⟨D, hD_rt, hD_spec⟩ := exists_main_ca_for_Lrev_x_proper C' hC'_mem
-  refine ⟨D, hD_rt, fun w k hk => ?_⟩
+  obtain ⟨D, hD_spec⟩ := exists_main_ca_for_Lrev_x_proper C'
+  refine ⟨D, fun w k hk => ?_⟩
   rw [hD_spec w k hk]
-  -- hC'_L : C.L = DefinesLanguage.L C', need w ∈ C.L ↔ w ∈ C'.L
+  -- hC'_L : C.L = C'.L
   exact hC'_L ▸ Iff.rfl
 
 /-- If L ∈ ℒ(CA_2n α), then Lrev_x(L) ∈ ℒ(CA_rt (Option α)).
@@ -750,18 +675,18 @@ lemma exists_main_ca_for_Lrev_x (C : tCellAutomaton α) (hC : C ∈ CA_2n α) :
     `k = n-1`, RT time equals the latch time exactly, causing a false positive. -/
 lemma ca_2n_padded_in_ca_rt (L : Language α) (hL : L ∈ ℒ (CA_2n α)) :
     Lrev_x L ∈ ℒ (CA_rt (Option α)) := by
-  obtain ⟨C, hC_mem, hL_eq⟩ := hL
+  obtain ⟨C, hL_eq⟩ := hL
   subst hL_eq
 
   -- Get the two component CAs
-  obtain ⟨D, hD_rt, hD_spec⟩ := exists_main_ca_for_Lrev_x C hC_mem
+  obtain ⟨D, hD_spec⟩ := exists_main_ca_for_Lrev_x C
   have h_padded := padded_format_in_ca_rt (α := α)
 
   -- Lrev_x C.L = D.L ∩ PaddedFormat
   suffices h_eq : Lrev_x (DefinesLanguage.L C) = (D.L ∩ PaddedFormat α : Set (Word (Option α))) by
     rw [h_eq]
     exact ca_rt_inter_two D.L (PaddedFormat α)
-      ⟨D, hD_rt, rfl⟩ h_padded
+      ⟨D, rfl⟩ h_padded
 
   -- Prove language equality
   ext u

@@ -30,7 +30,7 @@ variable {α: Type} [Alphabet α]
 variable {Γ: Type} [Alphabet Γ]
 
 
-lemma tCellAutomatonWithAdvice.elem_L_iff {α} {C: tCellAutomaton (α × Γ)} {adv: Advice α Γ} (w: Word α):
+lemma tCellAutomatonWithAdvice.elem_L_iff {schema : AcceptanceSchema} {α} {C: tCellAutomaton schema (α × Γ)} {adv: Advice α Γ} (w: Word α):
     w ∈ (C + adv).L ↔ adv.annotate w ∈ C.L := by rfl
 
 
@@ -42,7 +42,7 @@ def CA_adv_L_c (α) [Alphabet α] (c : Γ) : CA_rt (α × Γ) :=
   fix_empty false (toRtCa ((ca_trace_id_word (α × Γ)).map_project (fun (_, g) => g == c)))
 
 
-lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + adv).L = L_c adv c := by
+lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c) + adv).L = L_c adv c := by
   ext w
   rw [tCellAutomatonWithAdvice.elem_L_iff]
   rw [L_c]
@@ -69,21 +69,21 @@ lemma CA_adv_L_c_spec (adv : Advice α Γ) (c : Γ) : ((CA_adv_L_c α c).val + a
 
 
 lemma L_c_in_rt (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
-    ∃ C : CA_rt α, C.val.L = L_c adv c := by
+    ∃ C : CA_rt α, C.L = L_c adv c := by
   have := tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed h (CA_adv_L_c α c)
   rw [CA_adv_L_c_spec] at this
   exact this
 
 
 def CA_L_c (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) : CA_rt α :=
-  let C := h.map (CA_adv_L_c α c)
-  ⟨C.val, C.prop⟩
+  h.map (CA_adv_L_c α c)
 
 @[simp]
 lemma CA_L_c_spec (adv: Advice α Γ) (h: adv.weak_rt_closed) (c: Γ) :
-    (CA_L_c adv h c).val.L = L_c adv c := by
-  show (h.map (CA_adv_L_c α c)).val.L = L_c adv c
-  rw [h.spec (CA_adv_L_c α c), CA_adv_L_c_spec]
+    (CA_L_c adv h c).L = L_c adv c := by
+  show (h.map (CA_adv_L_c α c)).L = L_c adv c
+  rw [h.spec (CA_adv_L_c α c)]
+  exact CA_adv_L_c_spec adv c
 
 
 
@@ -123,7 +123,7 @@ namespace PrefixStableProof
     exact h_eq.symm
 
   def cart_adv : CArtTransducer α Γ :=
-    (ProdCA (fun c => (CA_L_c adv h1 c).val.toCellAutomaton)).map_project first_true_or_default
+    (ProdCA (fun c => (CA_L_c adv h1 c).toCellAutomaton)).map_project first_true_or_default
 
   lemma getLastOfTake (h: i < w.length): (List.take (i + 1) w).getLast? = w[i]? := by
     grind

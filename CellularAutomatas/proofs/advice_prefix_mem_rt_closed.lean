@@ -17,16 +17,16 @@ variable {α: Type} [Alphabet α]
 def ts_prefix_mem (C: CA_rt α): TwoStageAdvice α Bool :=
   {
     β := Bool
-    C := C.val.toCellAutomaton
+    C := C.toCellAutomaton
     M := FiniteStateTransducer.M_id Bool
   }
 
 
-lemma ts_prefix_mem_spec (C: CA_rt α): (ts_prefix_mem C).advice = Advice.prefix_mem C.val.L := by
+lemma ts_prefix_mem_spec (C: CA_rt α): (ts_prefix_mem C).advice = Advice.prefix_mem C.L := by
   apply advice_eq_iff
   funext w
 
-  suffices C.val.trace_rt w = (Advice.prefix_mem C.val.L) w by
+  suffices C.trace_rt w = (Advice.prefix_mem C.L) w by
     unfold TwoStageAdvice.advice
     simp only [ts_prefix_mem, FiniteStateTransducer.M_id_scanr_eq, Function.comp_apply, id_eq, this]
 
@@ -39,5 +39,5 @@ lemma ts_prefix_mem_spec (C: CA_rt α): (ts_prefix_mem C).advice = Advice.prefix
 
 
 def advice_prefix_mem_is_two_stage_advice (C: CA_rt α):
-    (Advice.prefix_mem C.val.L).is_two_stage_advice := by
+    (Advice.prefix_mem C.L).is_two_stage_advice := by
   exact ⟨ts_prefix_mem C, by simp [ts_prefix_mem_spec]⟩

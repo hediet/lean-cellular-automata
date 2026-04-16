@@ -163,8 +163,8 @@ lemma monotoneDFA_accepts_iff (w : List Bool) :
 
 theorem ℒ_OCA_rt_sub_CA_rt {β : Type} [Alphabet β] :
     ℒ (OCA_rt β) ⊆ ℒ (CA_rt β) := by
-  intro L ⟨C, hC, hL⟩
-  exact ⟨C, ⟨hC.1.1, hC.2⟩, hL⟩
+  intro L ⟨C, hL⟩
+  exact ⟨C.val, hL⟩
 
 /-! ## Main Results -/
 
@@ -225,19 +225,15 @@ lemma monotoneFormat_eq_preimage :
 /-- The monotone format language is in ℒ(CA_rt (Option α)). -/
 theorem monotone_format_in_ca_rt : MonotoneFormat α ∈ ℒ (CA_rt (Option α)) := by
   rw [monotoneFormat_eq_preimage]
-  obtain ⟨C, hC_rt, hC_L⟩ := truestar_falsestar_in_ca_rt
-  refine ⟨C.map_embed Option.isSome, ?_, ?_⟩
-  · exact (c_map_embed_in_ca_rt_iff_c_in_ca_rt C Option.isSome).mpr hC_rt
-  · ext w
-    -- Goal: w.map isSome ∈ monotoneDFA.accepts ↔ w ∈ (C.map_embed isSome).L
-    -- map_embed_L: w ∈ (C.map_embed f).L ↔ w.map f ∈ C.L
-    -- hC_L: monotoneDFA.accepts = C.L (as DefinesLanguage.L C)
-    constructor
-    · intro hw
-      have : w.map Option.isSome ∈ DefinesLanguage.L C := hC_L ▸ hw
-      exact (map_embed_L C Option.isSome w).mpr this
-    · intro hw
-      have := (map_embed_L C Option.isSome w).mp hw
-      exact hC_L ▸ this
+  obtain ⟨C, hC_L⟩ := truestar_falsestar_in_ca_rt
+  refine ⟨C.map_embed Option.isSome, ?_⟩
+  ext w
+  constructor
+  · intro hw
+    rw [hC_L] at hw
+    exact (map_embed_L C Option.isSome w).mpr hw
+  · intro hw
+    rw [hC_L]
+    exact (map_embed_L C Option.isSome w).mp hw
 
 end CellularAutomatas

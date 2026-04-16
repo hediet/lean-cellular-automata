@@ -93,11 +93,12 @@ def zip_spec [Alphabet α] [Alphabet β] [Alphabet γ] (a1: TwoStageAdvice α β
 
 infixl:65 " ⨂ " => zip_two_stage
 
-lemma tCellAutomatonWithAdvice.L_mem_ℒ (C: CA_rt (α × Γ)) (adv: Advice α Γ): (C.val + adv).L ∈ ℒ (CA_rt (α ⨉ Γ) + adv) := by
-  unfold ℒ
-  simp only [HAdd.hAdd, Set.mem_setOf_eq, DefinesLanguage.L, exists_exists_and_eq_and]
-  use C
-  simp
+private def advised_language (C : CA_rt (α × Γ)) (adv : Advice α Γ) : Language α :=
+  { w | C.accepts (adv.annotate w) }
+
+lemma Advised.L_mem_ℒ (C: CA_rt (α × Γ)) (adv: Advice α Γ):
+    advised_language C adv ∈ ℒ (CA_rt (α × Γ) + adv) :=
+  ⟨⟨C⟩, rfl⟩
 
 /-- Convert structure-based `weak_rt_closed` to the Prop-level language equality. -/
 lemma Advice.WeakRtClosed.language_eq {adv: Advice α Γ} (h: adv.WeakRtClosed):
@@ -105,29 +106,27 @@ lemma Advice.WeakRtClosed.language_eq {adv: Advice α Γ} (h: adv.WeakRtClosed):
   rw [CArtWithAdvice_eq_CArt_iff]
   intro L hL
   rw [ℒ_oca_def] at hL
-  obtain ⟨C, hC, rfl⟩ := hL
-  have hspec := h.spec ⟨C, hC⟩
-  -- hspec : (h.map ⟨C, hC⟩).val.L = (⟨C, hC⟩.val + adv).L
-  -- The RHS unfolds to {w | w ⨂ adv.f w ∈ C.L} via ℒ_oca_def
+  obtain ⟨C, rfl⟩ := hL
+  have hspec := h.spec C
   rw [ℒ_CA_rt_iff]
-  refine ⟨(h.map ⟨C, hC⟩).val, (h.map ⟨C, hC⟩).prop, ?_⟩
-  rw [hspec]
-  rfl
+  exact ⟨h.map C, hspec⟩
 
 /-- Convert the Prop-level language equality to the structure-based `weak_rt_closed`.
     This direction requires `Classical.choice`. -/
 noncomputable def Advice.WeakRtClosed.of_language_eq {adv: Advice α Γ}
     (h: ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)): adv.WeakRtClosed where
   map C :=
-    have hL : (C.val + adv).L ∈ ℒ (CA_rt α) := by
-      rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
-    have hL' : ∃ C' ∈ CA_rt α, C'.L = (C.val + adv).L := by rwa [ℒ_CA_rt_iff] at hL
-    ⟨(Classical.indefiniteDescription _ hL').val, (Classical.indefiniteDescription _ hL').prop.1⟩
+    have hL : advised_language C adv ∈ ℒ (CA_rt α) := by
+      rw [←h]; exact Advised.L_mem_ℒ C adv
+    have hL' : ∃ C' : CA_rt α, C'.L = (C + adv).L := by
+      rwa [ℒ_CA_rt_iff] at hL
+    (Classical.indefiniteDescription _ hL').val
   spec C := by
-    have hL : (C.val + adv).L ∈ ℒ (CA_rt α) := by
-      rw [←h]; exact tCellAutomatonWithAdvice.L_mem_ℒ C adv
-    have hL' : ∃ C' ∈ CA_rt α, C'.L = (C.val + adv).L := by rwa [ℒ_CA_rt_iff] at hL
-    exact (Classical.indefiniteDescription _ hL').prop.2
+    have hL : advised_language C adv ∈ ℒ (CA_rt α) := by
+      rw [←h]; exact Advised.L_mem_ℒ C adv
+    have hL' : ∃ C' : CA_rt α, C'.L = (C + adv).L := by
+      rwa [ℒ_CA_rt_iff] at hL
+    exact (Classical.indefiniteDescription _ hL').prop
 
 /-- The iff between the structure-based and Prop-level definitions. -/
 lemma advice_weak_rt_closed_iff_language_eq (adv: Advice α Γ):
@@ -136,7 +135,7 @@ lemma advice_weak_rt_closed_iff_language_eq (adv: Advice α Γ):
 
 /-- Backward-compatible: extract witness from `weak_rt_closed`. -/
 lemma tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed {adv: Advice α Γ} (h: adv.weak_rt_closed) (C: CA_rt (α ⨉ Γ)):
-    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L :=
+    ∃ (C' : CA_rt α), C'.L = (C + adv).L :=
   ⟨h.map C, h.spec C⟩
 
 /-- RT-closed implies weak-RT-closed (taking π = id). -/
@@ -149,7 +148,7 @@ def Advice.rt_closed_implies_weak_rt_closed {adv: Advice α Γ} (h: adv.rt_close
     there exists an RT CA accepting the same language. -/
 theorem exists_CA_rt_of_rt_closed_advice (C : CA_rt (α × Γ)) (adv : Advice α Γ)
     (h_rt_closed : adv.rt_closed) :
-    ∃ (C' : CA_rt α), C'.val.L = (C.val + adv).L :=
+    ∃ (C' : CA_rt α), C'.L = (C + adv).L :=
   tCellAutomatonWithAdvice.exists_CA_rt_of_weak_rt_closed
     (Advice.rt_closed_implies_weak_rt_closed h_rt_closed) C
 

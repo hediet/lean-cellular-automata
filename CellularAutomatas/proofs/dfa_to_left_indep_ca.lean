@@ -165,10 +165,11 @@ theorem DFAtoCA.nextt_full (M : DFA α σ) (w : List α) (hw : w.length > 0)
 /-- The CA accepts w iff the DFA accepts w. -/
 theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
     [DecidablePred (· ∈ M.accept)] [Fintype α] [Inhabited σ] [Inhabited α] :
-    (toRtCa (DFAtoCA M)).val.accepts w ↔ w ∈ M.accepts := by
+    (toRtCa (DFAtoCA M)).accepts w ↔ w ∈ M.accepts := by
   by_cases hw : w.length > 0
   · -- Non-empty word: cell 0 at time n-1 has full DFA evaluation
-    simp only [tCellAutomaton.accepts, toRtCa, CellAutomaton.comp_apply, CellAutomaton.project_config_apply,
+    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_center,
+      CellAutomaton.comp_apply, CellAutomaton.project_config_apply,
       Function.comp_apply]
     rw [DFAtoCA.nextt_full M w hw]
     simp only [DFAtoCA, DFAtoCA.project, decide_eq_true_eq, DFA.mem_accepts]
@@ -176,7 +177,8 @@ theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
     simp only [Nat.not_lt, Nat.le_zero] at hw
     have hw_nil : w = [] := List.eq_nil_of_length_eq_zero hw
     subst hw_nil
-    simp only [tCellAutomaton.accepts, toRtCa, List.length_nil, Nat.zero_sub,
+    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_center,
+      List.length_nil, Nat.zero_sub,
       CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply,
       CellAutomaton.nextt_zero, CellAutomaton.embed_config, word_to_config,
       le_refl, DFAtoCA, DFAtoCA.embed, DFAtoCA.project,
@@ -190,15 +192,10 @@ theorem dfa_language_in_OCA_rt (M : DFA α σ)
     [DecidablePred (· ∈ M.accept)] [Fintype α] [Inhabited σ] [Inhabited α] :
     M.accepts ∈ ℒ (OCA_rt α) := by
   unfold ℒ
-  use (toRtCa (DFAtoCA M)).val
-  refine ⟨?_, ?_⟩
-  · -- CA is in OCA_rt
-    simp only [OCA_rt, t_rt, OCA, CA, Set.mem_setOf_eq, tCellAutomata, Set.mem_univ]
-    exact ⟨⟨(toRtCa (DFAtoCA M)).property.1, DFAtoCA_left_independent M⟩,
-           (toRtCa (DFAtoCA M)).property.2⟩
-  · -- Languages are equal
-    ext w
-    simp only [tCellAutomaton.L, DefinesLanguage.L, tCellAutomaton.accepts]
-    exact (DFAtoCA.accepts_iff M w).symm
+  -- OCA_rt α = { C : CA_rt α // C.left_independent }
+  refine ⟨⟨toRtCa (DFAtoCA M), DFAtoCA_left_independent M⟩, ?_⟩
+  ext w
+  simp only [DefinesLanguage.L, tCellAutomaton.L]
+  exact (DFAtoCA.accepts_iff M w).symm
 
 end CellularAutomatas

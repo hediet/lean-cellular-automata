@@ -140,47 +140,25 @@ lemma word_to_config_natcast_eq {w: Word α} {t: ℕ} (h: t < w.length): ⟬w⟭
 
 
 
-lemma tCellAutomaton.elem_L_iff {C: tCellAutomaton α}:
-  w ∈ C.L ↔ ((C.comp w (C.t w.length)) (C.p w.length)) := by rfl
-
-
-@[simp]
-lemma CA_rt_t (C: CA_rt α) (n: Nat) :
-  C.val.t n = n - 1 := by
-  unfold CA_rt t_rt at C
-  grind
-
-@[simp]
-lemma CA_rt_p (C: CA_rt α) (n: Nat) :
-  C.val.p n = 0 := by
-  unfold CA_rt CA t_rt at C
-  grind
-
+lemma tCellAutomaton.elem_L_iff {schema : AcceptanceSchema} {C: tCellAutomaton schema α}:
+  w ∈ C.L ↔ ((C.comp w (schema.t w.length)) (schema.p w.length)) := by rfl
 
 
 def toRtCa {α} [Alphabet α] (C: CellAutomaton α？ Bool): CA_rt α :=
-  ⟨{
-    toCellAutomaton := C
-    t n := n - 1
-    p _ := 0
-  }, by simp [CA_rt, t_rt, CA, tCellAutomata]⟩
+  { toCellAutomaton := C }
 
 @[simp]
 lemma toRtCa_spec {α} [Alphabet α] (C: CellAutomaton α？ Bool) (w: Word α):
-    (toRtCa C).val.trace_rt w = C.trace_rt w := by
+    (toRtCa C).trace_rt w = C.trace_rt w := by
   rfl
 
 
 
 lemma CA_rt_L_iff {C: CA_rt α}:
-  w ∈ C.val.L ↔ (C.val.comp w (w.length - 1)) 0 = true := by
-  simp [tCellAutomaton.elem_L_iff, CA_rt_t, CA_rt_p]
-
-lemma CA_rt_L_iff2 {C: tCellAutomaton α} (h: C ∈ CA_rt α):
   w ∈ C.L ↔ (C.comp w (w.length - 1)) 0 = true := by
-  rw [CA_rt_L_iff (C := ⟨_, h⟩)]
+  rfl
 
-lemma trace_L {C: CA_rt α} {w: Word α}: C.val.trace w (w.length - 1) = true ↔ w ∈ C.val.L := by
+lemma trace_L {C: CA_rt α} {w: Word α}: C.trace w (w.length - 1) = true ↔ w ∈ C.L := by
   simp [CellAutomaton.trace, CA_rt_L_iff]
 
 @[simp]
@@ -188,7 +166,7 @@ lemma trace_rt_neq_empty {C: CellAutomaton (Option α) β} {w: Word α}: (C.trac
   simp [←List.length_eq_zero_iff]
 
 lemma trace_rt_L {C: CA_rt α} {w: Word α} (h: w ≠ []):
-  (C.val.trace_rt w).getLast (by simp [h]) = true ↔ w ∈ C.val.L := by
+  (C.trace_rt w).getLast (by simp [h]) = true ↔ w ∈ C.L := by
   rw [List.getLast_eq_getElem]
   simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range, List.length_map, List.length_range]
   exact trace_L
@@ -196,8 +174,8 @@ lemma trace_rt_L {C: CA_rt α} {w: Word α} (h: w ≠ []):
 
 
 
-lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
-    (C.val.trace_rt w)[i] = decide (w.take (i+1) ∈ C.val.L) := by
+lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.trace_rt w).length ):
+    (C.trace_rt w)[i] = decide (w.take (i+1) ∈ C.L) := by
   have h_len : i < w.length := by simpa using h
   simp only [CellAutomaton.trace_rt, List.getElem_map, List.getElem_range]
   unfold CellAutomaton.trace
@@ -216,18 +194,18 @@ lemma trace_rt_getElem_i_iff2 {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val
     rw [hw]
     rw [LCellAutomaton.scan_temporal_independence_at_0 (t := i) (ht := by simp [p]; omega)]
 
-lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.val.trace_rt w).length ):
-    (C.val.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.val.L := by
+lemma trace_rt_getElem_i_iff {C: CA_rt α} {w: Word α} (i: Nat) (h: i < (C.trace_rt w).length ):
+    (C.trace_rt w)[i] = true ↔ w.take (i+1) ∈ C.L := by
   simp [trace_rt_getElem_i_iff2]
 
 
-lemma elemL_iff_trace_rt [Alphabet α] {C: tCellAutomaton α} (h: C ∈ CA_rt α) {w: Word α}:
+lemma elemL_iff_trace_rt [Alphabet α] {C: CA_rt α} {w: Word α}:
     w ∈ C.L ↔ if w = [] then [] ∈ C.L else (C.trace_rt w).getLast? = some true := by
   by_cases hw : w = []
   · simp [hw]
   · have h_tr_ne : (C.trace_rt w) ≠ [] := by simp [trace_rt_neq_empty, hw]
     rw [List.getLast?_eq_some_getLast h_tr_ne]
-    simp [hw, trace_rt_L (C := ⟨C, h⟩)]
+    simp [hw, trace_rt_L]
 
 
 
@@ -279,51 +257,36 @@ lemma LCellAutomaton.comp_succ_eq (C: LCellAutomaton α): C.comp w (t + 1) = C.n
 
 variable [Alphabet α] [Alphabet Γ]
 
-lemma ℒ_CA_rt_iff {α} [Alphabet α] {L: Language α}: L ∈ ℒ (CA_rt α) ↔ ∃ C ∈ CA_rt α, C.L = L := by
-  unfold ℒ
+lemma ℒ_CA_rt_iff {α} [Alphabet α] {L: Language α}: L ∈ ℒ (CA_rt α) ↔ ∃ C : CA_rt α, C.L = L := by
   constructor
-  · rintro ⟨C, hC, rfl⟩
-    use C, hC
-    rfl
-  · rintro ⟨C, hC, rfl⟩
-    use C, hC
-    rfl
+  · rintro ⟨C, rfl⟩; exact ⟨C, rfl⟩
+  · rintro ⟨C, rfl⟩; exact ⟨C, rfl⟩
 
 
-lemma ℒ_oca_def (adv: Advice α Γ) (L: Language α):
-      L ∈ ℒ (CA_rt (α × Γ) + adv) ↔ ∃ C ∈ CA_rt (α × Γ), L = { w | (w ⨂ (adv.f w)) ∈ C.L } := by
-  unfold ℒ
+lemma ℒ_oca_def [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) (L: Language α):
+      L ∈ ℒ (CA_rt (α × Γ) + adv) ↔ ∃ C : CA_rt (α × Γ), L = { w | (w ⨂ (adv.f w)) ∈ C.L } := by
   constructor
-  · rintro ⟨ca, h_ca, rfl⟩
-    simp [HAdd.hAdd] at h_ca
-    rcases h_ca with ⟨C, hC, rfl⟩
-    use C, hC
-    rfl
-  · rintro ⟨C, hC, rfl⟩
-    use tCellAutomatonWithAdvice.mk Γ adv C
-    constructor
-    · simp [HAdd.hAdd, hC]
-    · rfl
+  · rintro ⟨⟨C⟩, rfl⟩
+    exact ⟨C, rfl⟩
+  · rintro ⟨C, rfl⟩
+    exact ⟨⟨C⟩, rfl⟩
 
-def tCellAutomaton.map_embed {α β} (C: tCellAutomaton α) (f: β → α): tCellAutomaton β :=
+def tCellAutomaton.map_embed {schema : AcceptanceSchema} {α β} (C: tCellAutomaton schema α) (f: β → α): tCellAutomaton schema β :=
   {
     toCellAutomaton := C.toCellAutomaton.map_embed (Option.map f)
-    t := C.t
-    p := C.p
   }
 
-@[simp]
-lemma c_map_embed_in_ca_rt_iff_c_in_ca_rt {α β} (C: tCellAutomaton α) (f: β → α):
-    C.map_embed f ∈ CA_rt β ↔ C ∈ CA_rt α := by rfl
+-- c_map_embed_in_ca_rt_iff_c_in_ca_rt is no longer needed:
+-- map_embed preserves the schema at the type level.
 
 @[simp]
-lemma tCellAutomaton.map_embed_trace_rt {α β} (C: tCellAutomaton α) (f: β → α) (w: Word β):
+lemma tCellAutomaton.map_embed_trace_rt {schema : AcceptanceSchema} {α β} (C: tCellAutomaton schema α) (f: β → α) (w: Word β):
     (C.map_embed f).trace_rt w = C.trace_rt (w.map f) := by
   unfold tCellAutomaton.map_embed
   simp
 
 @[simp]
-lemma map_embed_L {α} (C: tCellAutomaton α) (f: β → α) (w: Word β):
+lemma map_embed_L {schema : AcceptanceSchema} {α} (C: tCellAutomaton schema α) (f: β → α) (w: Word β):
     w ∈ (C.map_embed f).L ↔ (w.map f) ∈ C.L := by
 
   suffices @CellAutomaton.embed_config _ _ C.toCellAutomaton (word_to_config (w.map f))
@@ -342,27 +305,28 @@ lemma map_embed_L {α} (C: tCellAutomaton α) (f: β → α) (w: Word β):
 lemma CA_rt_subseteq_CA_rt_with_advice (adv: Advice α Γ):
     (ℒ (CA_rt α)) ⊆ ((ℒ (CA_rt (α × Γ) + adv)): Set (Language α)) := by
   intro L hL
-  rcases ℒ_CA_rt_iff.mp hL with ⟨C, hC, rfl⟩
+  rcases ℒ_CA_rt_iff.mp hL with ⟨C, rfl⟩
   rw [ℒ_oca_def]
 
-  let C': CA_rt (α × Γ) := ⟨ C.map_embed Prod.fst, by simp_all ⟩
+  let C': CA_rt (α × Γ) := C.map_embed Prod.fst
   use C'
 
-  constructor
-  · simp
+  ext w
 
-  · ext w
-
-    rw [Set.mem_setOf_eq]
-    simp [C']
-    rw [List.map_fst_zip]
-    simp
+  rw [Set.mem_setOf_eq]
+  simp [C']
+  rw [List.map_fst_zip]
+  simp
 
 
 lemma CArtWithAdvice_eq_CArt_iff (adv: Advice α Γ):
-    ℒ (CA_rt (α ⨉ Γ) + adv) = ℒ (CA_rt α)
-    ↔ ∀ L ∈ ℒ (CA_rt (α ⨉ Γ) + adv), L ∈ ℒ (CA_rt α) := by
-  grind [CA_rt_subseteq_CA_rt_with_advice]
+    ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)
+    ↔ ∀ L ∈ ℒ (CA_rt (α × Γ) + adv), L ∈ ℒ (CA_rt α) := by
+  constructor
+  · intro h L hL; rw [h] at hL; exact hL
+  · intro h; ext L; constructor
+    · exact h L
+    · intro hL; exact CA_rt_subseteq_CA_rt_with_advice adv hL
 
 
 

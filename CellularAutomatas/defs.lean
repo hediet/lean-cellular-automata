@@ -215,7 +215,12 @@ section DefinesLanguage
 
   variable {T: Type*} [Alphabet α]
 
-  def ℒ [d: DefinesLanguage T α] (s: (Set T)): Set (Language α) :=
+  /-- The set of languages recognized by automata of type T. -/
+  def ℒ (T : Type*) [Alphabet α] [DefinesLanguage T α] : Set (Language α) :=
+      fun L => ∃ ca : T, L = DefinesLanguage.L ca
+
+  /-- The set of languages recognized by automata in a set S. -/
+  def ℒs [d: DefinesLanguage T α] (s: (Set T)): Set (Language α) :=
       fun L => ∃ ca: T, ca ∈ s ∧ L = DefinesLanguage.L ca
 
 end DefinesLanguage
@@ -319,69 +324,104 @@ notation:max "[" b " | " v " ‖ " w "]" => BorderedConfigSame b v w
 
 end BorderedConfig
 
+section AcceptanceSchema
+
+  /-- How to read the result of a CA computation:
+      `t` maps input length to number of steps, `p` maps input length to cell position. -/
+  structure AcceptanceSchema where
+    t : ℕ → ℕ
+    p : ℕ → ℤ
+
+  namespace AcceptanceSchema
+    /-- Real-time, center-reading: t(n) = n - 1, p = 0 -/
+    def rt_center    : AcceptanceSchema := ⟨(· - 1), fun _ => 0⟩
+    /-- Real-time, right-reading: t(n) = n - 1, p = n -/
+    def rt_right     : AcceptanceSchema := ⟨(· - 1), fun n => ((n : ℤ) - 1)⟩
+    /-- 2(n-1) time, center-reading -/
+    def time_2n_center : AcceptanceSchema := ⟨fun n => 2 * (n - 1), fun _ => 0⟩
+    /-- 2(n-1) time, left-reading at -(n-1) -/
+    def time_2n_left : AcceptanceSchema := ⟨fun n => 2 * (n - 1), fun n => -((n : ℤ) - 1)⟩
+    /-- Linear time c*(n-1), center-reading -/
+    def lt_center (c : ℕ) : AcceptanceSchema := ⟨fun n => c * (n - 1), fun _ => 0⟩
+  end AcceptanceSchema
+
+end AcceptanceSchema
+
 section tCellAutomaton
 
-  structure tCellAutomaton (α: Type) extends LCellAutomaton α where
-    t: ℕ → ℕ
-    p: ℕ → ℤ
+  structure tCellAutomaton (schema : AcceptanceSchema) (α : Type) extends LCellAutomaton α
 
-  def tCellAutomata (α: Type): Set (tCellAutomaton α) := Set.univ
+  def tCellAutomaton.accepts {schema : AcceptanceSchema} (C : tCellAutomaton schema α) (w : Word α) : Bool :=
+    C.comp w (schema.t w.length) (schema.p w.length)
 
-  def tCellAutomaton.accepts {C: tCellAutomaton α} (w: Word α): Bool :=
-    C.comp w (C.t w.length) (C.p w.length)
+  def tCellAutomaton.L {schema : AcceptanceSchema} {α : Type} (C : tCellAutomaton schema α) : Language α :=
+    { w | C.accepts w }
 
-  def tCellAutomaton.L {α: Type} (C: tCellAutomaton α): Language α := { w | C.accepts w }
-
-  instance [Alphabet α] : DefinesLanguage (tCellAutomaton α) α where
+  instance [Alphabet α] (schema : AcceptanceSchema) : DefinesLanguage (tCellAutomaton schema α) α where
     L C := C.L
 
-
-
-  instance (C: tCellAutomaton α) (w: Word α) : Decidable (w ∈ C.L) := by
-    change Decidable (C.comp w (C.t w.length) (C.p w.length) = true)
+  instance {schema : AcceptanceSchema} (C : tCellAutomaton schema α) (w : Word α) : Decidable (w ∈ C.L) := by
+    change Decidable (C.comp w (schema.t w.length) (schema.p w.length) = true)
     infer_instance
 
-
-  instance (C: tCellAutomaton α) : DecidablePred C.L := by
+  instance {schema : AcceptanceSchema} (C : tCellAutomaton schema α) : DecidablePred C.L := by
     intro w
     change Decidable (w ∈ C.L)
     infer_instance
-
 
 end tCellAutomaton
 
 section CAClasses
 
-    variable (α: Type)
+    variable (α : Type)
 
-    def t_rt (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = n - 1 }
-    def t_2n (S: Set (tCellAutomaton α)) := { C ∈ S | ∀ n, C.t n = 2 * (n - 1) }
-    def t_lt (S: Set (tCellAutomaton α)) := { C ∈ S | ∃ c: ℕ, ∀ n, C.t n = c * (n - 1) }
+    /-- CA reading at cell 0, real-time: t(n) = n - 1 -/
+    abbrev CA_rt := tCellAutomaton .rt_center
+    /-- CA reading at cell 0, time 2(n-1) -/
+    abbrev CA_2n := tCellAutomaton .time_2n_center
+    /-- CA reading at cell n (right border), real-time -/
+    abbrev CAr_rt := tCellAutomaton .rt_right
+    /-- CA reading at cell -(n-1), time 2(n-1) -/
+    abbrev CA_2n_neg2n_base := tCellAutomaton .time_2n_left
+    /-- Linear-time center-reading: ∃ c, t(n) = c*(n-1) -/
+    def CA_lt := Σ c : ℕ, tCellAutomaton (.lt_center c) α
 
-    def CA   := { C ∈ tCellAutomata α | C.p = fun _ => 0 }
-    def CA_rt := CA α |> t_rt α
-    def CA_2n := CA α |> t_2n α
-    def CA_lt := CA α |> t_lt α
+    instance [Alphabet α] : DefinesLanguage (CA_lt α) α where
+      L C := C.2.L
 
-    def CAr  := { C ∈ tCellAutomata α | C.p = fun (n: ℕ) => (n: ℤ) }
+    /-- One-way CA (left-independent), real-time, center-reading -/
+    def OCA_rt  := { C : CA_rt α // C.left_independent }
+    /-- One-way CA (left-independent), time 2(n-1), center-reading -/
+    def OCA_2n  := { C : CA_2n α // C.left_independent }
+    /-- One-way CA (left-independent), linear-time -/
+    def OCA_lt  := Σ c : ℕ, { C : tCellAutomaton (.lt_center c) α // C.left_independent }
 
-    def OCA  := { C ∈ CA α | C.left_independent }
-    def OCA_rt := OCA α |> t_rt α
-    def OCA_2n := OCA α |> t_2n α
-    def OCA_lt := OCA α |> t_lt α
+    instance [Alphabet α] : DefinesLanguage (OCA_rt α) α where
+      L C := C.1.L
+    instance [Alphabet α] : DefinesLanguage (OCA_2n α) α where
+      L C := C.1.L
+    instance [Alphabet α] : DefinesLanguage (OCA_lt α) α where
+      L C := C.2.1.L
 
-    def OCAr  := { C ∈ CAr α | C.right_independent }
-    def OCAr_rt := OCAr α |> t_rt α
-    def OCAr_2n := OCAr α |> t_2n α
-    def OCAr_lt := OCAr α |> t_lt α
+    /-- Right-reading one-way CA (right-independent), real-time -/
+    def OCAr_rt := { C : CAr_rt α // C.right_independent }
+    /-- Right-reading one-way CA (right-independent), time 2(n-1) -/
+    def OCAr_2n := { C : CA_2n α // C.right_independent }
+    /-- Right-reading one-way CA (right-independent), linear-time -/
+    def OCAr_lt := Σ c : ℕ, { C : tCellAutomaton (.lt_center c) α // C.right_independent }
 
-    /-- OCA at time 2*(n-1), reading at position -(n-1).
-        The left-independent (right-to-left) computation cone at position -(n-1)
-        covers cells -(n-1) to n-1, giving access to the full input word. -/
-    def OCA_2n_neg2n := { C ∈ tCellAutomata α |
-      C.left_independent ∧
-      (∀ n, C.t n = 2 * (n - 1)) ∧
-      (C.p = fun (n : ℕ) => -((n : ℤ) - 1)) }
+    instance [Alphabet α] : DefinesLanguage (OCAr_rt α) α where
+      L C := C.1.L
+    instance [Alphabet α] : DefinesLanguage (OCAr_2n α) α where
+      L C := C.1.L
+    instance [Alphabet α] : DefinesLanguage (OCAr_lt α) α where
+      L C := C.2.1.L
+
+    /-- OCA at time 2*(n-1), reading at position -(n-1). -/
+    def OCA_2n_neg2n := { C : CA_2n_neg2n_base α // C.left_independent }
+
+    instance [Alphabet α] : DefinesLanguage (OCA_2n_neg2n α) α where
+      L C := C.1.L
 
 end CAClasses
 
@@ -434,24 +474,40 @@ section Advice
 
   end Advice
 
-  structure tCellAutomatonWithAdvice (α: Type) where
+  structure tCellAutomatonWithAdvice (schema : AcceptanceSchema) (α : Type) where
     Γ: Type
     [alphabetΓ: Alphabet Γ]
     adv: Advice α Γ
-    C: tCellAutomaton (α × Γ)
+    C: tCellAutomaton schema (α × Γ)
 
   attribute [instance] tCellAutomatonWithAdvice.alphabetΓ
 
-  def tCellAutomatonWithAdvice.L (C: tCellAutomatonWithAdvice α): Language α := { w | C.C.accepts (C.adv.annotate w) }
+  def tCellAutomatonWithAdvice.L {schema : AcceptanceSchema} (C: tCellAutomatonWithAdvice schema α): Language α :=
+    { w | C.C.accepts (C.adv.annotate w) }
 
-  instance {Γ: Type} [Alphabet Γ] : HAdd (tCellAutomaton (α × Γ)) (Advice α Γ) (tCellAutomatonWithAdvice α) where
+  instance {schema : AcceptanceSchema} {Γ: Type} [Alphabet Γ] :
+      HAdd (tCellAutomaton schema (α × Γ)) (Advice α Γ) (tCellAutomatonWithAdvice schema α) where
     hAdd C adv := tCellAutomatonWithAdvice.mk Γ adv C
 
-  instance {Γ: Type} [Alphabet Γ] : HAdd (Set (tCellAutomaton (α × Γ))) (Advice α Γ) (Set (tCellAutomatonWithAdvice α)) where
-    hAdd S adv := { C + adv | C ∈ S }
-
-  instance [Alphabet α] : DefinesLanguage (tCellAutomatonWithAdvice α) α where
+  instance {schema : AcceptanceSchema} [Alphabet α] : DefinesLanguage (tCellAutomatonWithAdvice schema α) α where
     L ca := tCellAutomatonWithAdvice.L ca
+
+  /-- CA class with a fixed advice: the set of CAs of a given schema, reading advice-annotated input.
+      `Advised (CA_rt) adv` is the type of CA_rt automata using advice `adv`. -/
+  structure Advised (schema : AcceptanceSchema) {Γ : Type} [Alphabet α] [Alphabet Γ] (adv : Advice α Γ) where
+    C : tCellAutomaton schema (α × Γ)
+
+  instance {schema : AcceptanceSchema} {Γ : Type} [Alphabet α] [Alphabet Γ] (adv : Advice α Γ) :
+      DefinesLanguage (Advised schema adv) α where
+    L ca := { w | ca.C.accepts (adv.annotate w) }
+
+  /-- Type-level sugar: `CA_rt β + adv` means `Advised .rt_center adv`, etc.
+      Lets us write `ℒ (CA_rt (α × Γ) + adv)` instead of `ℒ (Advised .rt_center adv)`. -/
+  macro_rules
+    | `(CA_rt $_ + $adv)   => `(Advised .rt_center $adv)
+    | `(CA_2n $_ + $adv)   => `(Advised .time_2n_center $adv)
+    | `(CAr_rt $_ + $adv)  => `(Advised .rt_right $adv)
+    | `(CA_2n_neg2n_base $_ + $adv) => `(Advised .time_2n_left $adv)
 
   /-- An advice `f` is weak-RT-closed if for every CA_rt over the extended alphabet,
       there exists a CA_rt over the base alphabet recognizing the same language. -/
@@ -459,7 +515,7 @@ section Advice
     /-- Maps each CA_rt over the extended alphabet to a CA_rt over the base alphabet. -/
     map : CA_rt (α × Γ) → CA_rt α
     /-- The mapped CA recognizes the same language as the original CA with the advice. -/
-    spec : ∀ C, (map C).val.L = (C.val + f).L
+    spec : ∀ C, (map C).L = { w | C.accepts (f.annotate w) }
 
   abbrev Advice.weak_rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     f.WeakRtClosed
@@ -467,11 +523,14 @@ section Advice
   def Advice.rt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
     ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_rt_closed
 
-  def Advice.weak_lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-    ℒ (CA_lt (α × Γ) + f) = ℒ (CA_lt α)
+  -- TODO: Redesign weak_lt_closed / lt_closed for the new AcceptanceSchema-based CA_lt
+  -- The old definitions used set-based ℒ on CA_lt + advice, which needs rethinking
+  -- with the sigma-type-based CA_lt.
 
-  def Advice.lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
-    ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_lt_closed
+  -- def Advice.weak_lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+  --   ℒ (CA_lt (α × Γ) + f) = ℒ (CA_lt α)
+  -- def Advice.lt_closed {Γ: Type} [Alphabet α] [Alphabet Γ] (f: Advice α Γ) :=
+  --   ∀ β [Alphabet β] (π: β → α), (f.lift π).weak_lt_closed
 
 end Advice
 
@@ -643,7 +702,7 @@ section LanguageReversal
 
 end LanguageReversal
 
-def ℒ_rev {α : Type} {T : Type*} [Alphabet α] [DefinesLanguage T α] (S : Set T) : Set (Language α) :=
-  LanguageClass.rev (ℒ S)
+def ℒ_rev (T : Type*) {α : Type} [Alphabet α] [DefinesLanguage T α] : Set (Language α) :=
+  LanguageClass.rev (ℒ T)
 
 end CellularAutomatas

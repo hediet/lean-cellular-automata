@@ -25,16 +25,15 @@ private theorem ca_rt_union_two {α : Type} [Alphabet α]
     (h₁ : L₁ ∈ ℒ (CA_rt α)) (h₂ : L₂ ∈ ℒ (CA_rt α)) :
     (L₁ ∪ L₂ : Set (Word α)) ∈ ℒ (CA_rt α) := by
   rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
+  obtain ⟨C₁, hC₁_L⟩ := h₁
+  obtain ⟨C₂, hC₂_L⟩ := h₂
   let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a || b))
-  refine ⟨C'.val, C'.property, ?_⟩
+  refine ⟨C', ?_⟩
   ext w
   rw [Set.mem_union, ← hC₁_L, ← hC₂_L]
-  -- Show: w ∈ C'.val.L ↔ w ∈ C₁.L ∨ w ∈ C₂.L
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
-  -- Goal: (↑C').comp ⦋w⦌ ... = true ↔ C₁.comp ... = true ∨ C₂.comp ... = true
-  -- C'.val.toCellAutomaton = (C₁ ⨂ C₂).map_project (λ (a,b) => a || b)
+  -- Show: w ∈ C'.L ↔ w ∈ C₁.L ∨ w ∈ C₂.L
+  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff (C := C₁), CA_rt_L_iff (C := C₂)]
+  -- Goal: (C').comp ⦋w⦌ ... = true ↔ C₁.comp ... = true ∨ C₂.comp ... = true
   change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a || b)).comp ⦋w⦌ (w.length - 1) 0 = true
     ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∨ C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true
   simp [comp_of_map_project, ca_zip_comp, Bool.or_eq_true]
@@ -46,15 +45,15 @@ private theorem ca_rt_diff_two {α : Type} [Alphabet α]
     (h₁ : L₁ ∈ ℒ (CA_rt α)) (h₂ : L₂ ∈ ℒ (CA_rt α)) :
     L₁ \ L₂ ∈ ℒ (CA_rt α) := by
   rw [ℒ_CA_rt_iff] at h₁ h₂ ⊢
-  obtain ⟨C₁, hC₁_rt, hC₁_L⟩ := h₁
-  obtain ⟨C₂, hC₂_rt, hC₂_L⟩ := h₂
+  obtain ⟨C₁, hC₁_L⟩ := h₁
+  obtain ⟨C₂, hC₂_L⟩ := h₂
   let C' := toRtCa ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && !b))
-  refine ⟨C'.val, C'.property, ?_⟩
+  refine ⟨C', ?_⟩
   ext w
   rw [Set.mem_diff, ← hC₁_L, ← hC₂_L]
-  -- Show: w ∈ C'.val.L ↔ w ∈ C₁.L ∧ w ∉ C₂.L
-  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff2 hC₁_rt, CA_rt_L_iff2 hC₂_rt]
-  -- Goal: (↑C').comp ... = true ↔ C₁.comp ... = true ∧ ¬(C₂.comp ... = true)
+  -- Show: w ∈ C'.L ↔ w ∈ C₁.L ∧ w ∉ C₂.L
+  rw [CA_rt_L_iff (C := C'), CA_rt_L_iff (C := C₁), CA_rt_L_iff (C := C₂)]
+  -- Goal: C'.comp ... = true ↔ C₁.comp ... = true ∧ ¬(C₂.comp ... = true)
   change ((C₁.toCellAutomaton ⨂ C₂.toCellAutomaton).map_project (fun (a, b) => a && !b)).comp ⦋w⦌ (w.length - 1) 0 = true
     ↔ C₁.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true ∧ ¬(C₂.toCellAutomaton.comp ⦋w⦌ (w.length - 1) 0 = true)
   simp only [comp_of_map_project, ca_zip_comp, Bool.and_eq_true, Bool.not_eq_true']
@@ -66,8 +65,8 @@ private theorem ca_rt_diff_two {α : Type} [Alphabet α]
 /-- ℒ(OCA_rt α) ⊆ ℒ(CA_rt α): every OCA_rt language is a CA_rt language. -/
 private theorem ℒ_OCA_rt_sub_CA_rt {α : Type} [Alphabet α] :
     ℒ (OCA_rt α) ⊆ ℒ (CA_rt α) := by
-  intro L ⟨C, hC, hL⟩
-  exact ⟨C, ⟨hC.1.1, hC.2⟩, hL⟩
+  intro L ⟨C, hL⟩
+  exact ⟨C.1, hL⟩
 
 /-- Any finite language is in ℒ(CA_rt α).
 

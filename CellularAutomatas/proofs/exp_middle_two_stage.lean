@@ -72,10 +72,6 @@ section Stage1
   def exp_prefix_CA : CArtTransducer α Bool :=
     (exp_word_ca.map_embed (fun _ => ())).toCellAutomaton
 
-  private lemma exp_word_ca_mem_CA_rt : exp_word_ca ∈ CA_rt Unit := by
-    simp only [CA_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq, Set.mem_univ, true_and]
-    exact ⟨funext (fun _ => rfl), fun _ => rfl⟩
-
   @[simp] private lemma exp_word_ca_mem_L_iff (w : Word Unit) :
       w ∈ exp_word_ca.L ↔ isPowerOfTwo w.length = true := by
     simp only [tCellAutomaton.L, exp_word_ca_correct, isPowerOfTwo_iff]
@@ -85,7 +81,7 @@ section Stage1
       (exp_prefix_CA.trace_rt w)[i]'(by simp [hi]) = isPowerOfTwo (i + 1) := by
     unfold exp_prefix_CA
     simp only [tCellAutomaton.map_embed_trace_rt]
-    rw [trace_rt_getElem_i_iff2 (C := ⟨exp_word_ca, exp_word_ca_mem_CA_rt⟩)]
+    rw [trace_rt_getElem_i_iff2 (C := exp_word_ca)]
     simp [show (i + 1) ≤ List.length w by omega]
 
   /-- `exp_prefix_CA.trace_rt` computes `Advice.exp1`. -/

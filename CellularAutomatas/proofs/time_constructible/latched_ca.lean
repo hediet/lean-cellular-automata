@@ -484,32 +484,21 @@ answer when the timer fires at t(n), read the latched value at t'(n).
     suffices to capture C's answer from time t(n) and replay it at any later time. -/
 theorem time_extension {α : Type} [Alphabet α]
     {t : ℕ → ℕ} (tc : TimeConstructible t)
-    {C : tCellAutomaton α} (hC : C ∈ CA α) (hT : ∀ n, C.t n = t n)
+    (C : tCellAutomaton ⟨t, fun _ => 0⟩ α)
     (t' : ℕ → ℕ) (ht' : ∀ n, t n ≤ t' n) (ht_pos : ∀ n, t n > 0) :
-    ∃ C' : tCellAutomaton α, C' ∈ CA α ∧ (∀ n, C'.t n = t' n) ∧ C'.L = C.L := by
-  -- Build C' as latchedCA with time t' and position 0
-  refine ⟨{
-    toCellAutomaton := latchedCA C.toCellAutomaton t tc
-    t := t'
-    p := fun _ => 0
-  }, ?_, fun _ => rfl, ?_⟩
-  · -- C' ∈ CA α: position is always 0
-    simp only [CA, tCellAutomata, Set.mem_univ, Set.mem_setOf_eq, true_and]
-  · -- C'.L = C.L: latchedCA preserves the language
-    ext w
-    show (latchedCA C.toCellAutomaton t tc).comp ⦋⟬w⟭⦌ (t' w.length) 0 = true
-       ↔ C.toCellAutomaton.comp ⦋⟬w⟭⦌ (C.t w.length) (C.p w.length) = true
-    -- Substitute C.p = 0 (from CA membership) and C.t = t (from hypothesis)
-    have hp : C.p w.length = 0 := by
-      have := hC; simp only [CA, tCellAutomata, Set.mem_univ, true_and] at this
-      exact congr_fun this w.length
-    rw [hp, hT w.length]
-    -- Apply latchedCA_correct: the latched value at time t'(n) equals C's output at t(n)
-    have key := latchedCA_correct C.toCellAutomaton t tc w (t' w.length - t w.length)
-                  (fun _ => ht_pos w.length)
-    rw [show t w.length + (t' w.length - t w.length) = t' w.length
-        from Nat.add_sub_cancel' (ht' w.length)] at key
-    rw [key]
+    ∃ C' : tCellAutomaton ⟨t', fun _ => 0⟩ α, C'.L = C.L := by
+  -- Build C' as latchedCA with time t' and position 0 (center-reading)
+  refine ⟨{ toCellAutomaton := latchedCA C.toCellAutomaton t tc }, ?_⟩
+  -- C'.L = C.L: latchedCA preserves the language
+  ext w
+  show (latchedCA C.toCellAutomaton t tc).comp ⦋⟬w⟭⦌ (t' w.length) 0 = true
+     ↔ C.toCellAutomaton.comp ⦋⟬w⟭⦌ (t w.length) 0 = true
+  -- Apply latchedCA_correct: the latched value at time t'(n) equals C's output at t(n)
+  have key := latchedCA_correct C.toCellAutomaton t tc w (t' w.length - t w.length)
+                (fun _ => ht_pos w.length)
+  rw [show t w.length + (t' w.length - t w.length) = t' w.length
+      from Nat.add_sub_cancel' (ht' w.length)] at key
+  rw [key]
 
 /-!
 ## ComposeAtTime: Unifying ComposeKSteps with TimeConstructible

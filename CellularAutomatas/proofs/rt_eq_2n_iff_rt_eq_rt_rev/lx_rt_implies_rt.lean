@@ -1140,9 +1140,8 @@ The full proof requires:
 - Using advice elimination (`exists_CA_rt_of_rt_closed_advice`) -/
 theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
     L_x L ∈ ℒ (CA_rt (Option α)) → L ∈ ℒ (CA_rt α) := by
-  intro ⟨C, hC_rt, hC_L⟩
-  -- C : tCellAutomaton (Option α) accepts L_x(L) in real-time
-  -- hC_rt : C ∈ CA_rt (Option α)
+  intro ⟨C, hC_L⟩
+  -- C : CA_rt (Option α) accepts L_x(L) in real-time
   -- hC_L : L_x L = C.L
 
   -- Step 1: Build the pipeline over Option α with x = none
@@ -1152,57 +1151,57 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
   let C₇₀_rt : CA_rt e.AdvicedInput := toRtCa e.C₇₀
   have h_adv_rt : e.foldAdvice.rt_closed := e.foldAdvice_rt_closed
   obtain ⟨C_elim, hC_elim_L⟩ := exists_CA_rt_of_rt_closed_advice C₇₀_rt e.foldAdvice h_adv_rt
-  -- C_elim : CA_rt (Option α), C_elim.val.L = (C₇₀_rt.val + e.foldAdvice).L
+  -- C_elim : CA_rt (Option α), C_elim.L = (C₇₀_rt + e.foldAdvice).L
 
   -- Step 3: Project C_elim down to alphabet α via map_embed some
-  let C_final : CA_rt α :=
-    ⟨C_elim.val.map_embed some, (c_map_embed_in_ca_rt_iff_c_in_ca_rt _ _).mpr C_elim.property⟩
-  -- C_final accepts v : Word α iff v.map some ∈ C_elim.val.L
+  let C_final : CA_rt α := C_elim.map_embed some
+  -- C_final accepts v : Word α iff v.map some ∈ C_elim.L
 
   -- Step 4: Show C_final.val.L = L using finite symmetric difference
   -- For |v| ≥ 9, we prove C_final agrees with L (via the pipeline chain).
   -- For |v| < 9, the disagreement set is finite since Alphabet α is Fintype.
   -- Then ca_rt_closed_finite_symmDiff gives L ∈ ℒ(CA_rt α).
 
-  -- C_final.val.L ∈ ℒ(CA_rt α)
-  have h_Cfinal_in : C_final.val.L ∈ ℒ (CA_rt α) :=
-    ⟨C_final.val, C_final.property, rfl⟩
+  -- C_final.L ∈ ℒ(CA_rt α)
+  have h_Cfinal_in : C_final.L ∈ ℒ (CA_rt α) :=
+    ⟨C_final, rfl⟩
 
   -- For large words (|v| ≥ 9), C_final agrees with L
   have h_agree_large : ∀ v : Word α, v.length ≥ k_factor + 1 →
-      (v ∈ L ↔ v ∈ C_final.val.L) := by
+      (v ∈ L ↔ v ∈ C_final.L) := by
     intro v hv_len
-    show v ∈ L ↔ v ∈ (C_elim.val.map_embed some).L
+    show v ∈ L ↔ v ∈ (C_elim.map_embed some).L
     rw [map_embed_L]
     let w := v.map some
     have hw_len : w.length ≥ k_factor + 1 := by simp [w]; exact hv_len
     have hstage8 := e.stage8_full_spec w hw_len
 
     -- Chain: v.map some ∈ C_elim.L ↔ ... ↔ v ∈ L
-    have h1 : v.map some ∈ C_elim.val.L ↔ w ∈ (C₇₀_rt.val + e.foldAdvice).L := by
+    have h1 : v.map some ∈ C_elim.L ↔ w ∈ (C₇₀_rt + e.foldAdvice).L := by
       constructor <;> intro hx
       · rw [hC_elim_L] at hx; exact hx
       · rw [hC_elim_L]; exact hx
     rw [h1]
 
-    have h2 : w ∈ (C₇₀_rt.val + e.foldAdvice).L ↔
+    have h2 : w ∈ (C₇₀_rt + e.foldAdvice).L ↔
         e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true := by
       simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.accepts,
                  Advice.annotate]
       have h_ann_len : (w ⨂ e.foldAdvice.f w).length = w.length := by
         simp [advice_len]
-      change (toRtCa e.C₇₀).val.toCellAutomaton.comp
+      change (toRtCa e.C₇₀).toCellAutomaton.comp
         ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
-        ((toRtCa e.C₇₀).val.t (w ⨂ e.foldAdvice.f w).length)
-        ((toRtCa e.C₇₀).val.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
+        (AcceptanceSchema.rt_center.t (w ⨂ e.foldAdvice.f w).length)
+        (AcceptanceSchema.rt_center.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
       simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp_apply,
-                 CellAutomaton.project_config, Function.comp]
+                 CellAutomaton.project_config, Function.comp,
+                 AcceptanceSchema.rt_center, LxPipeline.n]
 
     have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔
         (e.x_prefix w ++ w) ∈ C.L := by
       rw [show e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) =
             e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 from hstage8]
-      rw [CA_rt_L_iff (C := ⟨C, hC_rt⟩)]
+      rw [CA_rt_L_iff (C := C)]
       change e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 = true ↔
           e.C_orig.comp ⟬e.x_prefix w ++ w⟭ ((e.x_prefix w ++ w).length - 1) 0 = true
       simp [LxPipeline.x_prefix, LxPipeline.m, LxPipeline.n, w]
@@ -1222,8 +1221,8 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
 
     rw [h2, h3, h4, h5]
 
-  -- The symmetric difference C_final.val.L ∆ L only contains words of length < 9
-  have h_symmDiff_finite : (symmDiff C_final.val.L L).Finite := by
+  -- The symmetric difference C_final.L ∆ L only contains words of length < 9
+  have h_symmDiff_finite : (symmDiff C_final.L L).Finite := by
     -- The set of all words of length < k_factor + 1 is finite
     let short_words : Finset (Word α) :=
       (Finset.range (k_factor + 1)).biUnion
@@ -1244,8 +1243,6 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
     simp only [symmDiff] at hw
     exact hw.elim (fun ⟨h1, h2⟩ => h2 (h_iff.mpr h1)) (fun ⟨h1, h2⟩ => h2 (h_iff.mp h1))
 
-  exact ca_rt_closed_finite_symmDiff C_final.val.L L h_Cfinal_in h_symmDiff_finite
-
-#print axioms lx_rt_implies_rt
+  exact ca_rt_closed_finite_symmDiff C_final.L L h_Cfinal_in h_symmDiff_finite
 
 end CellularAutomatas

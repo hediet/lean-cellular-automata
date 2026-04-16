@@ -31,14 +31,6 @@ open CellAutomaton
 
 variable {α : Type} [Alphabet α]
 
-/-! ## CAr_rt definition -/
-
-/-- Right-reading CA class: reads at position n-1.
-    Note: this differs from `CAr` (which reads at n = right border).
-    CAr_rt reads the *last cell* of the word. -/
-def CAr_rt (α : Type) [Alphabet α] :=
-  { C ∈ tCellAutomata α | C.p = fun (n : ℕ) => ((n : ℤ) - 1) } |> t_rt α
-
 /-! ## Key config identity -/
 
 omit [Alphabet α] in
@@ -64,50 +56,26 @@ lemma word_to_config_flip_shift (w : Word α) :
 
 /-! ## The flip construction -/
 
-/-- Convert a left-reading CA to a right-reading CA. -/
-def tCellAutomaton.toRight (C : tCellAutomaton α) : tCellAutomaton α where
+/-- Convert a left-reading CA_rt to a right-reading CAr_rt via flip. -/
+def CA_rt.toRight (C : CA_rt α) : CAr_rt α where
   toCellAutomaton := C.toCellAutomaton.flip
-  t := C.t
-  p := fun n => ((n : ℤ) - 1)
 
-/-- Convert a right-reading CA to a left-reading CA. -/
-def tCellAutomaton.toLeft (C : tCellAutomaton α) : tCellAutomaton α where
+/-- Convert a right-reading CAr_rt to a left-reading CA_rt via flip. -/
+def CAr_rt.toLeft (C : CAr_rt α) : CA_rt α where
   toCellAutomaton := C.toCellAutomaton.flip
-  t := C.t
-  p := fun _ => 0
-
-/-! ## Membership preservation -/
-
-theorem tCellAutomaton.toRight_in_CAr_rt (C : tCellAutomaton α) (hC : C ∈ CA_rt α) :
-    C.toRight ∈ CAr_rt α := by
-  simp only [CAr_rt, CA_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq,
-             Set.mem_univ, true_and, tCellAutomaton.toRight] at hC ⊢
-  obtain ⟨h_p, h_t⟩ := hC
-  exact h_t
-
-theorem tCellAutomaton.toLeft_in_CA_rt (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) :
-    C.toLeft ∈ CA_rt α := by
-  simp only [CA_rt, CAr_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq,
-             Set.mem_univ, true_and, tCellAutomaton.toLeft] at hC ⊢
-  obtain ⟨h_p, h_t⟩ := hC
-  exact h_t
 
 /-! ## Acceptance equivalence -/
 
 omit [Alphabet α] in
 /-- The toRight CA accepts w iff the original CA accepts w.reverse. -/
-theorem tCellAutomaton.toRight_accepts_iff (C : tCellAutomaton α) (hC : C ∈ CA_rt α) (w : Word α) :
+theorem CA_rt.toRight_accepts_iff (C : CA_rt α) (w : Word α) :
     C.toRight.accepts w = C.accepts w.reverse := by
-  -- Extract C.p = 0
-  have h_p : C.p = fun _ => (0 : ℤ) := by
-    simp only [CA_rt, t_rt, CA, tCellAutomata, Set.mem_setOf_eq, Set.mem_univ, true_and] at hC
-    exact hC.1
-  simp only [tCellAutomaton.accepts, tCellAutomaton.toRight]
-  rw [h_p, List.length_reverse]
-  -- LHS: C.flip.comp ⦋⟬w⟭⦌ (C.t |w|) (|w| - 1)
-  -- RHS: C.comp ⦋⟬w.reverse⟭⦌ (C.t |w|) 0
+  simp only [tCellAutomaton.accepts, CA_rt.toRight, AcceptanceSchema.rt_right,
+             AcceptanceSchema.rt_center, List.length_reverse]
+  -- LHS: C.flip.comp ⦋⟬w⟭⦌ (|w| - 1) (|w| - 1)
+  -- RHS: C.comp ⦋⟬w.reverse⟭⦌ (|w| - 1) 0
   rw [CellAutomaton.flip_comp, CellAutomaton.flip_embed_config']
-  -- LHS: C.comp ⦋⟬w⟭.flip⦌ (C.t |w|) (-(|w| - 1))
+  -- LHS: C.comp ⦋⟬w⟭.flip⦌ (|w| - 1) (-(|w| - 1))
   simp only [comp, Function.comp_apply, project_config]
   congr 1
   conv_lhs => rw [show -(↑w.length - 1 : ℤ) = 0 + (1 - ↑w.length) from by ring]
@@ -118,27 +86,19 @@ theorem tCellAutomaton.toRight_accepts_iff (C : tCellAutomaton α) (hC : C ∈ C
   exact congrArg C.toCellAutomaton.embed (congrFun (word_to_config_flip_shift w) q)
 
 /-- The toLeft CA accepts w iff the original CA accepts w.reverse. -/
-theorem tCellAutomaton.toLeft_accepts_iff (C : tCellAutomaton α) (hC : C ∈ CAr_rt α) (w : Word α) :
+theorem CAr_rt.toLeft_accepts_iff (C : CAr_rt α) (w : Word α) :
     C.toLeft.accepts w = C.accepts w.reverse := by
-  -- Strategy: C.toLeft ∈ CA_rt, so we can apply toRight_accepts_iff to C.toLeft.
-  -- C.toLeft.toRight has the same underlying CA as C (flip.flip = id) and same t and p.
-  -- So C.toLeft.toRight.accepts = C.accepts.
-  have h_D_in_CA_rt : C.toLeft ∈ CA_rt α := tCellAutomaton.toLeft_in_CA_rt C hC
-  -- Apply toRight_accepts_iff to D = C.toLeft:
-  -- D.toRight.accepts w = D.accepts w.reverse
-  -- i.e. C.toLeft.toRight.accepts w = C.toLeft.accepts w.reverse
-  have key := tCellAutomaton.toRight_accepts_iff C.toLeft h_D_in_CA_rt w.reverse
-  -- key: C.toLeft.toRight.accepts w.reverse = C.toLeft.accepts w.reverse.reverse
+  -- Strategy: C.toLeft is a CA_rt, apply toRight_accepts_iff to it.
+  have key := CA_rt.toRight_accepts_iff C.toLeft w.reverse
   simp only [List.reverse_reverse] at key
   -- key: C.toLeft.toRight.accepts w.reverse = C.toLeft.accepts w
-  have h_p : C.p = fun (n : ℕ) => ((n : ℤ) - 1) := by
-    simp only [CAr_rt, t_rt, tCellAutomata, Set.mem_setOf_eq, Set.mem_univ, true_and] at hC
-    exact hC.1
+  -- Show C.toLeft.toRight.accepts = C.accepts (flip.flip = id)
   have h_accepts_eq : C.toLeft.toRight.accepts w.reverse = C.accepts w.reverse := by
-    simp only [tCellAutomaton.accepts, tCellAutomaton.toRight, tCellAutomaton.toLeft,
-               CellAutomaton.flip, h_p]
+    show C.toLeft.toRight.accepts w.reverse = C.accepts w.reverse
+    simp only [tCellAutomaton.accepts, CA_rt.toRight, CAr_rt.toLeft,
+               AcceptanceSchema.rt_right, AcceptanceSchema.rt_center,
+               CellAutomaton.flip, List.length_reverse]
   rw [h_accepts_eq] at key
-  -- key: C.accepts w.reverse = C.toLeft.accepts w
   exact key.symm
 
 /-! ## Main theorem -/
@@ -146,28 +106,23 @@ theorem tCellAutomaton.toLeft_accepts_iff (C : tCellAutomaton α) (hC : C ∈ CA
 /-- ℒ_rev(CA_rt) = ℒ(CAr_rt): Reversals of left-reading RT = right-reading RT. -/
 theorem ca_rt_rev_eq_car_rt : ℒ_rev (CA_rt α) = ℒ (CAr_rt α) := by
   ext L
-  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
+  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image, ℒ]
   constructor
   · -- (⊆) ℒ_rev(CA_rt) ⊆ ℒ(CAr_rt)
-    intro ⟨L', ⟨C, hC, hL'⟩, hL_eq⟩
-    subst hL' hL_eq
-    use C.toRight
-    refine ⟨tCellAutomaton.toRight_in_CAr_rt C hC, ?_⟩
-    show Language.rev C.L = C.toRight.L
+    rintro ⟨L', ⟨C, rfl⟩, rfl⟩
+    refine ⟨C.toRight, ?_⟩
     ext w
-    simp only [Language.rev, tCellAutomaton.L]
-    show w.reverse ∈ {w | C.accepts w} ↔ w ∈ {w | C.toRight.accepts w}
-    simp only [Set.mem_setOf_eq]
-    constructor <;> intro h <;> rw [tCellAutomaton.toRight_accepts_iff C hC w] at * <;> exact h
+    simp only [Language.rev, DefinesLanguage.L, tCellAutomaton.L, Set.mem_setOf_eq]
+    constructor <;> intro h
+    · simp_rw [CA_rt.toRight_accepts_iff]; exact h
+    · simp_rw [CA_rt.toRight_accepts_iff] at h; exact h
   · -- (⊇) ℒ(CAr_rt) ⊆ ℒ_rev(CA_rt)
-    intro ⟨C, hC, hL⟩
-    subst hL
-    use Language.rev C.L
-    refine ⟨⟨C.toLeft, tCellAutomaton.toLeft_in_CA_rt C hC, ?_⟩, Language.rev_rev C.L⟩
+    rintro ⟨C, rfl⟩
+    refine ⟨Language.rev C.L, ⟨C.toLeft, ?_⟩, Language.rev_rev C.L⟩
     ext w
-    simp only [Language.rev, tCellAutomaton.L, DefinesLanguage.L]
-    show w.reverse ∈ {w | C.accepts w} ↔ w ∈ {w | C.toLeft.accepts w}
-    simp only [Set.mem_setOf_eq]
-    constructor <;> intro h <;> rw [tCellAutomaton.toLeft_accepts_iff C hC w] at * <;> exact h
+    simp only [Language.rev, DefinesLanguage.L, tCellAutomaton.L, Set.mem_setOf_eq]
+    constructor <;> intro h
+    · simp_rw [CAr_rt.toLeft_accepts_iff]; exact h
+    · simp_rw [CAr_rt.toLeft_accepts_iff] at h; exact h
 
 end CellularAutomatas

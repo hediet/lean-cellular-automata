@@ -65,40 +65,34 @@ noncomputable def Advice.weak_rt_closed_compose_rt_closed
     rw [CArtWithAdvice_eq_CArt_iff]
     intro L hL
     rw [ℒ_oca_def] at hL
-    obtain ⟨C, hC, rfl⟩ := hL
+    obtain ⟨C, rfl⟩ := hL
 
     -- Step 1: Build D ∈ CA_rt((Γ₁ × α) × Γ₂) from C by remapping input
     let proj : (Γ₁ × α) × Γ₂ → α × Γ₂ := fun ((_, a), g2) => (a, g2)
     let D_tca := C.map_embed proj
-    have hD_mem : D_tca ∈ CA_rt ((Γ₁ × α) × Γ₂) := by
-      simp only [D_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact hC
-    let D : CA_rt ((Γ₁ × α) × Γ₂) := ⟨D_tca, hD_mem⟩
 
     -- Step 2: Use f₂.rt_closed
     have h_f2_α : (f₂.lift Prod.fst).weak_rt_closed := h₂ (Γ₁ × α) Prod.fst
     have h_f2_eq := h_f2_α.language_eq
     rw [CArtWithAdvice_eq_CArt_iff] at h_f2_eq
-    have step2 := h_f2_eq _ (by rw [ℒ_oca_def]; exact ⟨D_tca, hD_mem, rfl⟩)
+    have step2 := h_f2_eq _ (by rw [ℒ_oca_def]; exact ⟨D_tca, rfl⟩)
     rw [ℒ_CA_rt_iff] at step2
-    obtain ⟨D₁, hD₁_mem, hD₁_L⟩ := step2
+    obtain ⟨D₁, hD₁_L⟩ := step2
 
     -- Step 3: Swap to get D₂ ∈ CA_rt(α × Γ₁) from D₁ ∈ CA_rt(Γ₁ × α)
-    let D₂_tca := D₁.map_embed Prod.swap
-    have hD₂_mem : D₂_tca ∈ CA_rt (α × Γ₁) := by
-      simp only [D₂_tca, c_map_embed_in_ca_rt_iff_c_in_ca_rt]; exact hD₁_mem
-    let D₂ : CA_rt (α × Γ₁) := ⟨D₂_tca, hD₂_mem⟩
+    let D₂ := D₁.map_embed Prod.swap
 
     -- Step 4: Use f₁.weak_rt_closed
     rw [CArtWithAdvice_eq_CArt_iff] at h₁_eq
-    have step4 := h₁_eq _ (by rw [ℒ_oca_def]; exact ⟨D₂_tca, hD₂_mem, rfl⟩)
+    have step4 := h₁_eq _ (by rw [ℒ_oca_def]; exact ⟨D₂, rfl⟩)
 
     -- Step 5: Show the sets are equal
     convert step4 using 1
     ext w
 
-    show w ⨂ (f₁.compose f₂).f w ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂.val.L
+    show w ⨂ (f₁.compose f₂).f w ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂.L
 
-    show w ⨂ f₂.f (f₁.f w) ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂_tca.L
+    show w ⨂ f₂.f (f₁.f w) ∈ C.L ↔ w ⨂ f₁.f w ∈ D₂.L
     rw [map_embed_L, hD₁_L, Set.mem_setOf_eq]
     show w ⨂ f₂.f (f₁.f w) ∈ C.L ↔
       ((w ⨂ f₁.f w).map Prod.swap ⨂ (f₂.lift Prod.fst).f ((w ⨂ f₁.f w).map Prod.swap)) ∈ D_tca.L

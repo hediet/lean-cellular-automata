@@ -148,7 +148,7 @@ theorem result_dead_border_is_dead
   exact @DeadBorder.spec_left_border_dead e
 #print axioms result_dead_border_is_dead
 
-theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.val.L = { w | ∃ n, w.length = 2 ^ n } :=
+theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.L = { w | ∃ n, w.length = 2 ^ n } :=
   CellularAutomatas.exp_word_length_rt
 #print axioms exp_word_length_rt
 
@@ -197,9 +197,9 @@ is itself an RT transducer.
 -/
 
 def result_advice_prefix_mem_is_two_stage_advice:
-    ∀ C ∈ CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
-  intro C h
-  exact advice_prefix_mem_is_two_stage_advice ⟨ C, h ⟩
+    ∀ C : CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
+  intro C
+  exact advice_prefix_mem_is_two_stage_advice C
 #print axioms result_advice_prefix_mem_is_two_stage_advice
 
 /-!
