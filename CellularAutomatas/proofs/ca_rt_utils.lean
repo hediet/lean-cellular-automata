@@ -15,7 +15,7 @@ import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.constructions.composition.compose_two_stage
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_two_stage
 import CellularAutomatas.proofs.constructions.basic_mark_border
 import CellularAutomatas.proofs.constructions.cart_fix_empty_word
 

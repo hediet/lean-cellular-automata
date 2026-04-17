@@ -1,7 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.constructions.composition.speedup_compressed
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.speedup_compressed
 
 namespace CellularAutomatas
 

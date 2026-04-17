@@ -2,7 +2,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.finite_state_transducers
 import CellularAutomatas.proofs.constructions.basic_exp_word
-import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
+import CellularAutomatas.proofs.advice_theory.advice_prefix_mem_rt_closed
 import CellularAutomatas.proofs.word_ops
 import Mathlib.Data.Nat.Log
 

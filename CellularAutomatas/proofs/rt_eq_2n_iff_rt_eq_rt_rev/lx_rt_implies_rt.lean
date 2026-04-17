@@ -7,7 +7,7 @@ import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.speedup_left_independent_config
 import CellularAutomatas.proofs.constructions.basic_fold
 import CellularAutomatas.proofs.constructions.basic_border_normalization
-import CellularAutomatas.proofs.two_stage_is_rt_closed
+import CellularAutomatas.proofs.advice_theory.two_stage_is_rt_closed
 import CellularAutomatas.proofs.ca_rt_finite_closure
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.nextpow2
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.x_prefix_advice_two_stage

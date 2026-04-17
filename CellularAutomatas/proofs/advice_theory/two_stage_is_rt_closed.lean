@@ -1,6 +1,6 @@
 import CellularAutomatas.proofs.ca_rt_utils
-import CellularAutomatas.proofs.constructions.composition.compose_cart
-import CellularAutomatas.proofs.constructions.composition.compose_two_stage
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_two_stage
 import CellularAutomatas.proofs.constructions.trace_id
 
 namespace CellularAutomatas

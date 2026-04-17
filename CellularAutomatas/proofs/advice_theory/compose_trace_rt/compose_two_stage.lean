@@ -11,7 +11,7 @@ import Mathlib.Data.Option.Basic
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.finite_state_transducers
 import Mathlib.Tactic
-import CellularAutomatas.proofs.constructions.composition.compose_cart
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
 import CellularAutomatas.proofs.basic
 
 namespace CellularAutomatas

@@ -13,12 +13,12 @@ import Mathlib.Tactic.Linarith
 import Mathlib.Logic.Function.Iterate
 import Mathlib.Data.List.Basic
 import CellularAutomatas.defs
-import CellularAutomatas.proofs.constructions.composition.compose_cart
+import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.trace_id
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.advice_prefix_mem_rt_closed
-import CellularAutomatas.proofs.two_stage_is_rt_closed
+import CellularAutomatas.proofs.advice_theory.advice_prefix_mem_rt_closed
+import CellularAutomatas.proofs.advice_theory.two_stage_is_rt_closed
 
 namespace CellularAutomatas
 

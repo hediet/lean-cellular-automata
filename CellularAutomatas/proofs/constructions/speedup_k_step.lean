@@ -14,7 +14,7 @@ import Mathlib.Tactic.Linarith
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.border
 import CellularAutomatas.proofs.constructions.border_dead
-import CellularAutomatas.proofs.causal
+import CellularAutomatas.proofs.advice_theory.causal
 namespace CellularAutomatas
 
 
