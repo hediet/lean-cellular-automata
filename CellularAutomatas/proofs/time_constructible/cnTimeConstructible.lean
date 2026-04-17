@@ -296,9 +296,13 @@ lemma scaleTimerCA_no_signal (n k : ℕ) (hk : k < c * n) :
     convert decide_eq_false h_ne
 
 /-- The function n ↦ c * n is time-constructible. -/
-def scaleTimeConstructible' (c : ℕ) [NeZero c] : TimeConstructible (fun n => c * n) where
+def cnTimeConstructible (c : ℕ) [NeZero c] : TimeConstructible (fun n => c * n) where
   timer := scaleTimerCA c
-  signal_at_t := scaleTimerCA_signal c
-  no_signal_before := scaleTimerCA_no_signal c
+  signal_iff n k hk := by
+    rcases lt_or_eq_of_le hk with hlt | heq
+    · rw [scaleTimerCA_no_signal c n k hlt]
+      exact ⟨fun h => (Bool.false_ne_true h).elim, fun h => (Nat.ne_of_lt hlt h).elim⟩
+    · subst heq
+      exact ⟨fun _ => rfl, fun _ => scaleTimerCA_signal c n⟩
 
 end CellularAutomatas

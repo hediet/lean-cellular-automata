@@ -36,28 +36,23 @@ def unitWord (n : ℕ) : Word Unit := List.replicate n ()
 structure TimeConstructible (t : ℕ → ℕ) where
   /-- The timer CA with input `Unit？` and output `Bool` -/
   timer : CellAutomaton Unit？ Bool
-  /-- At time t(n), position 0 outputs true -/
-  signal_at_t : ∀ n, timer.project (timer.nextt ⦋unitWord n⦌ (t n) 0) = true
-  /-- Before time t(n), position 0 outputs false -/
-  no_signal_before : ∀ n k, k < t n → timer.project (timer.nextt ⦋unitWord n⦌ k 0) = false
+  /-- For `k ≤ t n`, position 0 outputs true iff `k = t n`. -/
+  signal_iff : ∀ n k, k ≤ t n →
+    (timer.project (timer.nextt ⦋unitWord n⦌ k 0) = true ↔ k = t n)
 
 namespace TimeConstructible
 
 variable {t : ℕ → ℕ} (tc : TimeConstructible t)
 
-/-- Signal fires iff we're at exactly time t(n) -/
-theorem signal_iff (n : ℕ) (k : ℕ) (hk : k ≤ t n) :
-    tc.timer.project (tc.timer.nextt ⦋unitWord n⦌ k 0) = true ↔ k = t n := by
-  constructor
-  · intro hs
-    by_contra hne
-    have hlt : k < t n := Nat.lt_of_le_of_ne hk hne
-    have := tc.no_signal_before n k hlt
-    rw [this] at hs
-    exact Bool.false_ne_true hs
-  · intro heq
-    rw [heq]
-    exact tc.signal_at_t n
+/-- At time `t n`, position 0 outputs true. -/
+theorem signal_at_t (n : ℕ) : tc.timer.project (tc.timer.nextt ⦋unitWord n⦌ (t n) 0) = true :=
+  (tc.signal_iff n (t n) le_rfl).mpr rfl
+
+/-- Before time `t n`, position 0 outputs false. -/
+theorem no_signal_before (n k : ℕ) (hk : k < t n) :
+    tc.timer.project (tc.timer.nextt ⦋unitWord n⦌ k 0) = false := by
+  rw [Bool.eq_false_iff, ne_eq, tc.signal_iff n k hk.le]
+  exact Nat.ne_of_lt hk
 
 end TimeConstructible
 
@@ -157,21 +152,16 @@ private lemma identityTimerCA_invariant (n t : ℕ) (p : ℤ) :
     (for positions inside the word, i.e. `0 ≤ p < n`). -/
 def identityTimeConstructible : TimeConstructible id where
   timer := identityTimerCA
-  signal_at_t := fun n => by
-    show id (identityTimerCA.nextt ⦋unitWord n⦌ n 0) = true
-    rw [id_eq, identityTimerCA_invariant]
-    -- Need: decide (0 < 0 ∨ 0 ≥ n - n) = true, i.e., decide (0 ≥ 0) = true
-    simp
-  no_signal_before := fun n k hk => by
-    show id (identityTimerCA.nextt ⦋unitWord n⦌ k 0) = false
-    rw [id_eq, identityTimerCA_invariant]
-    -- Need: decide (0 < 0 ∨ 0 ≥ n - k) = false
-    -- Since k < n (from hk : k < id n), we have n - k > 0, so ¬(0 ≥ n - k)
-    simp only [lt_self_iff_false, false_or]
-    -- hk : k < id n = k < n
+  signal_iff n k hk := by
+    show id (identityTimerCA.nextt ⦋unitWord n⦌ k 0) = true ↔ k = id n
+    rw [id_eq, identityTimerCA_invariant, id_eq]
     simp only [id_eq] at hk
-    -- Need: decide (0 ≥ ↑n - ↑k) = false
-    rw [decide_eq_false_iff_not, not_le]
-    omega
+    constructor
+    · intro h
+      rcases of_decide_eq_true h with h' | h'
+      · omega
+      · have : (n : ℤ) ≤ k := by linarith
+        omega
+    · rintro rfl; simp
 
 end CellularAutomatas

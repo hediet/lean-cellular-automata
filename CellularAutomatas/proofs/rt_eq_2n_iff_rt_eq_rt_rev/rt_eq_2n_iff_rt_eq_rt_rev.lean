@@ -4,7 +4,7 @@ import CellularAutomatas.proofs.language.ca_rt_rev_eq_car_rt
 import CellularAutomatas.proofs.language.car_rt_subset_ca_2n
 import CellularAutomatas.proofs.time_constructible.latched_ca
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.padded_bool_format_in_ca_rt
-import CellularAutomatas.proofs.time_constructible.scale
+import CellularAutomatas.proofs.time_constructible.cnTimeConstructible
 import CellularAutomatas.proofs.ca_rt_finite_closure
 import CellularAutomatas.proofs.constructions.speedup_k_step
 import CellularAutomatas.proofs.constructions.basic_compose_k_steps
@@ -488,7 +488,7 @@ theorem latchedCA_strict_before {α β : Type} [Alphabet α] [Alphabet β]
     accepts iff `w ∈ C.L`.
 
     **Construction**: `SpBD 2 (padLCA(latchedCA C.toCellAutomaton (2*n) tc))`
-    - Timer `t(n) = 2*n` via `scaleTimeConstructible' 2`
+    - Timer `t(n) = 2*n` via `cnTimeConstructible 2`
     - `latchedCA` captures C's output at time `2n` (no lookback needed)
     - `padLCA` maps none-padding to border (timer sees effective length n)
     - `SpBD 2` (1-step speedup): at time t gives output at time t+1
@@ -500,15 +500,15 @@ theorem latchedCA_strict_before {α β : Type} [Alphabet α] [Alphabet β]
 
     For empty word (n=0): `t(0) = 0`, pre-latched at embed time.
 
-    **Depends on**: `latchedCA_correct`, `scaleTimeConstructible' 2`, `SpBD_trace_eq`. -/
+    **Depends on**: `latchedCA_correct`, `cnTimeConstructible 2`, `SpBD_trace_eq`. -/
 lemma exists_main_ca_for_Lrev_x_proper (C : CA_2n_proper α) :
     ∃ D : CA_rt (Option α), ∀ (w : Word α) (k : ℕ), k ≥ w.length →
       ((w.map some ++ List.replicate k none) ∈ D.L ↔ w ∈ C.L) := by
   -- Build CA: SpBD 3 (padLCA(latchedCA C (2*n) tc))
-  -- Timer t(n) = 2*n from scaleTimeConstructible' 2
+  -- Timer t(n) = 2*n from cnTimeConstructible 2
   -- latchedCA captures C's output at time 2n
   -- SpBD 3 gives 2-step speedup: at time t we get output at time t+2
-  let tc2 : TimeConstructible (fun n => 2 * n) := scaleTimeConstructible' 2
+  let tc2 : TimeConstructible (fun n => 2 * n) := cnTimeConstructible 2
   let D_latch := latchedCA C.toCellAutomaton (fun n => 2 * n) tc2
   let D_pad := padLCA D_latch
   let D_fast := SpBD 2 D_pad  -- 1-step speedup with c=2
