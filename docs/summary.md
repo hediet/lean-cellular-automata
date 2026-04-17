@@ -176,9 +176,9 @@ The advice $f_{\text{mid}}$ that marks position $\lfloor n/2 \rfloor$ (i.e., $f_
 
 ### Exponential-Middle Advice is Two-Stage *(4 sorry remaining)*
 
-The advice that marks the largest power-of-2 position $\le n/2$ is conjectured to be two-stage. The two-stage decomposition (a CA transducer marking powers of 2, composed with an FST selecting the last `true`) is fully constructed. The 4 remaining `sorry`s are in combinatorial counting lemmas (`countPow2After_eq`, `exp_middle_idx_char`, `trace_drop_count_eq_countPow2After`).
+The advice that marks the largest power-of-2 position $\le n/2$ is conjectured to be two-stage. The two-stage decomposition (a CA transducer marking powers of 2, composed with an FST selecting the last `true`) is fully constructed. The 4 remaining `sorry`s are in combinatorial counting lemmas (`countPow2After_eq`, `middle_exp_idx_char`, `trace_drop_count_eq_countPow2After`).
 
-*Lean: `exp_middle_two_stage_advice` in `proofs/exp_middle_two_stage.lean`.*
+*Lean: `middle_exp_two_stage_advice` in `proofs/middle_exp_two_stage.lean`.*
 
 ### Unproven Conjectures (in `results_unproven.lean`)
 
@@ -213,4 +213,4 @@ Is every RT-closed advice two-stage, without the causality assumption? We conjec
 | Framework & scripts | 4 | 4 | 0 |
 | **Total** | **39** | **38** | **1** |
 
-Total `sorry` count: **4** in proof files (`exp_middle_two_stage.lean`) + **8** in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are **completely sorry-free**.
+Total `sorry` count: **4** in proof files (`middle_exp_two_stage.lean`) + **8** in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are **completely sorry-free**.

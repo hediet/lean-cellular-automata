@@ -16,7 +16,7 @@ This project is a machine-checked formalization of one-dimensional cellular auto
 | Lines of Lean code | 9,745 |
 | Theorems and lemmas | 470 |
 | Main results (in `results.lean`) | 10 (all sorry-free) |
-| Files with sorry | 3 (`exp_middle_two_stage.lean`: 4, `results_unproven.lean`: 10, `open_questions.lean`: 2) |
+| Files with sorry | 3 (`middle_exp_two_stage.lean`: 4, `results_unproven.lean`: 10, `open_questions.lean`: 2) |
 | Sorry-free proof files | 38 of 39 |
 | Axioms used | `Quot.sound`, `Classical.choice`, `propext` (verified by automated checker) |
 | Build jobs (incl. Mathlib) | 3,081 |
@@ -331,7 +331,7 @@ The key invariant (`inv`, induction on `t`): `C'.nextt` at each position `p` sto
 
 ### 5.1 Exponential-Middle Advice is Two-Stage (4 sorry)
 
-**File:** `proofs/exp_middle_two_stage.lean` (438 lines)
+**File:** `proofs/middle_exp_two_stage.lean` (438 lines)
 
 The advice marking position `2^k` where `2^{k+1} ≤ n` is conjectured to be two-stage. The construction is **complete**:
 - **CA stage:** `exp_prefix_CA` marks positions `i` where `i+1` is a power of 2.
@@ -339,7 +339,7 @@ The advice marking position `2^k` where `2^{k+1} ≤ n` is conjectured to be two
 
 The 4 remaining `sorry`s are in **combinatorial counting lemmas**:
 - `countPow2After_eq` — counting power-of-2 positions after index `i`
-- `exp_middle_idx_char` (2 sorry) — characterizing when `i+1 = exp_middle_idx(n)`
+- `middle_exp_idx_char` (2 sorry) — characterizing when `i+1 = middle_exp_idx(n)`
 - `trace_drop_count_eq_countPow2After` — relating trace counts to `countPow2After`
 
 These are straightforward (the statements are precise), but the list manipulation proofs are tedious.
@@ -353,7 +353,7 @@ These are straightforward (the statements are precise), but the list manipulatio
 | `ℒ(OCA_lt) = ℒ(OCA_2n)` | 1 | Classical result |
 | `ℒ(OCAr_lt) = ℒ(CA_rt)` | 1 | Classical result |
 | Reversal closure → lt = rt | 1 | Classical result |
-| Exp-middle is two-stage | 1 | Delegates to `exp_middle_two_stage.lean` |
+| Exp-middle is two-stage | 1 | Delegates to `middle_exp_two_stage.lean` |
 | Shift-left preserves two-stage | 1 | "Peeking into the future" speedup |
 | CartTraceFstAdvice classification | 1 | Characterization via RT-closed causal components |
 
@@ -479,7 +479,7 @@ defs.lean (489 lines)
 │   ├── advice_prefix_mem_rt_closed.lean ← basic.lean, finite_state_transducers.lean
 │   ├── two_stage_is_rt_closed.lean ← ca_rt_utils, compose_cart, compose_two_stage, trace_id
 │   ├── is_two_stage_of_rt_closed_and_causal.lean ← compose_cart, basic, trace_id, FST, advice_prefix_mem, two_stage_is_rt_closed
-│   └── exp_middle_two_stage.lean ← basic, FST, basic_exp_word, advice_prefix_mem, word_ops
+│   └── middle_exp_two_stage.lean ← basic, FST, basic_exp_word, advice_prefix_mem, word_ops
 │
 ├── results.lean ← all main theorem files (0 sorry)
 ├── results_unproven.lean ← basic_exp_word (10 sorry)

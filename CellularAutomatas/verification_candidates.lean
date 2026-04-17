@@ -40,7 +40,7 @@ theorem ocar_lt_eq_ca_rt: ℒ (OCAr_lt α) = ℒ (CA_rt α) := by
 
 section advice_theorems
 
-  def exp_middle_two_stage_advice: (Advice.exp_middle α).is_two_stage_advice := by
+  def middle_exp_two_stage_advice: (Advice.middle_exp α).is_two_stage_advice := by
     sorry
 
 
@@ -117,15 +117,15 @@ theorem oca_rt_proper_subset_ca_rt : ℒ (OCA_rt Unit) ⊂ ℒ (CA_rt Unit) := b
 theorem oca_rt_unary_regular : ∀ L ∈ ℒ (OCA_rt Unit), L.IsRegular := by
   sorry
 
--- If the exp_middle advice is weak-LT-closed over the unary alphabet,
+-- If the middle_exp advice is weak-LT-closed over the unary alphabet,
 -- then CA_lt and CA_rt recognize the same unary languages.
 --
--- Proof sketch: weak-LT-closure of exp_middle (marking the largest power-of-2
+-- Proof sketch: weak-LT-closure of middle_exp (marking the largest power-of-2
 -- position ≤ n/2) allows simulating 2n-time CAs in linear time on unary input.
 -- Combined with ℒ(CA_lt) ⊆ ℒ(CA_2n) ⊆ ℒ(CA_rt) (for unary), we get equality.
 -- TODO: rewrite for schema-parameterized types (Advice.weak_lt_closed is currently commented out in defs.lean)
--- theorem exp_middle_weak_lt_closed_unary_implies_ca_lt_eq_ca_rt
---     (h : (Advice.exp_middle Unit).weak_lt_closed) :
+-- theorem middle_exp_weak_lt_closed_unary_implies_ca_lt_eq_ca_rt
+--     (h : (Advice.middle_exp Unit).weak_lt_closed) :
 --     ℒ (CA_lt Unit) = ℒ (CA_rt Unit) := by
 --   sorry
 

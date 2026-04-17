@@ -7,11 +7,11 @@ import CellularAutomatas.proofs.word_ops
 import Mathlib.Data.Nat.Log
 
 /-!
-# exp_middle is a Two-Stage Advice
+# middle_exp is a Two-Stage Advice
 
 ## Proof Idea
 
-`Advice.exp_middle α` marks position `2^k - 1` (0-indexed) where k is the largest
+`Advice.middle_exp α` marks position `2^k - 1` (0-indexed) where k is the largest
 satisfying `2^(k+1) ≤ n`.
 
 ### Two-Stage Decomposition
@@ -26,14 +26,14 @@ satisfying `2^(k+1) ≤ n`.
 ### Why this works
 
 - prefix_mem marks ALL positions where prefix length is a power of 2
-- exp_middle marks the SECOND-TO-LAST such position (from the left)
+- middle_exp marks the SECOND-TO-LAST such position (from the left)
 - When scanning right-to-left, "second true" = second-to-last from left
 
 Examples:
-- n=4: prefix_mem marks 0,1,3. exp_middle marks 1 (second from right = second-to-last from left) ✓
-- n=8: prefix_mem marks 0,1,3,7. exp_middle marks 3 ✓
-- n=2: prefix_mem marks 0,1. exp_middle marks 0 ✓
-- n=1: prefix_mem marks 0. exp_middle marks nothing (no second) ✓
+- n=4: prefix_mem marks 0,1,3. middle_exp marks 1 (second from right = second-to-last from left) ✓
+- n=8: prefix_mem marks 0,1,3,7. middle_exp marks 3 ✓
+- n=2: prefix_mem marks 0,1. middle_exp marks 0 ✓
+- n=1: prefix_mem marks 0. middle_exp marks nothing (no second) ✓
 -/
 
 namespace CellularAutomatas
@@ -432,20 +432,20 @@ section Stage2
         rfl
 
 end Stage2
-/-! ## Combining the stages: exp_middle = mark_second_last ∘ exp1
+/-! ## Combining the stages: middle_exp = mark_second_last ∘ exp1
 
-The key insight: `exp_middle_idx n = some v` iff v is the second-largest power of 2 ≤ n.
+The key insight: `middle_exp_idx n = some v` iff v is the second-largest power of 2 ≤ n.
 For word w of length n, exp1 marks positions where i+1 is a power of 2. The second-to-last
-such position is exactly where exp_middle marks.
+such position is exactly where middle_exp marks.
 -/
 
 section Composition
 
-  /-! ### Lemmas about exp_middle_idx -/
+  /-! ### Lemmas about middle_exp_idx -/
 
-  private lemma exp_middle_idx_none_iff (n : ℕ) :
-      exp_middle_idx n = none ↔ n ≤ 1 := by
-    unfold exp_middle_idx
+  private lemma middle_exp_idx_none_iff (n : ℕ) :
+      middle_exp_idx n = none ↔ n ≤ 1 := by
+    unfold middle_exp_idx
     rw [List.max?_eq_none_iff]
     constructor
     · intro h
@@ -479,9 +479,9 @@ section Composition
         _ < 2^k + 2^k := by omega
         _ = 2^(k+1) := by ring
 
-  private lemma exp_middle_idx_some_iff (n v : ℕ) :
-      exp_middle_idx n = some v ↔ (∃ k, v = 2^k ∧ 2^(k+1) ≤ n ∧ ∀ k', 2^(k'+1) ≤ n → k' ≤ k) := by
-    unfold exp_middle_idx
+  private lemma middle_exp_idx_some_iff (n v : ℕ) :
+      middle_exp_idx n = some v ↔ (∃ k, v = 2^k ∧ 2^(k+1) ≤ n ∧ ∀ k', 2^(k'+1) ≤ n → k' ≤ k) := by
+    unfold middle_exp_idx
     constructor
     · intro h
       have hv_mem := List.max?_mem h
@@ -582,7 +582,7 @@ section Composition
       ((List.range n).filter (fun i => isPowerOfTwo (i + 1))).length = Nat.log2 n + 1 := by
     rw [truePos_eq_map_pow2 n hn]; simp
 
-  /-! ### The key lemma: relating second_last_true_idx to exp_middle_idx -/
+  /-! ### The key lemma: relating second_last_true_idx to middle_exp_idx -/
 
   /-- Helper: the true positions in exp1 are exactly those where isPowerOfTwo is true. -/
   private lemma exp1_truePositions_eq (n : ℕ) :
@@ -598,9 +598,9 @@ section Composition
 
   omit [Alphabet α] in
   /-- True positions in `exp1 w` are exactly positions where `i+1` is a power of 2.
-      The second-to-last such position is `exp_middle_idx - 1`. -/
+      The second-to-last such position is `middle_exp_idx - 1`. -/
   private lemma second_last_true_of_exp1 (w : Word α) :
-      (second_last_true_idx ((Advice.exp1 : Advice α Bool) w)).map (· + 1) = exp_middle_idx w.length := by
+      (second_last_true_idx ((Advice.exp1 : Advice α Bool) w)).map (· + 1) = middle_exp_idx w.length := by
     simp only [second_last_true_idx, Advice.exp1]
     set n := w.length with hn
     -- Simplify the inner filter using exp1_truePositions_eq
@@ -613,11 +613,11 @@ section Composition
     by_cases h2 : truePos.length ≥ 2
     · -- There are at least 2 true positions
       simp only [h2, ↓reduceIte]
-      -- Need to show: Option.map (+1) truePos[truePos.length - 2]? = exp_middle_idx n
+      -- Need to show: Option.map (+1) truePos[truePos.length - 2]? = middle_exp_idx n
       -- First convert optional access to regular access
       have h_idx_valid : truePos.length - 2 < truePos.length := by omega
       rw [List.getElem?_eq_getElem h_idx_valid]
-      -- Now: some (truePos[truePos.length - 2] + 1) = exp_middle_idx n
+      -- Now: some (truePos[truePos.length - 2] + 1) = middle_exp_idx n
 
       -- truePos.length ≥ 2 implies n ≥ 2 (since 0 and 1 are true positions when n ≥ 2)
       have hn_ge2 : n ≥ 2 := by
@@ -632,12 +632,12 @@ section Composition
           · omega
         omega
 
-      -- Key: truePos[len-2] + 1 = 2^(log2 n - 1) = exp_middle_idx n
+      -- Key: truePos[len-2] + 1 = 2^(log2 n - 1) = middle_exp_idx n
       -- This follows from the structure: truePos = [2^0-1, 2^1-1, ..., 2^(log2 n)-1]
-      -- and exp_middle_idx n = 2^(log2 n - 1)
+      -- and middle_exp_idx n = 2^(log2 n - 1)
       simp only [Option.map]
       symm
-      rw [exp_middle_idx_some_iff]
+      rw [middle_exp_idx_some_iff]
       -- Show ∃ k, 2^k = truePos[len-2] + 1 ∧ 2^(k+1) ≤ n ∧ k is maximal
       use Nat.log2 n - 1
       refine ⟨?_, ?_, ?_⟩
@@ -683,12 +683,12 @@ section Composition
       push_neg at h2
       have h_lt2 : truePos.length < 2 := by omega
       simp only [show ¬(truePos.length ≥ 2) from by omega, ↓reduceIte]
-      -- Now goal is: Option.map (· + 1) none = exp_middle_idx n
-      -- Which is: none = exp_middle_idx n
+      -- Now goal is: Option.map (· + 1) none = middle_exp_idx n
+      -- Which is: none = middle_exp_idx n
       -- Need to show n ≤ 1
-      show none = exp_middle_idx n
+      show none = middle_exp_idx n
       symm
-      rw [exp_middle_idx_none_iff]
+      rw [middle_exp_idx_none_iff]
       by_contra h_n_big
       push_neg at h_n_big
       -- n ≥ 2, so both i=0 and i=1 are in range and give true
@@ -718,18 +718,18 @@ section Composition
   /-! ### Main composition theorem -/
 
   omit [Alphabet α] in
-  /-- The key decomposition: `exp_middle = exp1.compose mark_second_last`. -/
-  theorem exp_middle_eq_compose :
-      (Advice.exp_middle α) = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by
+  /-- The key decomposition: `middle_exp = exp1.compose mark_second_last`. -/
+  theorem middle_exp_eq_compose :
+      (Advice.middle_exp α) = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by
     apply advice_eq_iff
     funext w
     -- Unfold all definitions
-    simp only [Advice.compose, Advice.exp_middle, Advice.from_len_marker,
+    simp only [Advice.compose, Advice.middle_exp, Advice.from_len_marker,
                Advice.mark_second_last, Advice.from_marker, Advice.exp1,
                Function.comp_apply]
     -- Note: exp1 preserves length
     have h_len : (List.map (fun i => isPowerOfTwo (i + 1)) (List.range w.length)).length = w.length := by simp
-    -- Use the key lemma to relate second_last_true_idx to exp_middle_idx
+    -- Use the key lemma to relate second_last_true_idx to middle_exp_idx
     have h := second_last_true_of_exp1 w
     simp only [Advice.exp1] at h
     -- Both sides are maps over List.range of same length, producing same values
@@ -739,22 +739,22 @@ section Composition
     simp only [List.getElem_map, List.getElem_range, h_len] at *
     rw [h]
 
-  /-- Two-stage construction for `exp_middle`. -/
-  def ts_exp_middle : TwoStageAdvice α Bool := {
+  /-- Two-stage construction for `middle_exp`. -/
+  def ts_middle_exp : TwoStageAdvice α Bool := {
     β := Bool
     C := exp_prefix_CA
     M := select_second_FST
   }
 
-  /-- `Advice.exp_middle` is a two-stage advice. -/
-  def exp_middle_two_stage_advice : (Advice.exp_middle α).is_two_stage_advice where
-    witness := ts_exp_middle
+  /-- `Advice.middle_exp` is a two-stage advice. -/
+  def middle_exp_two_stage_advice : (Advice.middle_exp α).is_two_stage_advice where
+    witness := ts_middle_exp
     spec := by
-      -- ts_exp_middle.advice = select_second_FST.scanr ∘ exp_prefix_CA.trace_rt
+      -- ts_middle_exp.advice = select_second_FST.scanr ∘ exp_prefix_CA.trace_rt
       --                      = Advice.exp1.compose Advice.select_2nd
       --                      = Advice.exp1.compose Advice.mark_second_last  (by mark_second_last_eq_select_2nd)
-      --                      = Advice.exp_middle                            (by exp_middle_eq_compose)
-      calc ts_exp_middle.advice
+      --                      = Advice.middle_exp                            (by middle_exp_eq_compose)
+      calc ts_middle_exp.advice
           = { f := select_second_FST.scanr ∘ exp_prefix_CA.trace_rt } := rfl
         _ = (Advice.exp1 : Advice α Bool).compose Advice.select_2nd := by
             apply advice_eq_iff
@@ -770,7 +770,7 @@ section Composition
             exact h_sel
         _ = (Advice.exp1 : Advice α Bool).compose Advice.mark_second_last := by
             rw [mark_second_last_eq_select_2nd]
-        _ = Advice.exp_middle α := exp_middle_eq_compose.symm
+        _ = Advice.middle_exp α := middle_exp_eq_compose.symm
 
 end Composition
 

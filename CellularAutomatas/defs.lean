@@ -669,13 +669,13 @@ section AdviceHelpers
   def Advice.middle (α): Advice α Bool := Advice.from_len_marker (some ∘ middle_idx)
 
   -- runs the biggest value 2^k such that 2^(k+1) <= n, if such exists
-  def exp_middle_idx (n: ℕ) :=
+  def middle_exp_idx (n: ℕ) :=
     (List.range n).map (2 ^ ·)
     |> List.filter (· * 2 ≤ n)
     |> List.max?
 
   -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
-  def Advice.exp_middle (α): Advice α Bool := Advice.from_len_marker exp_middle_idx
+  def Advice.middle_exp (α): Advice α Bool := Advice.from_len_marker middle_exp_idx
 
   def Advice.shift_left_advice {adv: Advice α Γ} (extension: Word α): Advice α Γ :=
     { f := fun w => (adv (w.append extension)).drop extension.length }

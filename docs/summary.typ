@@ -214,7 +214,7 @@ The advice $f_"mid"$ that marks position $floor(n\/2)$ (i.e., $f_"mid" (w)_i = [
 
 The advice that marks the largest power-of-2 position $<= n\/2$ is conjectured to be two-stage. The two-stage decomposition (a CA transducer marking powers of 2, composed with an FST selecting the last "true") is fully constructed. The 4 remaining `sorry`s are in combinatorial counting lemmas.
 
-#lean("exp_middle_two_stage_advice")
+#lean("middle_exp_two_stage_advice")
 
 === Unproven Conjectures #sorry-status[8 sorry in results_unproven.lean]
 
@@ -251,4 +251,4 @@ Is every RT-closed advice two-stage, without the causality assumption? We conjec
   [*Total*], [*39*], [*38*], [*1*],
 )
 
-Total `sorry` count: *4* in proof files (`exp_middle_two_stage.lean`) + *8* in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are *completely sorry-free*.
+Total `sorry` count: *4* in proof files (`middle_exp_two_stage.lean`) + *8* in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are *completely sorry-free*.

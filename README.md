@@ -61,7 +61,7 @@ CellularAutomatas/
     advice_prefix_mem_rt_closed.lean  Proof: prefix-membership → two-stage
     is_two_stage_of_rt_closed_and_causal.lean  Proof: RT-closed ∧ causal → CArt
     two_stage_is_rt_closed.lean     Proof: two-stage → RT-closed
-    exp_middle_two_stage.lean       Proof (incomplete): exp-middle is two-stage
+    middle_exp_two_stage.lean       Proof (incomplete): exp-middle is two-stage
     constructions/
       basic_ca_id.lean       Identity CA
       basic_ca_left_edge_marker.lean  Left edge detection CA
