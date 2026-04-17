@@ -382,7 +382,7 @@ section CAClasses
     /-- CA reading at cell n (right border), real-time -/
     abbrev CAr_rt := tCellAutomaton .rt_right
     /-- CA reading at cell -(n-1), time 2(n-1) -/
-    abbrev CA_2n_neg2n_base := tCellAutomaton .time_2n_left
+    abbrev CA_2n_neg_n := tCellAutomaton .time_2n_left
     /-- Linear-time center-reading: ∃ c, t(n) = c*(n-1) -/
     def CA_lt := Σ c : ℕ, tCellAutomaton (.lt_center c) α
 
@@ -418,7 +418,7 @@ section CAClasses
       L C := C.2.1.L
 
     /-- OCA at time 2*(n-1), reading at position -(n-1). -/
-    def OCA_2n_neg2n := { C : CA_2n_neg2n_base α // C.left_independent }
+    def OCA_2n_neg2n := { C : CA_2n_neg_n α // C.left_independent }
 
     instance [Alphabet α] : DefinesLanguage (OCA_2n_neg2n α) α where
       L C := C.1.L
@@ -507,7 +507,7 @@ section Advice
     | `(CA_rt $_ + $adv)   => `(Advised .rt_center $adv)
     | `(CA_2n $_ + $adv)   => `(Advised .time_2n_center $adv)
     | `(CAr_rt $_ + $adv)  => `(Advised .rt_right $adv)
-    | `(CA_2n_neg2n_base $_ + $adv) => `(Advised .time_2n_left $adv)
+    | `(CA_2n_neg_n $_ + $adv) => `(Advised .time_2n_left $adv)
 
   /-- An advice `f` is weak-RT-closed if for every CA_rt over the extended alphabet,
       there exists a CA_rt over the base alphabet recognizing the same language. -/

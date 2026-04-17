@@ -6,7 +6,7 @@
 -/
 
 import CellularAutomatas.proofs.basic
-import CellularAutomatas.proofs.dfa_to_left_indep_ca
+import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
 import Mathlib.Computability.DFA
 import Mathlib.Data.Fintype.Basic
 

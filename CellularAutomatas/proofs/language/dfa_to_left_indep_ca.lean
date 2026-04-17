@@ -185,10 +185,15 @@ theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
       and_false, Int.ofNat_zero, lt_self_iff_false, ↓reduceDIte,
       decide_eq_true_eq, DFA.mem_accepts, DFA.eval_nil]
 
+/-! ## DefinesLanguage instance for DFA -/
+
+instance : DefinesLanguage (DFA α σ) α where
+  L := DFA.accepts
+
 /-! ## Main Result -/
 
 /-- Every DFA language is in ℒ(OCA_rt α). -/
-theorem dfa_language_in_OCA_rt (M : DFA α σ)
+lemma dfa_language_in_OCA_rt (M : DFA α σ)
     [DecidablePred (· ∈ M.accept)] [Fintype α] [Inhabited σ] [Inhabited α] :
     M.accepts ∈ ℒ (OCA_rt α) := by
   unfold ℒ
@@ -197,5 +202,13 @@ theorem dfa_language_in_OCA_rt (M : DFA α σ)
   ext w
   simp only [DefinesLanguage.L, tCellAutomaton.L]
   exact (DFAtoCA.accepts_iff M w).symm
+
+/-- ℒ(DFA) ⊆ ℒ(OCA_rt): every DFA language is recognized by an OCA in real time. -/
+theorem dfa_subset_OCA_rt [Fintype α] [Inhabited α] [Inhabited σ] :
+    ℒ (DFA α σ) ⊆ ℒ (OCA_rt α) := by
+  intro L ⟨M, hM⟩
+  classical
+  rw [hM]
+  exact dfa_language_in_OCA_rt M
 
 end CellularAutomatas

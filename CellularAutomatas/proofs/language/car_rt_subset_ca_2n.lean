@@ -333,7 +333,7 @@ lemma shiftCA_accepts_eq (C : LCellAutomaton α) (w : Word α) (hw : w.length �
 
 omit [Alphabet α] in
 /-- The language of shiftTCA equals the language of C. -/
-theorem shiftTCA_L_eq (C : CAr_rt α) :
+lemma shiftTCA_L_eq (C : CAr_rt α) :
     (shiftTCA C).L = C.L := by
   ext w
   simp only [tCellAutomaton.L]

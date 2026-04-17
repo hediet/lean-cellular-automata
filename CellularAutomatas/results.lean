@@ -21,6 +21,7 @@ import CellularAutomatas.proofs.constructions.composition.compose_two_stage
 import CellularAutomatas.proofs.rt_closed
 import CellularAutomatas.proofs.constructions.basic_exp_word
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.rt_eq_2n_iff_rt_eq_rt_rev
+import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
 
 open CellularAutomatas
 
@@ -99,30 +100,20 @@ Given a left-independent CA C, there exists C' whose border is quiescent
 light cone.
 -/
 
-theorem result_quiescent_border_left_indep
-    {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent)
-    (w : Word α) (hw : w.length > 0) (t : ℕ) (i : ℤ) :
-    let e := QuiescentBorderLeftIndep.mk C h_left_indep
-    e.C.comp w t i =
-      if i ∈ WordConeLeftIndep w t
-      then C.comp w t i
-      else C.project C.border := by
-  intro e
-  exact QuiescentBorderLeftIndep.spec e w hw t i
-#print axioms result_quiescent_border_left_indep
-
-theorem result_quiescent_border_left_indep_is_quiescent
-    {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
-    let e := QuiescentBorderLeftIndep.mk C h_left_indep
-    e.C.quiescent e.C.border :=
-  QuiescentBorderLeftIndep.C_border_quiescent _
-#print axioms result_quiescent_border_left_indep_is_quiescent
-
-theorem result_quiescent_border_left_indep_preserves_left_indep
-    {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent) :
-    (QuiescentBorderLeftIndep.mk C h_left_indep).C.left_independent :=
-  QuiescentBorderLeftIndep.C_left_indep _
-#print axioms result_quiescent_border_left_indep_preserves_left_indep
+theorem result_quiescent_border_spec
+    {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (h_left_indep : C.left_independent):
+    let C' := (QuiescentBorderLeftIndep.mk C h_left_indep).C
+    C'.quiescent C'.border
+    ∧ C'.left_independent
+    ∧ ∀ (w : Word α) (_hw : w.length > 0) (t : ℕ) (i : ℤ),
+      C'.comp w t i =
+        if i ∈ WordConeLeftIndep w t
+        then C.comp w t i
+        else C.project C.border :=
+  ⟨QuiescentBorderLeftIndep.C_border_quiescent _,
+   QuiescentBorderLeftIndep.C_left_indep _,
+   fun w hw t i => QuiescentBorderLeftIndep.spec (QuiescentBorderLeftIndep.mk C h_left_indep) w hw t i⟩
+#print axioms result_quiescent_border_spec
 
 /-!
 ### Result 4: Dead Border Construction
@@ -131,26 +122,33 @@ Given any CA C, there exists C' whose border state is dead (absorbing),
 while preserving the trace for all t < c * |w| for some constant c.
 -/
 
-theorem result_dead_border
-    {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (c_const : ℕ)
-    (w : Word α) (t : ℕ) (h : t < c_const * w.length) :
-    let e : DeadBorder := { c := c_const, C_orig := C }
-    e.C.trace w t = C.trace w t := by
-  intro e
-  exact @DeadBorder.spec_comp_trace e w t h
-#print axioms result_dead_border
-
-theorem result_dead_border_is_dead
+theorem result_dead_border_spec
     {β : Type} [Alphabet β] (C : CellAutomaton α？ β) (c_const : ℕ) :
-    let e : DeadBorder := { c := c_const, C_orig := C }
-    e.C.dead e.C.border := by
-  intro e
-  exact @DeadBorder.spec_left_border_dead e
-#print axioms result_dead_border_is_dead
+    let C' := (DeadBorder.mk ⟨ c_const ⟩ C).C
+    C'.dead C'.border
+    ∧ ∀ (w : Word α) (t : ℕ) (_h : t < c_const * w.length),
+      C'.trace w t = C.trace w t :=
+  ⟨@DeadBorder.spec_left_border_dead { c := c_const, C_orig := C },
+   fun _w _t h => @DeadBorder.spec_comp_trace { c := c_const, C_orig := C } _ _ h⟩
+#print axioms result_dead_border_spec
+
+
 
 theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.L = { w | ∃ n, w.length = 2 ^ n } :=
   CellularAutomatas.exp_word_length_rt
 #print axioms exp_word_length_rt
+
+/-!
+### Result: ℒ(DFA) ⊆ ℒ(OCA_rt)
+
+Every language recognized by a DFA is also recognized by a one-way (left-independent)
+cellular automaton in real time.
+-/
+
+theorem result_dfa_subset_OCA_rt {σ : Type} [Fintype σ] [DecidableEq σ] [Inhabited σ]:
+    ℒ (DFA α σ) ⊆ ℒ (OCA_rt α) :=
+  dfa_subset_OCA_rt
+#print axioms result_dfa_subset_OCA_rt
 
 end BaseResults
 
@@ -198,8 +196,7 @@ is itself an RT transducer.
 
 def result_advice_prefix_mem_is_two_stage_advice:
     ∀ C : CA_rt α, Advice.is_two_stage_advice (Advice.prefix_mem C.L) := by
-  intro C
-  exact advice_prefix_mem_is_two_stage_advice C
+  exact advice_prefix_mem_is_two_stage_advice
 #print axioms result_advice_prefix_mem_is_two_stage_advice
 
 /-!
@@ -211,22 +208,9 @@ i.e. computable by a single CA RT transducer. This implies two-stage.
 
 def result_is_cart_advice_of_rt_closed_and_causal:
     ∀ adv: Advice α Γ, adv.weak_rt_closed → adv.causal → adv.is_cart_advice := by
-  intro adv h1 h2
-  exact is_cart_advice_of_rt_closed_and_causal adv h1 h2
+  exact is_cart_advice_of_rt_closed_and_causal
 #print axioms result_is_cart_advice_of_rt_closed_and_causal
 
-/-!
-### Result 8b: Weak-RT-Closed ∧ Causal ⟹ RT-Closed (Strong)
-
-If an advice f is both weak-RT-closed and causal, then f is (strong) rt_closed.
-Proof: weak + causal → two-stage → strong.
--/
-
-noncomputable def result_rt_closed_of_weak_rt_closed_and_causal:
-    ∀ adv: Advice α Γ, adv.weak_rt_closed → adv.causal → adv.rt_closed := by
-  intro adv h1 h2
-  exact rt_closed_of_weak_rt_closed_and_causal adv h1 h2
-#print axioms result_rt_closed_of_weak_rt_closed_and_causal
 
 /-!
 ### Result 9: Two-Stage Advice is Closed Under Composition
@@ -238,7 +222,7 @@ the composition f₂ ∘ f₁ is again two-stage.
 theorem result_two_stage_closed_under_composition
     {Γ' : Type} [Alphabet Γ']
     (a1 : TwoStageAdvice α Γ') (a2 : TwoStageAdvice Γ' Γ) :
-    (compose_two_stage a2 a1: TwoStageAdvice α Γ).advice.f = a2.advice.f ∘ a1.advice.f :=
+    (compose_two_stage a2 a1: TwoStageAdvice α Γ).advice = a2.advice ∘ a1.advice :=
   compose_two_stage_spec a1 a2
 #print axioms result_two_stage_closed_under_composition
 
@@ -256,20 +240,9 @@ theorem result_middle_not_two_stage_advice:
 /-!
 ### Result 11: RT-Closed Advices are Closed Under Composition
 
-Given f₁ : Advice α Γ₁ (weak_rt_closed) and f₂ : Advice Γ₁ Γ₂ (rt_closed),
-the composition f₁.compose f₂ is weak_rt_closed.
-
 Given f₁ : Advice α Γ₁ (rt_closed) and f₂ : Advice Γ₁ Γ₂ (rt_closed),
 the composition f₁.compose f₂ is rt_closed.
 -/
-
-noncomputable def result_weak_rt_closed_compose_rt_closed
-    {Γ' : Type} [Alphabet Γ']
-    (f₁: Advice α Γ') (f₂: Advice Γ' Γ)
-    (h₁: f₁.weak_rt_closed) (h₂: f₂.rt_closed):
-    (f₁.compose f₂).weak_rt_closed :=
-  Advice.weak_rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
-#print axioms result_weak_rt_closed_compose_rt_closed
 
 noncomputable def result_rt_closed_compose_rt_closed
     {Γ' : Type} [Alphabet Γ']
@@ -282,18 +255,18 @@ noncomputable def result_rt_closed_compose_rt_closed
 end AdviceResults
 
 /-!
-## Part III: RT = 2n ⟺ RT = RT-reversed
+## Part III: Reproductions of Prior Results
 
-These results establish the equivalence between ℒ(CA_rt) = ℒ(CA_2n) and
-ℒ(CA_rt) = ℒᴿ(CA_rt) (real-time languages are closed under reversal).
+Mechanized reproductions of previously published results about real-time
+cellular automata.
 -/
 
 section RTEquivalence
 
 /-!
-### Result 12: ℒ(CA_rt) = ℒ(CA_2n) ⟺ ℒ(CA_rt) = ℒᴿ(CA_rt)
+### Result 12 (Ibarra & Jiang 1988): ℒ(CA_rt) = ℒ(CA_2n) ⟺ ℒ(CA_rt) = ℒᴿ(CA_rt)
 
-The two central open questions about real-time cellular automata are equivalent:
+Two open questions about real-time cellular automata are equivalent:
 - (A) Real-time = 2n-time for all alphabets
 - (B) Real-time languages are closed under reversal for all alphabets
 

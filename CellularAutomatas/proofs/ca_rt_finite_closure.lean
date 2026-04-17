@@ -9,7 +9,7 @@
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.basic_product_ca
 import CellularAutomatas.proofs.constructions.cart_fix_empty_word
-import CellularAutomatas.proofs.dfa_to_left_indep_ca
+import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
 import CellularAutomatas.proofs.finite_language_regular
 
 namespace CellularAutomatas

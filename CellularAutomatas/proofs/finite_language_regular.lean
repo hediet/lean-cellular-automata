@@ -2,12 +2,6 @@
   # Finite Languages are Regular
 
   This file proves that finite languages are regular (recognized by DFAs).
-  This is a standard result in formal language theory.
-
-  Main results:
-  - `empty_isRegular`: The empty language is regular
-  - `singleton_isRegular`: Any singleton language {w} is regular
-  - `Set.Finite.isRegular`: Any finite language is regular
 -/
 
 import Mathlib.Computability.DFA
@@ -29,8 +23,7 @@ theorem empty_isRegular : (0 : Language α).IsRegular := by
   use Unit, inferInstance
   use { step := fun _ _ => (), start := (), accept := ∅ }
   ext x
-  simp only [DFA.mem_accepts, Set.mem_empty_iff_false]
-  tauto
+  simp [DFA.mem_accepts, Set.mem_empty_iff_false]
 
 /-! ## Singleton Languages are Regular -/
 
@@ -70,9 +63,7 @@ private lemma singletonDFA_none_absorb [DecidableEq α] (w : List α) (x : List 
     (singletonDFA w).evalFrom none x = none := by
   induction x with
   | nil => rfl
-  | cons a x ih =>
-    simp only [DFA.evalFrom, List.foldl_cons, singletonDFA]
-    exact ih
+  | cons a x ih => exact ih
 
 /-- If we reach `some k` after reading x, then x = w.take k. -/
 private lemma singletonDFA_some_means_prefix [DecidableEq α] (w x : List α) (k : Fin (w.length + 1))
@@ -91,9 +82,7 @@ private lemma singletonDFA_some_means_prefix [DecidableEq α] (w x : List α) (k
     generalize hs : (singletonDFA w).eval xs = s at h
     match s with
     | none =>
-      simp only [singletonDFA] at h
-      -- h : none = some k is absurd
-      exact absurd h.symm (Option.noConfusion)
+      exact Option.noConfusion (by simpa only [singletonDFA] using h)
     | some j =>
       simp only [singletonDFA] at h
       by_cases hj : j.val < w.length
@@ -106,10 +95,8 @@ private lemma singletonDFA_some_means_prefix [DecidableEq α] (w x : List α) (k
           have hk : k.val = j.val + 1 := by rw [← h]
           rw [hk, List.take_succ_eq_append_getElem (by omega)]
           simp [hmatch]
-        · simp only [hmatch, ↓reduceIte] at h
-          exact absurd h.symm (Option.noConfusion)
-      · simp only [hj, ↓reduceDIte] at h
-        exact absurd h.symm (Option.noConfusion)
+        · exact Option.noConfusion (by simpa only [hmatch, ↓reduceIte] using h)
+      · exact Option.noConfusion (by simpa only [hj, ↓reduceDIte] using h)
 
 /-- The singleton DFA accepts exactly w. -/
 private theorem singletonDFA_accepts [DecidableEq α] (w : List α) :
@@ -118,14 +105,10 @@ private theorem singletonDFA_accepts [DecidableEq α] (w : List α) :
   simp only [DFA.mem_accepts, singletonDFA, Set.mem_singleton_iff]
   constructor
   · intro h
-    have := singletonDFA_some_means_prefix w x ⟨w.length, by omega⟩ h
-    simp at this
-    exact this
+    simpa using singletonDFA_some_means_prefix w x ⟨w.length, by omega⟩ h
   · intro h
     rw [h]
-    have := singletonDFA_eval_self w
-    simp only [singletonDFA] at this
-    exact this
+    simpa only [singletonDFA] using singletonDFA_eval_self w
 
 /-- Any singleton language {w} is regular. -/
 theorem singleton_isRegular [DecidableEq α] (w : List α) :
