@@ -834,7 +834,7 @@ namespace LxPipeline
       Requires |w| ≥ k+1 = 9 so that 8 | m (ensuring k-cell boundaries
       align with the x-prefix boundary).
 
-      TODO: Complete arithmetic proof showing:
+      Proof structure:
       - First component: compressSpatial at position i lands in w part → some w[i]
       - Second component: compressSpatial at positions k*(-(i+1))+j:
         * If i < m/k: lands in x^m prefix → some x
@@ -1013,37 +1013,11 @@ namespace LxPipeline
     (e.C₇.map_project (· 0)).map_embed (Option.map e.foldInputEncode)
 
   /-- C₇₀.trace(w ⨂ advice)(t) = (C₇.map_project (· 0)).trace(w.map foldInputEncode)(t).
-      Relates the remapped CA to the original via map_embed. -/
+      Direct instance of the general `map_embed_trace` lemma. -/
   theorem C₇₀_trace_eq (w : Word e.AdvicedInput) (t : ℕ) :
       e.C₇₀.trace w t =
-      (e.C₇.map_project (· 0)).trace (w.map e.foldInputEncode) t := by
-    simp only [C₇₀, CellAutomaton.trace, CellAutomaton.comp_apply, Function.comp,
-               CellAutomaton.project_config, CellAutomaton.map_project,
-               CellAutomaton.map_embed]
-    -- Goal: project the nextt at position 0, showing both sides equal
-    -- Key: show nextt is the same for both CAs
-    have h_embed_eq : ∀ p : ℤ,
-        @embed_config _ _ ((e.C₇.map_project (· 0)).map_embed (Option.map e.foldInputEncode))
-          (word_to_config w) p =
-        @embed_config _ _ (e.C₇.map_project (· 0)) (word_to_config (w.map e.foldInputEncode)) p := by
-      intro p
-      simp only [embed_config, CellAutomaton.map_embed, CellAutomaton.map_project,
-                 Function.comp, word_to_config, List.length_map]
-      split_ifs with h
-      · simp only [Option.map_some, List.getElem_map]
-      · simp only [Option.map_none]
-    have h_nextt_eq : ∀ t' : ℕ, ∀ p : ℤ,
-        ((e.C₇.map_project (· 0)).map_embed (Option.map e.foldInputEncode)).nextt ⦋w⦌ t' p =
-        (e.C₇.map_project (· 0)).nextt ⦋w.map e.foldInputEncode⦌ t' p := by
-      intro t'
-      induction t' with
-      | zero => intro p; exact h_embed_eq p
-      | succ t' ih =>
-        intro p
-        simp only [CellAutomaton.nextt, Function.iterate_succ_apply', CellAutomaton.next,
-                   CellAutomaton.map_embed, CellAutomaton.map_project]
-        congr 1 <;> exact ih _
-    exact congrArg (e.C₇.map_project (· 0)).project (h_nextt_eq t 0)
+      (e.C₇.map_project (· 0)).trace (w.map e.foldInputEncode) t :=
+    map_embed_trace (e.C₇.map_project (· 0)) e.foldInputEncode w t
 
   /-- Stage 8 full spec: For word w with n ≥ k+1 = 9:
       C₇₀.trace(w ⨂ foldAdvice.f w)(n-1) = C_orig.comp(⟬x^m w⟭, m+n-1, 0)
@@ -1067,7 +1041,9 @@ namespace LxPipeline
   Since `foldAdvice` is RT-closed, we can construct a CA_rt that accepts
   the same language as C₇₀ + foldAdvice, without needing the advice.
 
-  This construction is only valid when β = Bool (i.e., for accepting CAs).
+  Stages 1–8 above are polymorphic in `β`. Advice elimination via
+  `exists_CA_rt_of_rt_closed_advice` (used in the final theorem) is what
+  specializes the construction to `β = Bool` (i.e., to accepting CAs / languages).
   -/
 
   /-- The advice type for the folding construction. -/
@@ -1117,6 +1093,69 @@ lemma mem_of_L_x_mem {α : Type} [Alphabet α] {L : Language α} {v : Word α} {
     rw [← h1, ← h2, heq]
   exact hvu ▸ hu
 
+/-- Helper for `lx_rt_implies_rt`: on words of length ≥ `k_factor + 1`, the CA
+    obtained by eliminating the fold-advice and re-embedding via `some` agrees with `L`.
+
+    This is a direct chain of the Stage 8 spec, the advice-elimination spec for `C_elim`,
+    and the `L_x` (un)wrapping lemmas. Short words (length < `k_factor + 1`) are
+    handled separately by the finite-symmetric-difference closure in the main theorem. -/
+private lemma lx_rt_agree_on_large_words {α : Type} [Alphabet α] (L : Language α)
+    (C : CA_rt (Option α)) (hC_L : L_x L = C.L)
+    (C_elim : CA_rt (Option α))
+    (hC_elim_L : C_elim.L =
+      (toRtCa (LxPipeline.mk (α := Option α) C.toCellAutomaton none).C₇₀
+        + (LxPipeline.mk (α := Option α) C.toCellAutomaton none).foldAdvice).L) :
+    ∀ v : Word α, v.length ≥ k_factor + 1 →
+      (v ∈ L ↔ v ∈ (C_elim.map_embed some).L) := by
+  intro v hv_len
+  set e : LxPipeline := { C_orig := C.toCellAutomaton, x := none } with he_def
+  set C₇₀_rt : CA_rt e.AdvicedInput := toRtCa e.C₇₀ with hC₇₀_rt_def
+  show v ∈ L ↔ v ∈ (C_elim.map_embed some).L
+  rw [map_embed_L]
+  let w := v.map some
+  have hw_len : w.length ≥ k_factor + 1 := by simp [w]; exact hv_len
+  have hstage8 := e.stage8_full_spec w hw_len
+
+  -- Chain: v.map some ∈ C_elim.L ↔ ... ↔ v ∈ L
+  have h1 : v.map some ∈ C_elim.L ↔ w ∈ (C₇₀_rt + e.foldAdvice).L := by
+    constructor <;> intro hx
+    · rw [hC_elim_L] at hx; exact hx
+    · rw [hC_elim_L]; exact hx
+  rw [h1]
+
+  have h2 : w ∈ (C₇₀_rt + e.foldAdvice).L ↔
+      e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true := by
+    simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.accepts,
+               Advice.annotate]
+    have h_ann_len : (w ⨂ e.foldAdvice.f w).length = w.length := by
+      simp [advice_len]
+    change (toRtCa e.C₇₀).toCellAutomaton.comp
+      ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
+      (AcceptanceSchema.rt_center.t (w ⨂ e.foldAdvice.f w).length)
+      (AcceptanceSchema.rt_center.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
+    simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp_apply,
+               AcceptanceSchema.rt_center, LxPipeline.n]
+
+  have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔
+      (e.x_prefix w ++ w) ∈ C.L := by
+    rw [show e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) =
+          e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 from hstage8]
+    rw [CA_rt_L_iff (C := C)]
+    change e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 = true ↔
+        e.C_orig.comp ⟬e.x_prefix w ++ w⟭ ((e.x_prefix w ++ w).length - 1) 0 = true
+    simp [LxPipeline.x_prefix, LxPipeline.m, LxPipeline.n, w]
+
+  have h4 : (e.x_prefix w ++ w) ∈ C.L ↔ (e.x_prefix w ++ w) ∈ L_x L := by
+    rw [hC_L]
+
+  have hw_vlen : w.length = v.length := by simp [w]
+  have h5 : (e.x_prefix w ++ w) ∈ L_x L ↔ v ∈ L := by
+    show List.replicate (nextPow2 w.length) none ++ v.map some ∈ L_x L ↔ v ∈ L
+    rw [hw_vlen]
+    exact ⟨fun h => mem_of_L_x_mem h, fun h => L_x_mem_of_mem h⟩
+
+  rw [h2, h3, h4, h5]
+
 /-- L_x(L) ∈ ℒ(CA_rt (Option α)) implies L ∈ ℒ(CA_rt α).
 
 Given a CA that accepts the padded lifted language L_x(L) in real-time,
@@ -1157,69 +1196,12 @@ theorem lx_rt_implies_rt {α : Type} [Alphabet α] (L : Language α) :
   let C_final : CA_rt α := C_elim.map_embed some
   -- C_final accepts v : Word α iff v.map some ∈ C_elim.L
 
-  -- Step 4: Show C_final.val.L = L using finite symmetric difference
-  -- For |v| ≥ 9, we prove C_final agrees with L (via the pipeline chain).
-  -- For |v| < 9, the disagreement set is finite since Alphabet α is Fintype.
-  -- Then ca_rt_closed_finite_symmDiff gives L ∈ ℒ(CA_rt α).
-
-  -- C_final.L ∈ ℒ(CA_rt α)
-  have h_Cfinal_in : C_final.L ∈ ℒ (CA_rt α) :=
-    ⟨C_final, rfl⟩
+  -- Step 4: Combine large-word agreement (via the pipeline) with the
+  -- finite-symmetric-difference closure to repair the |v| < 9 boundary.
+  have h_Cfinal_in : C_final.L ∈ ℒ (CA_rt α) := ⟨C_final, rfl⟩
 
   -- For large words (|v| ≥ 9), C_final agrees with L
-  have h_agree_large : ∀ v : Word α, v.length ≥ k_factor + 1 →
-      (v ∈ L ↔ v ∈ C_final.L) := by
-    intro v hv_len
-    show v ∈ L ↔ v ∈ (C_elim.map_embed some).L
-    rw [map_embed_L]
-    let w := v.map some
-    have hw_len : w.length ≥ k_factor + 1 := by simp [w]; exact hv_len
-    have hstage8 := e.stage8_full_spec w hw_len
-
-    -- Chain: v.map some ∈ C_elim.L ↔ ... ↔ v ∈ L
-    have h1 : v.map some ∈ C_elim.L ↔ w ∈ (C₇₀_rt + e.foldAdvice).L := by
-      constructor <;> intro hx
-      · rw [hC_elim_L] at hx; exact hx
-      · rw [hC_elim_L]; exact hx
-    rw [h1]
-
-    have h2 : w ∈ (C₇₀_rt + e.foldAdvice).L ↔
-        e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true := by
-      simp only [tCellAutomatonWithAdvice.L, tCellAutomaton.accepts,
-                 Advice.annotate]
-      have h_ann_len : (w ⨂ e.foldAdvice.f w).length = w.length := by
-        simp [advice_len]
-      change (toRtCa e.C₇₀).toCellAutomaton.comp
-        ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
-        (AcceptanceSchema.rt_center.t (w ⨂ e.foldAdvice.f w).length)
-        (AcceptanceSchema.rt_center.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
-      simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp_apply,
-                 CellAutomaton.project_config, Function.comp,
-                 AcceptanceSchema.rt_center, LxPipeline.n]
-
-    have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔
-        (e.x_prefix w ++ w) ∈ C.L := by
-      rw [show e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) =
-            e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 from hstage8]
-      rw [CA_rt_L_iff (C := C)]
-      change e.C_orig.comp ⟬e.x_prefix w ++ w⟭ (e.m w + e.n w - 1) 0 = true ↔
-          e.C_orig.comp ⟬e.x_prefix w ++ w⟭ ((e.x_prefix w ++ w).length - 1) 0 = true
-      simp [LxPipeline.x_prefix, LxPipeline.m, LxPipeline.n, w]
-
-    have h4 : (e.x_prefix w ++ w) ∈ C.L ↔ (e.x_prefix w ++ w) ∈ L_x L := by
-      constructor <;> intro hx
-      · have : (e.x_prefix w ++ w) ∈ DefinesLanguage.L C := hx
-        rw [← hC_L] at this; exact this
-      · have : (e.x_prefix w ++ w) ∈ DefinesLanguage.L C := by rw [← hC_L]; exact hx
-        exact this
-
-    have hw_vlen : w.length = v.length := by simp [w]
-    have h5 : (e.x_prefix w ++ w) ∈ L_x L ↔ v ∈ L := by
-      show List.replicate (nextPow2 w.length) none ++ v.map some ∈ L_x L ↔ v ∈ L
-      rw [hw_vlen]
-      exact ⟨fun h => mem_of_L_x_mem h, fun h => L_x_mem_of_mem h⟩
-
-    rw [h2, h3, h4, h5]
+  have h_agree_large := lx_rt_agree_on_large_words L C hC_L C_elim hC_elim_L
 
   -- The symmetric difference C_final.L ∆ L only contains words of length < 9
   have h_symmDiff_finite : (symmDiff C_final.L L).Finite := by

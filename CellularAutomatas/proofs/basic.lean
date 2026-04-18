@@ -104,6 +104,35 @@ lemma trace_rt_length {α β: Type} {C: CellAutomaton α？ β} {w: Word α}:
 lemma trace_rt_empty {α β: Type} {C: CellAutomaton α？ β}:
   (C.trace_rt []) = [] := by simp [trace_rt]
 
+/-- `nextt` commutes with `map_embed (Option.map f)`: feeding a word `w` to the
+    remapped CA gives the same configuration as feeding `w.map f` to the original.
+
+    The two CAs share `Q`, `δ`, and `project`; only `embed` differs by a precomposition
+    with `Option.map f`, which exactly mirrors `word_to_config (w.map f)` vs
+    `word_to_config w`. -/
+lemma map_embed_nextt_word {α β γ: Type} (C: CellAutomaton β？ γ) (f: α → β) (w: Word α)
+    (t: ℕ) (p: ℤ) :
+    (C.map_embed (Option.map f)).nextt ⦋w⦌ t p = C.nextt ⦋w.map f⦌ t p := by
+  -- embed_config agrees pointwise on the two inputs
+  have h_embed_eq : ∀ q : ℤ, @embed_config _ _ (C.map_embed (Option.map f)) (word_to_config w) q
+                            = @embed_config _ _ C (word_to_config (w.map f)) q := by
+    intro q
+    simp [embed_config, word_to_config_apply, map_embed]
+  -- nextt agrees pointwise by induction on time, since δ is the same
+  induction t generalizing p with
+  | zero => exact h_embed_eq p
+  | succ t ih =>
+    simp only [nextt_succ, next_apply, map_embed]
+    congr 1 <;> exact ih _
+
+/-- `trace` commutes with `map_embed (Option.map f)`. General-time analog of
+    `map_embed_trace_rt`. -/
+lemma map_embed_trace {α β γ: Type} (C: CellAutomaton β？ γ) (f: α → β) (w: Word α) (t: ℕ):
+    (C.map_embed (Option.map f)).trace w t = C.trace (w.map f) t := by
+  show (C.map_embed (Option.map f)).comp ⦋w⦌ t 0 = C.comp ⦋w.map f⦌ t 0
+  simp only [comp_apply, map_embed]
+  exact congrArg C.project (map_embed_nextt_word C f w t 0)
+
 @[simp]
 lemma map_embed_trace_rt {α β γ: Type} (C: CellAutomaton β？ γ) (f: α → β) (w: Word α):
     (C.map_embed (Option.map f)).trace_rt w = C.trace_rt (w.map f) := by
