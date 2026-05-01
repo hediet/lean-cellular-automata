@@ -57,10 +57,9 @@ section advice_theorems
     by sorry
 -/
 
-  instance : CoeFun (Advice α Γ) (fun _ => Word α → Word Γ) where
-    coe a := a.f
 
 
+  -- this is wrong!
   theorem CartTraceFstAdvice_classification (adv: Advice α Γ) :
     Nonempty adv.is_two_stage_advice ↔
       Nonempty adv.weak_rt_closed ∧
@@ -143,3 +142,54 @@ advice a(w)_i :=
 Then a is probably weak_rt_closed?
 
 -/
+
+/-- Over the unary alphabet, the middle-marking advice is weak-rt-closed iff
+    the `compress2` advice is.
+
+    Intuition: over `Unit`, the only information in `Advice.compress2 Unit` is
+    whether a given index lies past the midpoint — which is exactly what
+    `Advice.middle Unit` marks. The two advices are interconvertible by an RT
+    (in fact CArt) transducer on a unary input, so they induce the same CA_rt
+    simulation capabilities. -/
+theorem middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary :
+    Nonempty (Advice.middle Unit).weak_rt_closed ↔
+    Nonempty (Advice.compress2 Unit).weak_rt_closed := by
+  sorry
+
+/-- **Stronger, alphabet-general version.**
+
+    For every alphabet `α`, `ℒ(CA_rt α) = ℒ(CA_lt α)` iff `Advice.compress2 α`
+    is weak-rt-closed.
+
+    `Advice.compress2 α : Advice α (Option α × Option α)` takes a word
+    `w = a₁ a₂ a₃ a₄ a₅ a₆ …` of length `n` and produces, at position `i`:
+    - `(some w[2i], some w[2i+1])` when both are in range,
+    - `(some w[2i], none)` when only the first is in range,
+    - `(none, none)` otherwise.
+    So the annotated word looks like
+    `(a₁,a₂) (a₃,a₄) (a₅,a₆) (none,none) (none,none) (none,none)`.
+
+    Proof sketch:
+    - (←) Weak-rt-closure of `compress2` lets any CA_lt over `α` be simulated in
+      real time over the compressed half-length word (two original steps per tick),
+      yielding `ℒ(CA_lt α) ⊆ ℒ(CA_rt α)`; the reverse inclusion is standard.
+    - (→) Given `ℒ(CA_rt α) = ℒ(CA_lt α)`, a CA_rt using the compress2 advice can
+      be simulated by a CA_lt (which has enough time to compute the compress2
+      layout and then run the CA_rt), producing the `map` witness. -/
+theorem ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed :
+    ℒ (CA_rt α) = ℒ (CA_lt α) ↔ Nonempty (Advice.compress2 α).weak_rt_closed := by
+  sorry
+
+/-- Over the unary alphabet, `ℒ(CA_rt) = ℒ(CA_lt)` iff the middle-marking advice
+    is weak-rt-closed.
+
+    Derived from:
+    - `ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed` (specialized to `Unit`), and
+    - `middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary`. -/
+theorem ca_rt_eq_ca_lt_unary_iff_middle_weak_rt_closed :
+    ℒ (CA_rt Unit) = ℒ (CA_lt Unit) ↔ Nonempty (Advice.middle Unit).weak_rt_closed := by
+  calc ℒ (CA_rt Unit) = ℒ (CA_lt Unit)
+      ↔ Nonempty (Advice.compress2 Unit).weak_rt_closed :=
+        ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed
+    _ ↔ Nonempty (Advice.middle Unit).weak_rt_closed :=
+        middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary.symm

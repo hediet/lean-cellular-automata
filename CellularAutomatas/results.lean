@@ -8,7 +8,7 @@ import Mathlib.Data.Nat.Lattice
 import Mathlib.Data.Fintype.Prod
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.advice_theory.middle_not_two_stage
-import CellularAutomatas.proofs.advice_theory.advice_prefix_mem_rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_prefix_mem
 import CellularAutomatas.proofs.advice_theory.is_two_stage_of_rt_closed_and_causal
 import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.left_indep_from_regular
@@ -16,9 +16,9 @@ import CellularAutomatas.proofs.constructions.speedup_left_independent
 import CellularAutomatas.proofs.constructions.border_quiescent
 import CellularAutomatas.proofs.constructions.border_dead
 import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
-import CellularAutomatas.proofs.advice_theory.two_stage_is_rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage
 import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_two_stage
-import CellularAutomatas.proofs.advice_theory.rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_compose
 import CellularAutomatas.proofs.constructions.basic_exp_word
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.rt_eq_2n_iff_rt_eq_rt_rev
 import CellularAutomatas.proofs.language.dfa_to_left_indep_ca

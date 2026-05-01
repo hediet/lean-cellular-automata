@@ -1,5 +1,5 @@
 import CellularAutomatas.proofs.ca_rt_utils
-import CellularAutomatas.proofs.advice_theory.two_stage_is_rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage
 
 namespace CellularAutomatas
 

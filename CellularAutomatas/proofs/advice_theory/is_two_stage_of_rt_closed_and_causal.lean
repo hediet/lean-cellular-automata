@@ -17,8 +17,8 @@ import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.trace_id
 import CellularAutomatas.proofs.finite_state_transducers
-import CellularAutomatas.proofs.advice_theory.advice_prefix_mem_rt_closed
-import CellularAutomatas.proofs.advice_theory.two_stage_is_rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_prefix_mem
+import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage
 
 namespace CellularAutomatas
 

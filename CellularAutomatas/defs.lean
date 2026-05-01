@@ -677,6 +677,19 @@ section AdviceHelpers
   -- Marks the biggest exponent of 2 that is less than or equal to the length of the word
   def Advice.middle_exp (α): Advice α Bool := Advice.from_len_marker middle_exp_idx
 
+  /-- `compress2` pairs up consecutive input symbols.
+      For `w = a₁ a₂ a₃ a₄ a₅ a₆` (length `n`), position `i` of the output is:
+      - `(some w[2i], some w[2i+1])` when both indices are in range,
+      - `(some w[2i], none)` when only the first is in range,
+      - `(none, none)` otherwise (border marker, for `2i ≥ n`).
+
+      So the annotated word looks like `(a₁,a₂) (a₃,a₄) (a₅,a₆) (none,none) (none,none) (none,none)`. -/
+  def Advice.compress2 (α) [Alphabet α]: Advice α (Option α × Option α) :=
+    { f := fun w =>
+        (List.range w.length).map fun i => (w[2 * i]?, w[2 * i + 1]?)
+      len := by intro w; simp
+    }
+
   def Advice.shift_left_advice {adv: Advice α Γ} (extension: Word α): Advice α Γ :=
     { f := fun w => (adv (w.append extension)).drop extension.length }
 
