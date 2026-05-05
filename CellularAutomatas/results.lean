@@ -13,7 +13,7 @@ import CellularAutomatas.proofs.advice_theory.is_two_stage_of_rt_closed_and_caus
 import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.left_indep_from_regular
 import CellularAutomatas.proofs.constructions.speedup_left_independent
-import CellularAutomatas.proofs.constructions.border_quiescent
+import CellularAutomatas.proofs.constructions.border_quiescent_left_independent
 import CellularAutomatas.proofs.constructions.border_dead
 import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage

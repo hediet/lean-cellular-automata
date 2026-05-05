@@ -1,7 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.border
-import CellularAutomatas.proofs.constructions.border_quiescent
+import CellularAutomatas.proofs.constructions.border_quiescent_left_independent
 
 namespace CellularAutomatas
 

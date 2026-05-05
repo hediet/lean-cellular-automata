@@ -2,7 +2,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.internal_defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.constructions.speedup_left_independent
-import CellularAutomatas.proofs.constructions.border_quiescent
+import CellularAutomatas.proofs.constructions.border_quiescent_left_independent
 import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.left_indep_from_regular
 namespace CellularAutomatas

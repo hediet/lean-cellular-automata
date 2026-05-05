@@ -31,6 +31,7 @@ import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.ca_rt_utils
 import CellularAutomatas.proofs.fssp
 import CellularAutomatas.proofs.constructions.speedup_k_step
+import CellularAutomatas.proofs.advice_theory.sync_time_constructible
 import CellularAutomatas.proofs.advice_theory.rt_eq_lt_iff_compress2_weak_rt_closed
 
 namespace CellularAutomatas
