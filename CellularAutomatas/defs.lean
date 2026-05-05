@@ -645,6 +645,66 @@ section TwoStageAdvice
 
 end TwoStageAdvice
 
+section RtLtAdvice
+
+  /-! ## time-advice, rt-advice, and lt-advice (spatial CA-computed advice)
+
+      An advice is an `f`-time CA-advice if there exists a CA over `α？ → Γ` such
+      that for every input word `w`, the spatial slice of the CA at time `f |w|`
+      equals the advice. Concretely, the `i`-th symbol of `adv w` equals
+      `C.comp ⟬w⟭ (f |w|) i`.
+
+      Specialisations:
+      * `f = (· - 1)` gives **rt-advice** — every cell has just enough time to
+        see the whole input (light-cone radius `|w| - 1`); the advice is read
+        at the same time a real-time CA would output.
+      * `f = fun _ => k` gives a **constant-time advice** — the value at every
+        position is determined by what's locally visible after `k` steps.
+        Useful for boundary-detection advices like `Advice.fssp_input`.
+      * `f = fun n => c * (n - 1)` for some `c` gives **lt-advice** — linear-
+        time spatial advice.
+
+      This is *different* from `IsCartAdvice`, which uses the *temporal* trace
+      of cell `0` (a causal/prefix-only computation). Every `IsCartAdvice`
+      advice is causal in `w`, whereas a time-advice may depend on the full
+      word at every position. -/
+
+  /-- An advice is an `f`-time CA-advice if there is a CA whose spatial slice
+      at time `f |w|` equals the advice. -/
+  structure Advice.IsTimeAdvice [Alphabet α] [Alphabet Γ]
+      (f: ℕ → ℕ) (adv: Advice α Γ) where
+    /-- Witness CA, reading optional input symbols and projecting to advice symbols. -/
+    C : CellAutomaton α？ Γ
+    /-- Spatial-slice spec: at time `f |w|`, position `i` (for `i < |w|`)
+        gives the `i`-th advice symbol. -/
+    spec : ∀ w: Word α,
+      adv w = (List.range w.length).map (fun (i : ℕ) => C.comp ⟬w⟭ (f w.length) (i : ℤ))
+
+  /-- An rt-advice: spatially computed at time `|w| - 1`. -/
+  abbrev Advice.IsRtAdvice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) :=
+    adv.IsTimeAdvice (fun n => n - 1)
+
+  /-- A `k`-time advice: spatially computed at constant time `k`, regardless of
+      input length. (Useful for "boundary detection" advices like
+      `Advice.fssp_input`, which is computable in 1 step.) -/
+  abbrev Advice.IsConstTimeAdvice [Alphabet α] [Alphabet Γ]
+      (k: ℕ) (adv: Advice α Γ) :=
+    adv.IsTimeAdvice (fun _ => k)
+
+  /-- An lt-advice: spatially computed at time `c * (|w| - 1)` for some `c`. -/
+  structure Advice.IsLtAdvice [Alphabet α] [Alphabet Γ] (adv: Advice α Γ) where
+    /-- Linear-time constant. -/
+    c : ℕ
+    /-- The witnessing `c·(n-1)`-time CA-advice. -/
+    witness : adv.IsTimeAdvice (fun n => c * (n - 1))
+
+  /-- Every rt-advice is an lt-advice (with `c = 1`). -/
+  def Advice.IsRtAdvice.toLtAdvice [Alphabet α] [Alphabet Γ]
+      {adv: Advice α Γ} (h: adv.IsRtAdvice): adv.IsLtAdvice :=
+    ⟨1, by simpa [one_mul] using h⟩
+
+end RtLtAdvice
+
 section AdviceHelpers
 
   def Advice.prefix_mem (L: Language α) [h: DecidablePred L]: Advice α Bool :=

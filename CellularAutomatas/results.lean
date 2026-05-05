@@ -22,6 +22,7 @@ import CellularAutomatas.proofs.advice_theory.rt_closed.of_compose
 import CellularAutomatas.proofs.constructions.basic_exp_word
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.rt_eq_2n_iff_rt_eq_rt_rev
 import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
+import CellularAutomatas.proofs.language.oca_rt_proper_subset_ca_rt
 
 open CellularAutomatas
 
@@ -137,6 +138,19 @@ theorem result_dead_border_spec
 theorem exp_word_length_rt: ∃ C: CA_rt Unit, C.L = { w | ∃ n, w.length = 2 ^ n } :=
   CellularAutomatas.exp_word_length_rt
 #print axioms exp_word_length_rt
+
+/-- **Strict separation: ℒ(OCA_rt α) ⊊ ℒ(CA_rt α).**
+
+    For every alphabet `α`, one-way real-time CAs recognize strictly fewer
+    languages than general real-time CAs.
+
+    Witness: the powers-of-2-length language `{ w | ∃ k, |w| = 2^k }`, which
+    lies in `ℒ(CA_rt α)` (lift of `exp_word_ca`) but not in `ℒ(OCA_rt α)`
+    (its unary slice would have to be regular, yet `{2^k}` is not). -/
+theorem oca_rt_proper_subset_ca_rt {α : Type} [Alphabet α] :
+    ℒ (OCA_rt α) ⊂ ℒ (CA_rt α) :=
+  CellularAutomatas.oca_rt_proper_subset_ca_rt
+#print axioms oca_rt_proper_subset_ca_rt
 
 /-!
 ### Result: ℒ(DFA) ⊆ ℒ(OCA_rt)
