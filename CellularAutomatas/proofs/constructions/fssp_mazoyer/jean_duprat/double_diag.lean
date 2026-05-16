@@ -1,9 +1,15 @@
 /-
-  Mazoyer FSSP -- the recursive `DD` predicate (port of `double_diag.v`).
+  Mazoyer FSSP -- the recursive `DD` predicate.
+
+  Lean 4 port of `double_diag.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.basic_bricks
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.border
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.basic_bricks
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.border
 
 namespace CellularAutomatas
 namespace FsspMazoyer

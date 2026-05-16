@@ -1,11 +1,17 @@
 /-
   Mazoyer FSSP -- geometric figure predicates and the abstract
-  "Local_Prop" infrastructure (ports `bib.v` `Local_Prop`, `loi`,
-  `loi_droite` plus arithmetic helpers, and `geom.v` figures and
-  induction principles).
+  `Local_Prop` infrastructure.
+
+  Lean 4 port of `bib.v` (`Local_Prop`, `loi`, `loi_droite` plus
+  arithmetic helpers) and `geom.v` (figures and induction principles)
+  from Jean Duprat's Coq proof of the Firing Squad Synchronization
+  Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.autom
 
 namespace CellularAutomatas
 namespace FsspMazoyer

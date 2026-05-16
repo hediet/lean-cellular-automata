@@ -23,28 +23,38 @@
   * **Early quiet zone** (`early_quiet_zone`) -- below the initial
     `L^(n − 1)` row at `t = 0`, the entire downward triangle stays `L`.
     This is `Hor_tr_inf` applied to `base1`'s tail.
-  * **DD wedge non-F** (`DD_not_F`, `sorry`) -- the genuinely hard
-    inductive lemma; see the comment on the lemma for what's missing.
-  * **Final assembly** (`not_fire_before`, `sorry`) -- partition the
-    rectangle `[0, n − 1] × [0, 2n − 3]` into
-
-      * the initial row (covered by `init`),
-      * the early quiet zone (covered by `early_quiet_zone`),
-      * the global synchronization wedge (covered by `DD_not_F`
-        applied to the `diagonale` from `final.lean`), and
-      * the apex row at `t = 2n − 3` (covered by `sommet_1`, which is
-        all `G`).
+  * **DD wedge non-F** (`DD_not_F`) -- structural induction on `DD`, dispatching
+    base cases (`DD_4`/`DD_5`) to staircase non-F lemmas and inductive
+    cases to brick non-F + IH on the sub-DD.
+  * **Final assembly** (`not_fire_before`) -- a one-liner: `F` is
+    absorbing, so any `F` cell would propagate to row `2n - 3`; but
+    `sommet_1` says that row is all `G`, contradiction.
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.double_diag
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.vertical
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.final
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.double_diag
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.vertical
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.final
 import Mathlib.Tactic.IntervalCases
 
 namespace CellularAutomatas
 namespace FsspMazoyer
 
 open Couleur
+
+/-! ### `F` is absorbing
+
+`δ _ F _ = F` definitionally (the `δ` matches on the middle cell first
+and its `F` branch returns `F`). So once a cell becomes `F`, it stays
+`F` forever. -/
+
+lemma F_absorbing (n : ℕ) (t : ℕ) (x : ℤ) :
+    Etat n t x = F → ∀ s : ℕ, Etat n (t + s) x = F := by
+  intro hF s
+  induction s with
+  | zero => simpa using hF
+  | succ s ih =>
+    show δ (Etat n (t + s) (x - 1)) (Etat n (t + s) x) (Etat n (t + s) (x + 1)) = F
+    rw [ih]; rfl
 
 /-! ### Couleur ≠ F facts
 
@@ -552,53 +562,82 @@ lemma DD_not_F : ∀ {t : ℕ} {x : ℤ} {cote : ℕ},
         rw [hdt_eq]; omega
       rw [ht_eq]; exact hres
 
+/-! ### Small shadow: cells `(t, x)` with `t + x ≤ 3` and `t ≥ 1`
+
+These cells are too close to `(0, 0)` for any wedge to reach. Each is
+forced by the initial config and 1–3 `δ`-rule applications. We prove
+their concrete values, from which `≠ F` is immediate. -/
+
+private lemma Etat_1_0 (h : 4 ≤ n) : Etat n 1 0 = A := by
+  show δ (Etat n 0 (-1)) (Etat n 0 0) (Etat n 0 1) = A
+  rw [L_outside n 0 (-1) (by norm_num),
+      show Etat n 0 0 = G from G00 n (by omega),
+      show Etat n 0 1 = L from base_L n (by omega) 1 (by omega) (by exact_mod_cast (show 1 < n by omega))]
+  rfl
+
+private lemma Etat_1_1 (h : 4 ≤ n) : Etat n 1 1 = C := by
+  show δ (Etat n 0 0) (Etat n 0 1) (Etat n 0 2) = C
+  rw [show Etat n 0 0 = G from G00 n (by omega),
+      show Etat n 0 1 = L from base_L n (by omega) 1 (by omega) (by exact_mod_cast (show 1 < n by omega)),
+      show Etat n 0 2 = L from base_L n (by omega) 2 (by omega) (by exact_mod_cast (show 2 < n by omega))]
+  rfl
+
+private lemma Etat_1_2 (h : 4 ≤ n) : Etat n 1 2 = L := by
+  show δ (Etat n 0 1) (Etat n 0 2) (Etat n 0 3) = L
+  rw [show Etat n 0 1 = L from base_L n (by omega) 1 (by omega) (by exact_mod_cast (show 1 < n by omega)),
+      show Etat n 0 2 = L from base_L n (by omega) 2 (by omega) (by exact_mod_cast (show 2 < n by omega)),
+      show Etat n 0 3 = L from base_L n (by omega) 3 (by omega) (by exact_mod_cast (show 3 < n by omega))]
+  rfl
+
+private lemma Etat_2_0 (h : 4 ≤ n) : Etat n 2 0 = G := by
+  show δ (Etat n 1 (-1)) (Etat n 1 0) (Etat n 1 1) = G
+  rw [L_outside n 1 (-1) (by norm_num), Etat_1_0 n h, Etat_1_1 n h]
+  rfl
+
+private lemma Etat_2_1 (h : 4 ≤ n) : Etat n 2 1 = B := by
+  show δ (Etat n 1 0) (Etat n 1 1) (Etat n 1 2) = B
+  rw [Etat_1_0 n h, Etat_1_1 n h, Etat_1_2 n h]
+  rfl
+
+private lemma Etat_3_0 (h : 4 ≤ n) : Etat n 3 0 = G := by
+  show δ (Etat n 2 (-1)) (Etat n 2 0) (Etat n 2 1) = G
+  rw [L_outside n 2 (-1) (by norm_num), Etat_2_0 n h, Etat_2_1 n h]
+  rfl
+
 /-! ### Final assembly
 
 For `0 ≤ x ≤ n − 1` and `t < 2n − 2`, every cell `(t, x)` is non-F.
 
-**Coverage achieved by existing lemmas:**
+**Elegant argument.** `sommet_1` gives that row `2n − 3` is all G,
+hence non-F. By `F_absorbing`, if any cell `(t, x)` with `t ≤ 2n − 3`
+were `F`, then `(2n − 3, x)` would also be `F` -- contradicting `G`.
 
-  * `t = 0`: `base1` (G at x = 0; L for 1 ≤ x ≤ n − 1).
-  * `1 ≤ t ≤ x − 1`, `1 ≤ x ≤ n − 1`: `early_quiet_zone` (all L).
-  * `t = 2n − 3`: `sommet_1` (all G).
-  * `Ht0_DD` family + `DD_not_F`: For each `m ∈ [0, n − 4]`, the wedge
-    `DD n (1 + m) 0 (m + 3)` (from `Ht0_DD n 0 (n - 2) … base1 m`)
-    covers cells `((1 + m) + δt, δx)` with `δx ≤ m + 3` and
-    `δt + δx ∈ {m + 3, m + 4}`. In `(t, x)` coordinates:
-
-      `t + x = 2m + 4` or `2m + 5`,  with  `x ≤ m + 3`, `m ≤ t − 1`.
-
-    Equivalently: cell `(t, x)` is covered iff some valid `m` exists,
-    i.e., `t + x ∈ [4, 2n − 3]` and `x ≤ ⌊(t + x − 2)/2⌋ + 1` (which
-    simplifies to `x ≤ t + 1` for the odd case, `x ≤ t + 2` for even).
-
-**Coverage gap (still requires `sorry`).** Two regions of the
-rectangle `[0, n − 1] × [0, 2n − 3]` are not covered by the above:
-
-  * **Left shadow** (small, `n`-independent): cells with `t + x ≤ 3`
-    and `x ≤ t`. Concretely `(1, 0)`, `(1, 1)`, `(2, 0)`, `(2, 1)`,
-    `(3, 0)`. These are determined by `init` and 1–3 `δ` steps and
-    can be discharged by direct computation, but require a new lemma
-    (e.g., a `Ht0_End2`-style export of `deux_end n 1 0` from
-    `base1`, plus a one-step `Etat n 1 0 = A` lemma).
-  * **Right shadow**: cells with `t + x ∈ [2n − 2, 3n − 4]` and
-    `t ≤ 2n − 4` and `x ≤ n − 1`. For `n = 4`: `(3, 3)`, `(4, 2)`,
-    `(4, 3)`. These cells are "interior" to the global wedge but
-    not on its outer two anti-diagonals — they're covered only by
-    `Ht0_DD` members with `m ≥ 1`, which exist only for `n ≥ 5`.
-    For `n = 4`, this region requires the right-side dynamics
-    (analogous to `Ht0_DD` but anchored at the right phantom `base2`),
-    which is not currently exported.
-
-Both gaps are tractable with additional infrastructure but each needs
-a new family of lemmas. The `omega`-trivial part is the geometric
-case-split; the work is in surfacing the missing wedge families
-and shadow-region computations. -/
+This shortcut sidesteps all the geometric infrastructure
+(`DD_not_F`, brick non-F, staircase non-F, early quiet zone)
+established above; those lemmas remain available as more fine-grained
+characterizations of the dynamics. -/
 
 lemma not_fire_before (h : 4 ≤ n) (t : ℕ) (ht : t < 2 * n - 2)
     (x : ℤ) (hx : 0 ≤ x) (hxn : x ≤ (n : ℤ) - 1) :
     Etat n t x ≠ F := by
-  sorry
+  intro hF
+  -- F is absorbing: F at t implies F at all later times.
+  have habs := F_absorbing n t x hF (2 * n - 3 - t)
+  rw [show t + (2 * n - 3 - t) = 2 * n - 3 from by omega] at habs
+  -- But sommet_1 says row 2n - 3 is all G.
+  obtain ⟨xn, rfl⟩ : ∃ xn : ℕ, x = (xn : ℤ) :=
+    ⟨x.toNat, (Int.toNat_of_nonneg hx).symm⟩
+  have hxn_nat : xn ≤ n - 1 := by
+    have : (xn : ℤ) ≤ (n : ℤ) - 1 := hxn
+    omega
+  have hG : Etat n (2 * n - 3) (xn : ℤ) = G := by
+    have h0 := (sommet_1 n h).pointwise xn hxn_nat
+    have hex : (0 : ℤ) + (xn : ℤ) = (xn : ℤ) := by ring
+    rw [hex] at h0
+    exact h0
+  -- Now `hG : Etat n (2n - 3) xn = G` and `habs : Etat n (2n - 3) xn = F`. Contradiction.
+  rw [habs] at hG
+  exact (by decide : (F : Couleur) ≠ G) hG
 
 end FsspMazoyer
 end CellularAutomatas

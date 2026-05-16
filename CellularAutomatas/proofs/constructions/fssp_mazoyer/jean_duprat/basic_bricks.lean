@@ -1,10 +1,15 @@
 /-
-  Mazoyer FSSP -- the basic bricks `A_basic`, `B_basic`, `C_basic`
-  (port of `basic.v`).
+  Mazoyer FSSP -- the basic bricks `A_basic`, `B_basic`, `C_basic`.
+
+  Lean 4 port of `basic.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.etat
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.constr
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.etat
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.constr
 
 namespace CellularAutomatas
 namespace FsspMazoyer

@@ -1,9 +1,14 @@
 /-
-  Mazoyer FSSP -- the apex theorem `DD_Hg` and `Hg_Hf`
-  (port of `sommet.v`).
+  Mazoyer FSSP -- the apex theorem `DD_Hg` and `Hg_Hf`.
+
+  Lean 4 port of `sommet.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.trapeze
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.trapeze
 
 namespace CellularAutomatas
 namespace FsspMazoyer

@@ -4,7 +4,13 @@ namespace CellularAutomatas
 
 section FSSP
 
-def fssp_left_side (n : ℕ) : Word Bool := [true] ++ List.replicate (n - 1) false
+def fssp_left_side (n : ℕ) : Word Bool :=
+  if n = 0 then [] else [true] ++ List.replicate (n - 1) false
+
+@[simp]
+lemma fssp_left_side_length (n : ℕ) : (fssp_left_side n).length = n := by
+  unfold fssp_left_side
+  rcases n with _ | n <;> simp
 
 structure SolvesFSSP (C : CellAutomaton Bool？ Bool)
     (input : ℕ → Word Bool) (time : ℕ → ℕ) : Prop where
@@ -12,7 +18,7 @@ structure SolvesFSSP (C : CellAutomaton Bool？ Bool)
   fire_iff : ∀ n : ℕ, n ≥ 1 →
     let w := input n
     ∀ t : ℕ, ∀ p : ℤ, 0 ≤ p ∧ p < w.length →
-        C.comp ⟬w⟭ t p = true ↔ t >= time n
+        (C.comp ⟬w⟭ t p = true ↔ t >= time n)
 
 def SolvesFSSPOptimal (C : CellAutomaton Bool？ Bool) := SolvesFSSP C fssp_left_side (fun n => 2 * n - 2)
 
@@ -164,7 +170,7 @@ private lemma fssp_input_ca_comp_one_in_range (w : Word α) (i : ℤ)
 
 /-- The `i`-th symbol of `fssp_both_sides n` (for `i < n`) is
     `(decide (i = 0), decide (i = n − 1))`. -/
-private lemma fssp_both_sides_getElem_eq (n : ℕ) (i : ℕ) (hi : i < n) :
+lemma fssp_both_sides_getElem_eq (n : ℕ) (i : ℕ) (hi : i < n) :
     (fssp_both_sides n)[i]'(by simpa) =
       (decide (i = 0), decide (i = n - 1)) := by
   rcases n with _ | _ | m

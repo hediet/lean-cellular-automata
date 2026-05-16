@@ -1,15 +1,18 @@
 /-
-  Mazoyer FSSP -- the construction calculus (port of `constr.v`).
+  Mazoyer FSSP -- the construction calculus.
+
+  Lean 4 port of `constr.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 
   The Coq file declares many `loi`/`loi_droite` premises as section
-  Hypotheses. To keep this Lean port concise while still type-correct,
-  every combinator takes an opaque proof-bundle parameter `bundle`
-  whose type can be filled in when we actually prove the lemma.
-
-  All proofs are `sorry`.
+  Hypotheses; here each combinator takes explicit `loi`/`loi_droite`
+  arguments.
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.geom
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.geom
 
 namespace CellularAutomatas
 namespace FsspMazoyer

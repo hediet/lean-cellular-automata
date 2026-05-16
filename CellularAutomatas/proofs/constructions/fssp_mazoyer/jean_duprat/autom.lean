@@ -1,14 +1,14 @@
 /-
-  Mazoyer's 6-state minimal-time (2n-2) FSSP CA, ported from
-  Jean Duprat's Coq formalization at
-    https://github.com/rocq-archive/firing-squad
-  (see external/firing-squad/autom.v).
+  Mazoyer's 6-state minimal-time (2n−2) FSSP CA: alphabet, transition
+  table, initial configuration, and time evolution.
 
-  This file provides only the construction + a simulator + small-case
-  tests. The correctness theorem (`SolvesFSSPOptimal`) is left to a
-  follow-up file; here we just want a runnable / `#eval`-able CA.
+  Lean 4 port of `autom.v` and `algo.v` from Jean Duprat's Coq proof
+  of the Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 
-  Setup (matches the Coq source exactly):
+  Setup:
   * 6 states: `A`, `B`, `C`, `L` (quiet), `G` (general), `F` (fire).
   * For an array of `n = N+1` cells (n ≥ 4), the initial configuration on
     the integer line `Etat 0 : ℤ → Couleur` is
@@ -18,9 +18,7 @@
         cell N+2     : C        -- right "ghost marker"
         cells > N+2  : L
         cells < 0    : L
-  * One step: `Etat (t+1) p = δ (Etat t (p-1)) (Etat t p) (Etat t (p+1))`,
-    with the convention that cells `< 0` (and far right) are evaluated by
-    the same recursion (they are surrounded by `L`s and stay `L`).
+  * One step: `Etat (t+1) p = δ (Etat t (p-1)) (Etat t p) (Etat t (p+1))`.
   * Final theorem (target): for all `i ∈ {0,…,N}`, `Etat (2N) i = F`.
 -/
 
@@ -193,61 +191,6 @@ def Etat (n : ℕ) : ℕ → ℤ → Couleur
 
 @[simp] lemma Etat_succ (n : ℕ) (t : ℕ) (p : ℤ) :
     Etat n (t + 1) p = δ (Etat n t (p - 1)) (Etat n t p) (Etat n t (p + 1)) := rfl
-
-/-! ### Tests for small `n`
-
-Mazoyer / Duprat require `n ≥ 4` (the Coq axiom `2 < N` becomes `n ≥ 4`).
-At time `2n - 2`, all cells `0..n-1` should be in state `F`.
-
-We test:
-* All cells fire at `t = 2n - 2`.
-* No cell has fired before then (specifically: not all cells fire at
-  `t = 2n - 3`).
--/
-
-/-- Check that every cell `i ∈ {0, …, n-1}` is in state `F` at time `t`. -/
-def all_fire (n : ℕ) (t : ℕ) : Bool :=
-  (List.range n).all fun i => decide (Etat n t (i : ℤ) = F)
-
-/-- Check that every cell `i ∈ {0, …, n-1}` is **not** in state `F` at time `t`. -/
-def none_fire (n : ℕ) (t : ℕ) : Bool :=
-  (List.range n).all fun i => decide (Etat n t (i : ℤ) ≠ F)
-
-/-- Pretty-print one row of the simulation: states of cells `-2 .. n+3` at time `t`. -/
-def row (n : ℕ) (t : ℕ) : List Couleur :=
-  (List.range (n + 6)).map fun i => Etat n t ((i : ℤ) - 2)
-
--- Small-case tests. Each `example` is a compile-time proof.
-
--- n = 4: should fire at t = 6.
-example : all_fire 4 6 = true := by native_decide
-example : none_fire 4 5 = true := by native_decide
-
--- n = 5: should fire at t = 8.
-example : all_fire 5 8 = true := by native_decide
-example : none_fire 5 7 = true := by native_decide
-
--- n = 6: should fire at t = 10.
-example : all_fire 6 10 = true := by native_decide
-example : none_fire 6 9 = true := by native_decide
-
--- n = 7: should fire at t = 12.
-example : all_fire 7 12 = true := by native_decide
-example : none_fire 7 11 = true := by native_decide
-
--- n = 8: should fire at t = 14.
-example : all_fire 8 14 = true := by native_decide
-example : none_fire 8 13 = true := by native_decide
-
--- For convenience while iterating, also expose `#eval` snapshots.
--- Uncomment to inspect:
--- #eval row 4 0
--- #eval row 4 1
--- #eval row 4 2
--- #eval row 4 3
--- #eval row 4 4
--- #eval row 4 5
--- #eval row 4 6  -- expect F at cells 0..3
 
 end FsspMazoyer
 end CellularAutomatas

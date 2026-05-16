@@ -1,5 +1,11 @@
 /-
-  Mazoyer FSSP -- the final theorem `firing_squad` (port of `final.v`).
+  Mazoyer FSSP -- the final theorem `firing_squad`.
+
+  Lean 4 port of `final.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 
   Conversion to our `n`-cell convention:
   Coq's `N` becomes `n - 1` (so `n = N + 1`); Coq's axiom `2 < N`
@@ -12,7 +18,7 @@
   `DD (pred (pred N)) 0 N`, is `DD n (n - 3) 0 (n - 1)`.
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.sommet
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.sommet
 
 namespace CellularAutomatas
 namespace FsspMazoyer

@@ -1,10 +1,16 @@
 /-
-  Mazoyer FSSP -- the trapezoid lemmas: brick + G-wall ⇒ G-wall + smaller DD
-  (port of `trapeze.v`).
+  Mazoyer FSSP -- the trapezoid lemmas: brick + G-wall ⇒ G-wall +
+  smaller DD.
+
+  Lean 4 port of `trapeze.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.reflection
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.vertical
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.reflection
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.vertical
 
 namespace CellularAutomatas
 namespace FsspMazoyer

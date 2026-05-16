@@ -1,9 +1,15 @@
 /-
   Mazoyer FSSP -- bridges from horizontal rows to `DD` and to
-  vertical G-walls (port of `vertical.v`).
+  vertical G-walls.
+
+  Lean 4 port of `vertical.v` from Jean Duprat's Coq proof of the
+  Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.double_diag
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.double_diag
 
 namespace CellularAutomatas
 namespace FsspMazoyer

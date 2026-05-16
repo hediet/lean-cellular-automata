@@ -1,12 +1,17 @@
 /-
-  Mazoyer FSSP -- the per-state predicates and base configuration
-  facts (port of `autom.v` base section).
+  Mazoyer FSSP -- the per-state predicates and base configuration facts.
 
-  All proofs are `sorry`. The CA construction `Couleur`, `δ`, `Etat`,
-  `init` is reused from the parent file `fssp_mazoyer.lean`.
+  Lean 4 port of `autom.v` (base section) from Jean Duprat's Coq proof
+  of the Firing Squad Synchronization Problem (Mazoyer's solution).
+  Original source: https://github.com/rocq-archive/firing-squad
+  Commit: 821676dce0353798b0651d058ffb22b65fb09097
+  License: LGPL 2.1
+
+  The CA construction `Couleur`, `δ`, `Etat`, `init` is reused from
+  the parent file `fssp_mazoyer.lean`.
 -/
 
-import CellularAutomatas.proofs.constructions.fssp_mazoyer.geom
+import CellularAutomatas.proofs.constructions.fssp_mazoyer.jean_duprat.geom
 
 namespace CellularAutomatas
 namespace FsspMazoyer
