@@ -15,12 +15,20 @@ lemma fssp_left_side_length (n : ℕ) : (fssp_left_side n).length = n := by
 structure SolvesFSSP (C : CellAutomaton Bool？ Bool)
     (input : ℕ → Word Bool) (time : ℕ → ℕ) : Prop where
   quiescent_set : C.quiescent_set { C.border, C.inner false }
-  fire_iff : ∀ n : ℕ, n ≥ 1 →
+  fire_iff : ∀ n : ℕ, n ≥ 2 →
     let w := input n
     ∀ t : ℕ, ∀ p : ℤ, 0 ≤ p ∧ p < w.length →
         (C.comp ⟬w⟭ t p = true ↔ t >= time n)
 
 def SolvesFSSPOptimal (C : CellAutomaton Bool？ Bool) := SolvesFSSP C fssp_left_side (fun n => 2 * n - 2)
+
+/-- Untouched soldiers do not project to the firing output. This follows from
+    the length-two instance at time zero. -/
+lemma SolvesFSSPOptimal.inner_false_projects_false
+    {C : CellAutomaton Bool？ Bool} (hC : SolvesFSSPOptimal C) :
+    C.project (C.inner false) = false := by
+  have h := hC.fire_iff 2 (by omega) 0 1 (by simp)
+  simpa [CellAutomaton.comp_apply, fssp_left_side, word_to_config] using h
 
 /-- Two-sided FSSP input over `Bool × Bool`.
 
@@ -49,25 +57,6 @@ structure SolvesTwoSidedFSSPOptimal (C : CellAutomaton (Bool × Bool)？ Bool) :
   fire_iff : ∀ n : ℕ, n ≥ 1 →
     ∀ t : ℕ, ∀ p : ℤ, 0 ≤ p → p < (n : ℤ) →
       (C.comp ⟬fssp_both_sides n⟭ t p = true ↔ t ≥ n - 1)
-
-theorem SolvesFSSPOptimal_exists:
-  ∃ C : CellAutomaton Bool？ Bool, SolvesFSSPOptimal C := by
-  sorry
-
-
-/-- **Axiom.** A two-sided FSSP solver exists.
-
-    The two-sided FSSP problem distinguishes the leftmost and rightmost cells
-    of the input via separate flag bits (`Bool × Bool`), allowing a CA to fire
-    every interior cell exactly at time `n − 1` for *every* `n ≥ 1`, including
-    the singleton case `n = 1` (which fires immediately at `t = 0`).
-
-    A constructive proof reduces to the standard one-sided FSSP (Mazoyer,
-    Goto, Waksman, etc.) by exploiting the symmetric input markings; we
-    take this as an axiom for now. -/
-axiom TwoSidedFSSP_exists :
-    ∃ C : CellAutomaton (Bool × Bool)？ Bool, SolvesTwoSidedFSSPOptimal C
-
 
 /-! ### `fssp_both_sides` length and the corresponding "first-or-last" advice -/
 

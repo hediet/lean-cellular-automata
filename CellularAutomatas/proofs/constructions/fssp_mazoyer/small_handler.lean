@@ -7,12 +7,9 @@
 
   For n >= 3 the CA is permanently inert (no cell ever fires).
 
-  Note: n = 1 requires firing at t = 0 (= 2*1 - 2), which means the
-  initial state `inner true` must project to `true`. But the
-  quiescent-set requirement forces `project (inner false) = false`, and
-  for n >= 2 at t = 0 the general cell (also `inner true`) must NOT fire.
-  This is a contradiction: no single CA can satisfy `SolvesFSSPOptimal`
-  for both n = 1 and n = 2.
+  The one-sided `SolvesFSSPOptimal` specification starts at n = 2. A
+  singleton cannot share that specification: its general would have to fire
+  at t = 0, while the identical initial general in every longer input must not.
 -/
 
 import CellularAutomatas.proofs.fssp
@@ -86,14 +83,14 @@ lemma quiescent_set_border_soldier :
 lemma n2_fires_at_2 (p : ℤ) (hp0 : 0 <= p) (hp2 : p < 2) :
     C.nextt (⦋⟬fssp_left_side 2⟭⦌) 2 p = Fire := by
   have : p = 0 ∨ p = 1 := by omega
-  rcases this with rfl | rfl <;> native_decide
+  rcases this with rfl | rfl <;> decide
 
 /-- For n = 2, no cell fires before t = 2. -/
 lemma n2_not_fire_before (t : Nat) (ht : t < 2) (p : ℤ) (hp0 : 0 <= p) (hp2 : p < 2) :
     C.comp (word_to_config (fssp_left_side 2)) t p = false := by
   have hp : p = 0 ∨ p = 1 := by omega
   have ht : t = 0 ∨ t = 1 := by omega
-  rcases hp with rfl | rfl <;> rcases ht with rfl | rfl <;> native_decide
+  rcases hp with rfl | rfl <;> rcases ht with rfl | rfl <;> decide
 
 /-- Fire is absorbing: delta(_, Fire, _) = Fire. -/
 lemma delta_fire_center (a b : Q) : delta a Fire b = Fire := rfl

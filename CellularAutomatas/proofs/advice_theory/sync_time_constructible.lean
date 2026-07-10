@@ -1,7 +1,7 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.time_constructible.basic
-import CellularAutomatas.proofs.fssp
+import CellularAutomatas.proofs.constructions.two_sided_fssp_full
 
 namespace CellularAutomatas
 
@@ -33,7 +33,8 @@ being a clean indicator of "is this an interior cell at time ≥ f n".
 * `Sum` — closure under addition (output is `SyncTimeConstructible`,
   not `Inner`). Built directly on top of `fireThenRun`. Sorry-free.
 * `IsTimeAdvice.compose` — composition of time-advices, sorry-free.
-* `IdSync : SyncTimeConstructible (fun n => n)` — sorry'd (needs FSSP).
+* `IdSync : SyncTimeConstructible (fun n => n)` — checked using the
+  constructive two-sided FSSP solver.
 -/
 
 /-! ## `SyncTimeConstructible` — base spec, interior only -/
@@ -225,8 +226,8 @@ def Const (c : ℕ) : SyncTimeConstructibleInner (fun _ => c) where
 
     Construction: build a `FireThenRunInput` whose first stage is the marker
     advice (`Advice.fssp_input Unit`, computable in `1` step) and whose
-    runtime is the two-sided FSSP solver `C` (postulated by
-    `TwoSidedFSSP_exists`). With the timer firing `1` step in (so the FSSP
+    runtime is the concrete two-sided FSSP solver `TwoSidedFSSP.optimal`.
+    With the timer firing `1` step in (so the FSSP
     sees its initial configuration `⟬fssp_both_sides n⟭` at relative time `0`)
     and FSSP firing every interior cell at relative time `n - 1`, the
     composite timer fires every interior cell at absolute time `1 + (n - 1) = n`.
@@ -813,22 +814,22 @@ end ComposeIsTimeAdvice
     * first stage: `Advice.fssp_input Unit` with witness
       `fssp_input_is_const_time_1`, a 1-step advice;
     * sync timer for `t1 = fun _ => 1`: `Const 1`;
-    * runtime: the two-sided FSSP solver `C` from `TwoSidedFSSP_exists`.
+    * runtime: the checked two-sided FSSP solver `TwoSidedFSSP.optimal`.
 
     Then for `unitWord n` and an interior cell `p`:
     * `k = 0`: `spec_pre` gives `C.project C.border = false` ✓;
     * `k ≥ 1`: `spec_post` at `s = k - 1` gives
       `C.comp ⟬fssp_both_sides n⟭ (k - 1) p = true ↔ k - 1 ≥ n - 1 ↔ k ≥ n`. -/
 
-/-- Witnessing FSSP solver, extracted from the `TwoSidedFSSP_exists` axiom. -/
-private noncomputable def idSyncFsspCA : CellAutomaton (Bool × Bool)？ Bool :=
-  TwoSidedFSSP_exists.choose
+/-- The concrete optimal two-sided FSSP solver used by `IdSync`. -/
+private def idSyncFsspCA : CellAutomaton (Bool × Bool)？ Bool :=
+  TwoSidedFSSP.optimal
 
 private theorem idSyncFsspCA_spec : SolvesTwoSidedFSSPOptimal idSyncFsspCA :=
-  TwoSidedFSSP_exists.choose_spec
+  TwoSidedFSSP.optimal_solves
 
 /-- The `FireThenRunInput` underlying `IdSync`: marker advice (1 step) + FSSP. -/
-private noncomputable def idSyncInput :
+private def idSyncInput :
     FireThenRunInput Unit (Bool × Bool) Bool :=
   { a := fssp_input_is_const_time_1
     sc := Const 1
@@ -844,7 +845,7 @@ private lemma idSyncInput_h_f (n : ℕ) :
   show fssp_both_sides (unitWord n).length = fssp_both_sides n
   rw [unitWord_length]
 
-noncomputable def IdSync : SyncTimeConstructible (fun n => n) where
+def IdSync : SyncTimeConstructible (fun n => n) where
   timer := idSyncInput.C
   fires_iff := fun n p k hp0 hpn => by
     show idSyncInput.C.comp ⦋unitWord n⦌ k p = true ↔ k ≥ n
@@ -875,6 +876,5 @@ noncomputable def IdSync : SyncTimeConstructible (fun n => n) where
       rw [h_post]
       rw [idSyncFsspCA_spec.fire_iff n hn_pos s p hp0 hpn]
       omega
-
 
 end CellularAutomatas

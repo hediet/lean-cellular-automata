@@ -331,19 +331,14 @@ lemma quiescent_set_border_L :
 
 /-! ### Final assembly -/
 
-/-- The Mazoyer 7-state CA solves the optimal-time FSSP **for `n ≥ 3`**.
+/-- The Mazoyer 7-state CA solves the optimal-time FSSP for `n ≥ 3`.
     The Coq proof requires `2 < N` (equivalently `n ≥ 4`); the `n = 3`
-    case is verified here by finite computation.
-
-    Cases `n ∈ {1, 2}` are not handled by Mazoyer's construction
-    (and indeed `SolvesFSSPOptimal` for `n = 1` is unsatisfiable with
-    this CA: it requires the singleton input `[true]` to fire at `t = 0`,
-    but `embed (some true) = G` projects to `false`, not `true`).
-    Discharged here as a `sorry` for `n ∈ {1, 2}`. -/
-theorem SolvesFSSPOptimal_FsspMazoyerCA :
-    SolvesFSSPOptimal FsspMazoyerCA.C where
-  quiescent_set := quiescent_set_border_L
-  fire_iff n hn := by
+  case is verified here by finite computation. Length two is handled by
+  `SmallHandler`, not by this automaton. -/
+theorem FsspMazoyerCA_fire_iff (n : ℕ) (hn : n ≥ 3) :
+  let w := fssp_left_side n
+  ∀ t : ℕ, ∀ p : ℤ, 0 ≤ p ∧ p < w.length →
+    (FsspMazoyerCA.C.comp ⟬w⟭ t p = true ↔ t ≥ 2 * n - 2) := by
     -- After `n hn`, the body is `let w := …; ∀ t p, … → (… ↔ …)`.
     intro w t p hp
     obtain ⟨hx, hxlt⟩ := hp
@@ -388,22 +383,17 @@ theorem SolvesFSSPOptimal_FsspMazoyerCA :
           exact habs
         show FsspMazoyerCA.C.project (FsspMazoyerCA.C.nextt (⦋⟬fssp_left_side n⟭⦌) t p) = true
         rw [hCA_t]; rfl
-    · -- n ∈ {1, 2, 3}.
-      -- n = 3 works and can be verified by finite computation.
-      -- n ∈ {1, 2} is genuinely unsatisfiable with this CA.
-      interval_cases n
-      · -- n = 1: sorry (unsatisfiable — G projects to false, but spec
-        -- requires fire at t = 0).
-        sorry
-      · -- n = 2: sorry (cells never fire simultaneously).
-        sorry
-      · -- n = 3: fires at t = 4 = 2·3 − 2. Proved by computation.
+    · -- The remaining case is n = 3, verified by finite computation.
+      have hn_eq : n = 3 := by omega
+      subst n
+      show FsspMazoyerCA.C.comp ⟬fssp_left_side 3⟭ t p = true ↔ t ≥ 4
+      · -- n = 3: fires at t = 4 = 2·3 − 2.
         -- p ∈ {0, 1, 2} since 0 ≤ p < 3.
         have hp_bound : p = 0 ∨ p = 1 ∨ p = 2 := by omega
         -- Forward: comp = true → t ≥ 4.
         -- Backward: t ≥ 4 → comp = true.
-        -- For t < 4 and each p, comp = false (by native_decide on each case).
-        -- For t ≥ 4, nextt at t=4 is F for each p (native_decide), then persists.
+        -- For t < 4 and each p, comp = false by finite reduction.
+        -- For t ≥ 4, nextt at t=4 is F for each p, then persists.
         constructor
         · -- comp = true → t ≥ 4
           intro hfire
@@ -420,7 +410,7 @@ theorem SolvesFSSPOptimal_FsspMazoyerCA :
                 FsspMazoyerCA.Couleur.F := by
             intro q hq0 hq3
             have : q = 0 ∨ q = 1 ∨ q = 2 := by omega
-            rcases this with rfl | rfl | rfl <;> native_decide
+            rcases this with rfl | rfl | rfl <;> decide
           have hF4 := key p hx (by omega)
           have hFt : FsspMazoyerCA.C.nextt (⦋⟬fssp_left_side 3⟭⦌) t p =
               FsspMazoyerCA.Couleur.F := by
@@ -429,10 +419,6 @@ theorem SolvesFSSPOptimal_FsspMazoyerCA :
             exact this
           show FsspMazoyerCA.C.project (FsspMazoyerCA.C.nextt (⦋⟬fssp_left_side 3⟭⦌) t p) = true
           rw [hFt]; rfl
-
-theorem SolvesFSSPOptimal_exists_via_mazoyer :
-    ∃ C : CellAutomaton Bool？ Bool, SolvesFSSPOptimal C :=
-  ⟨FsspMazoyerCA.C, SolvesFSSPOptimal_FsspMazoyerCA⟩
 
 end FsspMazoyer
 end CellularAutomatas
