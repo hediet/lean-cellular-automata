@@ -1,9 +1,12 @@
-name: Publish PDFs
+name: Publish Documents
 
 on:
   push:
     branches: [main]
-    paths: ['docs/*.typ']
+    paths:
+      - 'docs/*.typ'
+      - 'docs/summary.md'
+      - '.github/workflows/publish-summary.yml'
   workflow_dispatch:
 
 permissions:
@@ -25,24 +28,21 @@ jobs:
           curl -fsSL https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-unknown-linux-musl.tar.xz | tar xJ
           sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
 
-      - name: Compile PDFs
-        run: |
-          typst compile docs/summary.typ docs/summary.pdf
-          typst compile docs/lx-rt-implies-rt-proof.typ docs/lx-rt-implies-rt-proof.pdf
+      - name: Compile Typst PDF
+        run: typst compile docs/lx-rt-implies-rt-proof.typ docs/lx-rt-implies-rt-proof.pdf
 
       - name: Prepare pages
         run: |
           mkdir -p _site
-          cp docs/summary.pdf _site/summary.pdf
           cp docs/lx-rt-implies-rt-proof.pdf _site/lx-rt-implies-rt-proof.pdf
-          cat > _site/index.html << 'EOF'
+          cat > _site/index.html << EOF
           <!DOCTYPE html>
           <html>
           <head><title>Cellular Automata - Documents</title></head>
           <body>
             <h1>Documents</h1>
             <ul>
-              <li><a href="summary.pdf">Project Summary</a></li>
+              <li><a href="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/docs/summary.md">Project Guide</a></li>
               <li><a href="lx-rt-implies-rt-proof.pdf">Proof: Lx(L) ∈ CA_RT ⟹ L ∈ CA_RT</a></li>
             </ul>
           </body>
