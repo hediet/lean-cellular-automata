@@ -2,6 +2,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.time_constructible.basic
 import CellularAutomatas.proofs.constructions.two_sided_fssp_full
+import CellularAutomatas.proofs.constructions.border_quiescent
 
 namespace CellularAutomatas
 
@@ -211,15 +212,117 @@ def Const (c : ℕ) : SyncTimeConstructibleInner (fun _ => c) where
     rfl
 
 
-/-! ## On lifting `SyncTimeConstructible` to `SyncTimeConstructibleInner`
+/-! ## Lifting `SyncTimeConstructible` to `SyncTimeConstructibleInner`
 
-    The general `QuiescentBorder` construction in
-    `CellularAutomatas.proofs.constructions.border_quiescent` makes any CA's
-    border state quiescent. Combined with a `Bool × C.Q` "am-I-border" latch
-    that turns off the projection at outer cells, this gives a generic lift
-    `SyncTimeConstructible.toInner`. (Not implemented yet — instances so far
-    are built directly: `Const`, `IdSync`. (`Sum` produces only the base
-    `SyncTimeConstructible` — re-Innerizing is currently future work.) -/
+    `QuiescentBorder` makes the timer's border state quiescent while preserving
+    its computation inside the word cone. A second immutable track records
+    whether the cell was initially inside the input. Gating the projection by
+    this track preserves every interior firing signal and suppresses every
+    outer one. -/
+
+namespace SyncTimeConstructible
+
+private def quiescentTimer {f : ℕ → ℕ} (sc : SyncTimeConstructible f) :
+    QuiescentBorder where
+  C_orig := sc.timer
+
+private def quiescentTimerCA {f : ℕ → ℕ} (sc : SyncTimeConstructible f) :
+    CellAutomaton Unit？ Bool :=
+  (quiescentTimer sc).C
+
+/-- A quiescent-border timer paired with an immutable in-range marker. -/
+private def innerTimerCA {f : ℕ → ℕ} (sc : SyncTimeConstructible f) :
+    CellAutomaton Unit？ Bool :=
+  let timer := quiescentTimerCA sc
+  { Q := timer.Q × Bool
+    δ := fun left center right =>
+      (timer.δ left.1 center.1 right.1, center.2)
+    embed := fun input => (timer.embed input, input.isSome)
+    project := fun state => timer.project state.1 && state.2 }
+
+private lemma innerTimerCA_first_eq {f : ℕ → ℕ}
+    (sc : SyncTimeConstructible f) (n t : ℕ) (p : ℤ) :
+    ((innerTimerCA sc).nextt ⦋unitWord n⦌ t p).1 =
+      (quiescentTimerCA sc).nextt ⦋unitWord n⦌ t p := by
+  induction t generalizing p with
+  | zero => rfl
+  | succ t ih =>
+      rw [CellAutomaton.nextt_succ, CellAutomaton.nextt_succ,
+        CellAutomaton.next_apply, CellAutomaton.next_apply]
+      change (quiescentTimerCA sc).δ _ _ _ = (quiescentTimerCA sc).δ _ _ _
+      rw [ih, ih, ih]
+
+private lemma innerTimerCA_second_eq {f : ℕ → ℕ}
+    (sc : SyncTimeConstructible f) (n t : ℕ) (p : ℤ) :
+    ((innerTimerCA sc).nextt ⦋unitWord n⦌ t p).2 =
+      (word_to_config (unitWord n) p).isSome := by
+  induction t generalizing p with
+  | zero => rfl
+  | succ t ih =>
+      rw [CellAutomaton.nextt_succ, CellAutomaton.next_apply]
+      change ((innerTimerCA sc).nextt ⦋unitWord n⦌ t p).2 = _
+      exact ih p
+
+/-- Every synchronous timer can be made outer-passive with a quiescent border. -/
+def toInner {f : ℕ → ℕ} (sc : SyncTimeConstructible f) :
+    SyncTimeConstructibleInner f where
+  timer := innerTimerCA sc
+  fires_iff n p k hp0 hpn := by
+    show (innerTimerCA sc).project
+        ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p) = true ↔ k ≥ f n
+    change ((quiescentTimerCA sc).project
+        ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p).1 &&
+          ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p).2) = true ↔ k ≥ f n
+    rw [innerTimerCA_first_eq, innerTimerCA_second_eq]
+    have h_inside : word_to_config (unitWord n) p ≠ none := by
+      unfold word_to_config
+      rw [dif_pos]
+      · simp
+      · simpa [unitWord] using And.intro hp0 hpn
+    have h_marker : (word_to_config (unitWord n) p).isSome = true := by
+      exact Option.isSome_iff_ne_none.mpr h_inside
+    rw [h_marker, Bool.and_true]
+    change (quiescentTimerCA sc).comp ⦋unitWord n⦌ k p = true ↔ k ≥ f n
+    have hn_pos : (unitWord n).length > 0 := by
+      simp [unitWord]
+      omega
+    have h_cone : p ∈ WordCone (unitWord n) k := by
+      rw [WordCone_mem]
+      simp only [unitWord_length]
+      constructor <;> push_cast <;> omega
+    have h_spec := (quiescentTimer sc).spec (unitWord n) hn_pos k p
+    have h_comp : (quiescentTimerCA sc).comp ⦋unitWord n⦌ k p =
+        sc.timer.comp ⦋unitWord n⦌ k p := by
+      simpa [quiescentTimerCA, quiescentTimer, h_cone] using h_spec
+    rw [h_comp]
+    exact sc.fires_iff n p k hp0 hpn
+  no_outer_fire n p k hp := by
+    show (innerTimerCA sc).project
+        ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p) = false
+    change ((quiescentTimerCA sc).project
+        ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p).1 &&
+          ((innerTimerCA sc).nextt ⦋unitWord n⦌ k p).2) = false
+    rw [innerTimerCA_second_eq]
+    have h_outside : ¬ (0 ≤ p ∧ p < ((unitWord n).length : ℤ)) := by
+      simpa using hp
+    have h_marker : (word_to_config (unitWord n) p).isSome = false := by
+      unfold word_to_config
+      rw [dif_neg h_outside]
+      rfl
+    rw [h_marker, Bool.and_false]
+  border_quiescent := by
+    rw [CellAutomaton.quiescent_iff]
+    have h_quiescent := (quiescentTimer sc).C_border_quiescent
+    rw [CellAutomaton.quiescent_iff] at h_quiescent
+    change ((quiescentTimerCA sc).δ (quiescentTimerCA sc).border
+      (quiescentTimerCA sc).border (quiescentTimerCA sc).border, false) =
+        ((quiescentTimerCA sc).border, false)
+    change (((quiescentTimer sc).C.δ (quiescentTimer sc).C.border
+      (quiescentTimer sc).C.border (quiescentTimer sc).C.border), false) =
+        (((quiescentTimer sc).C.border), false)
+    rw [h_quiescent]
+
+end SyncTimeConstructible
 
 
 /-! ## `IdSync` — `fun n => n` is sync time constructible

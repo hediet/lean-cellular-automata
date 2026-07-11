@@ -9,12 +9,13 @@
 
       Proof outline:
       * `ℒ(CA_rt α) ⊆ ℒ(CA_lt α)`: every CA_rt is a CA_lt with `c = 1`.
-      * `ℒ(CA_lt α) ⊆ ℒ(CA_rt α)`: by `ca_2n_eq_ca_lt` (sorry'd) we reduce
+      * `ℒ(CA_lt α) ⊆ ℒ(CA_rt α)`: by `ca_2n_eq_ca_lt` we reduce
         to `ℒ(CA_2n α) ⊆ ℒ(CA_rt α)`. Then `compress2` weak-rt-closure
         + the `k = 2` `SpeedupKx` construction gives us a CA_rt over the
         compress2-annotated alphabet that simulates the CA_2n in real time.
 
-  - `compress2_weak_rt_closed_of_ca_rt_eq_ca_lt` (`→`): currently `sorry`.
+  - `compress2_weak_rt_closed_of_ca_rt_eq_ca_lt` (`→`): compute the
+      annotated input at time `n`, run its RT recognizer, and use `RT = LT`.
 
   - `ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed` (the iff): just packages the two.
 -/
@@ -22,8 +23,10 @@
 import CellularAutomatas.defs
 import CellularAutomatas.proofs.basic
 import CellularAutomatas.proofs.ca_rt_utils
+import CellularAutomatas.proofs.advice_theory.compress_n_is_rt_advice
+import CellularAutomatas.proofs.advice_theory.run_after_n_time_advice
 import CellularAutomatas.proofs.constructions.speedup_compressed
-import CellularAutomatas.verification_candidates
+import CellularAutomatas.proofs.constructions.linear_time_speedup
 
 namespace CellularAutomatas
 
@@ -290,10 +293,10 @@ theorem ca_rt_eq_ca_lt_of_compress2_weak_rt_closed
   · -- ℒ(CA_lt α) ⊆ ℒ(CA_rt α): via ca_2n_eq_ca_lt + compress2 simulation
     show ℒ (CA_lt α) ⊆ ℒ (CA_rt α)
     calc ℒ (CA_lt α)
-        = ℒ (CA_2n α) := (verification_candidates.ca_2n_eq_ca_lt).symm
+        = ℒ (CA_2n α) := ca_2n_eq_ca_lt.symm
       _ ⊆ ℒ (CA_rt α) := ca_2n_subset_ca_rt_of_compress2_weak_rt_closed h
 
-/-! ## (→) direction (currently unproven) -/
+/-! ## (→) direction -/
 
 /-- Given `ℒ(CA_rt α) = ℒ(CA_lt α)`, the compress2 advice is weak-rt-closed.
     A CA_rt over the compress2-annotated alphabet has language in `ℒ(CA_lt α)`
@@ -302,7 +305,18 @@ theorem ca_rt_eq_ca_lt_of_compress2_weak_rt_closed
 theorem compress2_weak_rt_closed_of_ca_rt_eq_ca_lt
     (h : ℒ (CA_rt α) = ℒ (CA_lt α)) :
     Nonempty (Advice.compress2 α).weak_rt_closed := by
-  sorry
+  refine ⟨Advice.WeakRtClosed.of_language_eq ?_⟩
+  rw [CArtWithAdvice_eq_CArt_iff]
+  intro L hL
+  have h_proper : L ∈ ℒ (CA_2n_proper α) :=
+    RunAfterNTimeAdvice.advised_ca_rt_subset_ca_2n_proper
+      (Advice.compress2 α) Advice.compress2_is_n_time_advice hL
+  have h_2n : L ∈ ℒ (CA_2n α) :=
+    ca_2n_proper_subset_ca_2n h_proper
+  have h_lt : L ∈ ℒ (CA_lt α) :=
+    ca_2n_subset_ca_lt h_2n
+  rw [h]
+  exact h_lt
 
 /-! ## The iff, packaging the two directions. -/
 

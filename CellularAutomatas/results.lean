@@ -23,6 +23,11 @@ import CellularAutomatas.proofs.constructions.basic_exp_word
 import CellularAutomatas.proofs.rt_eq_2n_iff_rt_eq_rt_rev.rt_eq_2n_iff_rt_eq_rt_rev
 import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
 import CellularAutomatas.proofs.language.oca_rt_proper_subset_ca_rt
+import CellularAutomatas.proofs.language.oca_rt_unary_regular
+import CellularAutomatas.proofs.constructions.linear_time_speedup
+import CellularAutomatas.proofs.advice_theory.middle_exp_two_stage
+import CellularAutomatas.proofs.advice_theory.middle_iff_compress2_weak_rt_closed
+import CellularAutomatas.proofs.advice_theory.rt_eq_lt_iff_compress2_weak_rt_closed
 
 open CellularAutomatas
 
@@ -213,6 +218,12 @@ def result_advice_prefix_mem_is_two_stage_advice:
   exact advice_prefix_mem_is_two_stage_advice
 #print axioms result_advice_prefix_mem_is_two_stage_advice
 
+/-- The largest-power-of-two marker advice is computable in two stages. -/
+def middle_exp_two_stage_advice :
+    (Advice.middle_exp α).is_two_stage_advice :=
+  CellularAutomatas.middle_exp_two_stage_advice
+#print axioms middle_exp_two_stage_advice
+
 /-!
 ### Result 8: Weak-RT-Closed ∧ Causal ⟹ CArt Advice (hence Two-Stage, hence RT-Closed)
 
@@ -264,7 +275,34 @@ noncomputable def result_rt_closed_compose_rt_closed
     (h₁: f₁.rt_closed) (h₂: f₂.rt_closed):
     (f₁.compose f₂).rt_closed :=
   Advice.rt_closed_compose_rt_closed f₁ f₂ h₁ h₂
-#print axioms result_rt_closed_compose_rt_closed
+
+/-- Over a unary alphabet, the middle and width-two compression advices have
+    equivalent weak real-time closure behavior. -/
+theorem middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary :
+    Nonempty (Advice.middle Unit).weak_rt_closed ↔
+    Nonempty (Advice.compress2 Unit).weak_rt_closed :=
+  CellularAutomatas.middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary
+#print axioms middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary
+
+/-- Real time equals linear time exactly when width-two compression advice can
+    be eliminated from real-time recognizers. -/
+theorem ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed :
+    ℒ (CA_rt α) = ℒ (CA_lt α) ↔
+    Nonempty (Advice.compress2 α).weak_rt_closed :=
+  CellularAutomatas.ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed
+#print axioms ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed
+
+/-- Unary specialization through the middle-marking advice. -/
+theorem ca_rt_eq_ca_lt_unary_iff_middle_weak_rt_closed :
+    ℒ (CA_rt Unit) = ℒ (CA_lt Unit) ↔
+    Nonempty (Advice.middle Unit).weak_rt_closed := by
+  calc
+    ℒ (CA_rt Unit) = ℒ (CA_lt Unit)
+        ↔ Nonempty (Advice.compress2 Unit).weak_rt_closed :=
+          ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed
+    _ ↔ Nonempty (Advice.middle Unit).weak_rt_closed :=
+      middle_weak_rt_closed_iff_compress2_weak_rt_closed_unary.symm
+#print axioms ca_rt_eq_ca_lt_unary_iff_middle_weak_rt_closed
 
 end AdviceResults
 
@@ -277,21 +315,31 @@ cellular automata.
 
 section RTEquivalence
 
+/-- Linear-time speedup: two-way CAs need no more than `2(n-1)` time. -/
+theorem ca_2n_eq_ca_lt : ℒ (CA_2n α) = ℒ (CA_lt α) :=
+  CellularAutomatas.ca_2n_eq_ca_lt
+#print axioms ca_2n_eq_ca_lt
+
+/-- Every unary real-time one-way CA language is regular. -/
+theorem oca_rt_unary_regular : ∀ L ∈ ℒ (OCA_rt Unit), L.IsRegular :=
+  CellularAutomatas.oca_rt_unary_regular
+#print axioms oca_rt_unary_regular
+
 /-!
-### Result 12 (Ibarra & Jiang 1988): ℒ(CA_rt) = ℒ(CA_2n) ⟺ ℒ(CA_rt) = ℒᴿ(CA_rt)
+### Result 12 (Ibarra & Jiang 1988): ℒ(CA_rt) = ℒ(CA_lt) ⟺ ℒ(CA_rt) = ℒᴿ(CA_rt)
 
 Two open questions about real-time cellular automata are equivalent:
-- (A) Real-time = 2n-time for all alphabets
+- (A) Real-time = linear-time for all alphabets
 - (B) Real-time languages are closed under reversal for all alphabets
 
 Note: The (⇐) direction requires reversal closure over all alphabets (including
 Option β) because the proof lifts words to Option β for padding.
 -/
 
-theorem result_rt_eq_2n_iff_rt_eq_rt_rev :
-    (∀ (β : Type) [Alphabet β], ℒ (CA_rt β) = ℒ (CA_2n β)) ↔
-    (∀ (γ : Type) [Alphabet γ], ℒ (CA_rt γ) = ℒ_rev (CA_rt γ)) :=
-  rt_eq_2n_iff_rt_eq_rt_rev
-#print axioms result_rt_eq_2n_iff_rt_eq_rt_rev
+theorem result_rt_eq_lt_iff_rt_eq_rt_rev :
+    (∀ (β : Type) [Alphabet β], ℒ (CA_rt β) = ℒ (CA_lt β)) ↔
+    (∀ (γ : Type) [Alphabet γ], ℒ (CA_rt γ) = ℒ_rev (CA_rt γ)) := by
+  simp [← ca_2n_eq_ca_lt, rt_eq_2n_iff_rt_eq_rt_rev]
+#print axioms result_rt_eq_lt_iff_rt_eq_rt_rev
 
 end RTEquivalence

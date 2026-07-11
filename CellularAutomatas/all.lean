@@ -4,6 +4,7 @@ import CellularAutomatas.verification_candidates
 import CellularAutomatas.proofs.constructions.two_sided_fssp_full
 -- import CellularAutomatas.proofs.common
 import CellularAutomatas.proofs.advice_theory.is_two_stage_of_rt_closed_and_causal
+import CellularAutomatas.proofs.advice_theory.rt_eq_lt_iff_compress2_weak_rt_closed
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_prefix_mem
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_compose
 -- import CellularAutomatas.proofs.compose_two_stage
