@@ -134,9 +134,9 @@ A schema parametrises *when* and *where* the answer is read.
 
 ```lean
 structure AcceptanceSchema where t : ℕ → ℕ; p : ℕ → ℤ
-def AcceptanceSchema.rt_center      : AcceptanceSchema := ⟨(· - 1), fun _ => 0⟩
-def AcceptanceSchema.time_2n_center : AcceptanceSchema := ⟨fun n => 2*(n-1), fun _ => 0⟩
-def AcceptanceSchema.rt_right       : AcceptanceSchema := ⟨(· - 1), fun n => n - 1⟩
+def AcceptanceSchema.rt_left      : AcceptanceSchema := ⟨(· - 1), fun _ => 0⟩
+def AcceptanceSchema.time_2n_left : AcceptanceSchema := ⟨fun n => 2*(n-1), fun _ => 0⟩
+def AcceptanceSchema.rt_right     : AcceptanceSchema := ⟨(· - 1), fun n => n - 1⟩
 
 structure tCellAutomaton (α : Type) extends LCellAutomaton α where t : ℕ → ℕ; p : ℕ → ℤ
 def tCellAutomaton.accepts (C) (w) := C.comp ⟬w⟭ (C.t w.length) (C.p w.length) = true
@@ -145,7 +145,7 @@ def tCellAutomaton.L       (C)     : Language α := { w | C.accepts w }
 
 | Class | Schema | Notes |
 |-------|--------|-------|
-| `CA_rt α`    | `t = n−1`, `p = 0`     | real-time, centre-reading |
+| `CA_rt α`    | `t = n−1`, `p = 0`     | real-time, left-reading |
 | `CA_2n α`    | `t = 2(n−1)`, `p = 0`  | 2n-time |
 | `CAr_rt α`   | `t = n−1`, `p = n−1`   | right-reading real-time |
 | `OCA_rt α`   | `CA_rt` + left-independent | one-way real-time |

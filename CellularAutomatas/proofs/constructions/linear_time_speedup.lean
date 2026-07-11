@@ -225,7 +225,7 @@ lemma properSpeedup_spec (C : LCellAutomaton α) (k : ℕ) (hk : 2 ≤ k)
     simp only [Bool.false_eq_true, ↓reduceIte]
     exact chain_spec C k hk w hw_pos
 
-lemma properSpeedup_L (C : tCellAutomaton (.lt_center k) α) (hk : 2 ≤ k) :
+lemma properSpeedup_L (C : tCellAutomaton (.lt_left k) α) (hk : 2 ≤ k) :
     (properSpeedup C.toCellAutomaton k hk).L = C.L := by
   ext w
   show (properSpeedup C.toCellAutomaton k hk).accepts w = true ↔
@@ -248,11 +248,11 @@ lemma holdInitial_spec (C : LCellAutomaton α) (w : Word α) (t : ℕ) :
   rw [CellAutomaton.idCA.comp_spec]
   rfl
 
-def zeroTimeToProper (C : tCellAutomaton (.lt_center 0) α) :
+def zeroTimeToProper (C : tCellAutomaton (.lt_left 0) α) :
     CA_2n_proper α where
   toCellAutomaton := holdInitial C.toCellAutomaton
 
-lemma zeroTimeToProper_L (C : tCellAutomaton (.lt_center 0) α) :
+lemma zeroTimeToProper_L (C : tCellAutomaton (.lt_left 0) α) :
     (zeroTimeToProper C).L = C.L := by
   ext w
   show (zeroTimeToProper C).accepts w = true ↔ C.accepts w = true
@@ -261,11 +261,11 @@ lemma zeroTimeToProper_L (C : tCellAutomaton (.lt_center 0) α) :
   rw [holdInitial_spec]
   simp
 
-def oneTimeToRt (C : tCellAutomaton (.lt_center 1) α) : CA_rt α where
+def oneTimeToRt (C : tCellAutomaton (.lt_left 1) α) : CA_rt α where
   toCellAutomaton := C.toCellAutomaton
 
 omit [Alphabet α] in
-lemma oneTimeToRt_L (C : tCellAutomaton (.lt_center 1) α) :
+lemma oneTimeToRt_L (C : tCellAutomaton (.lt_left 1) α) :
     (oneTimeToRt C).L = C.L := by
   ext w
   show (oneTimeToRt C).accepts w = true ↔ C.accepts w = true
@@ -281,7 +281,7 @@ end LinearTimeSpeedup
     coefficient `2`. -/
 lemma ca_2n_subset_ca_lt : ℒ (CA_2n α) ⊆ ℒ (CA_lt α) := by
   intro L ⟨C, hL⟩
-  let C' : tCellAutomaton (.lt_center 2) α :=
+  let C' : tCellAutomaton (.lt_left 2) α :=
     { toCellAutomaton := C.toCellAutomaton }
   refine ⟨⟨2, C'⟩, ?_⟩
   calc

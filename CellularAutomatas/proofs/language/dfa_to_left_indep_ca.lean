@@ -168,7 +168,7 @@ theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
     (toRtCa (DFAtoCA M)).accepts w ↔ w ∈ M.accepts := by
   by_cases hw : w.length > 0
   · -- Non-empty word: cell 0 at time n-1 has full DFA evaluation
-    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_center,
+    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_left,
       CellAutomaton.comp_apply, CellAutomaton.project_config_apply,
       Function.comp_apply]
     rw [DFAtoCA.nextt_full M w hw]
@@ -177,7 +177,7 @@ theorem DFAtoCA.accepts_iff (M : DFA α σ) (w : List α)
     simp only [Nat.not_lt, Nat.le_zero] at hw
     have hw_nil : w = [] := List.eq_nil_of_length_eq_zero hw
     subst hw_nil
-    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_center,
+    simp only [tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_left,
       List.length_nil, Nat.zero_sub,
       CellAutomaton.comp, CellAutomaton.project_config, Function.comp_apply,
       CellAutomaton.nextt_zero, CellAutomaton.embed_config, word_to_config,

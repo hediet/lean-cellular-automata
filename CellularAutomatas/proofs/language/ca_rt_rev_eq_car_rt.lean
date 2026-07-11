@@ -71,7 +71,7 @@ omit [Alphabet α] in
 theorem CA_rt.toRight_accepts_iff (C : CA_rt α) (w : Word α) :
     C.toRight.accepts w = C.accepts w.reverse := by
   simp only [tCellAutomaton.accepts, CA_rt.toRight, AcceptanceSchema.rt_right,
-             AcceptanceSchema.rt_center, List.length_reverse]
+             AcceptanceSchema.rt_left, List.length_reverse]
   -- LHS: C.flip.comp ⦋⟬w⟭⦌ (|w| - 1) (|w| - 1)
   -- RHS: C.comp ⦋⟬w.reverse⟭⦌ (|w| - 1) 0
   rw [CellAutomaton.flip_comp, CellAutomaton.flip_embed_config']
@@ -96,7 +96,7 @@ theorem CAr_rt.toLeft_accepts_iff (C : CAr_rt α) (w : Word α) :
   have h_accepts_eq : C.toLeft.toRight.accepts w.reverse = C.accepts w.reverse := by
     show C.toLeft.toRight.accepts w.reverse = C.accepts w.reverse
     simp only [tCellAutomaton.accepts, CA_rt.toRight, CAr_rt.toLeft,
-               AcceptanceSchema.rt_right, AcceptanceSchema.rt_center,
+               AcceptanceSchema.rt_right, AcceptanceSchema.rt_left,
                CellAutomaton.flip, List.length_reverse]
   rw [h_accepts_eq] at key
   exact key.symm

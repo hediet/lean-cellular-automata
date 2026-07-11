@@ -487,7 +487,7 @@ theorem time_extension {α : Type} [Alphabet α]
     (C : tCellAutomaton ⟨t, fun _ => 0⟩ α)
     (t' : ℕ → ℕ) (ht' : ∀ n, t n ≤ t' n) (ht_pos : ∀ n, t n > 0) :
     ∃ C' : tCellAutomaton ⟨t', fun _ => 0⟩ α, C'.L = C.L := by
-  -- Build C' as latchedCA with time t' and position 0 (center-reading)
+  -- Build C' as latchedCA with time t' and left-reading position 0.
   refine ⟨{ toCellAutomaton := latchedCA C.toCellAutomaton t tc }, ?_⟩
   -- C'.L = C.L: latchedCA preserves the language
   ext w

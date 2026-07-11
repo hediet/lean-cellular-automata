@@ -238,33 +238,11 @@ theorem ca_2n_eq_ca_2n_proper : ℒ (CA_2n α) = ℒ (CA_2n_proper α) :=
 theorem rt_eq_2n_implies_rt_eq_rt_rev
     (h : ℒ (CA_rt α) = ℒ (CA_2n α)) :
     ℒ (CA_rt α) = ℒ_rev (CA_rt α) := by
-  -- We prove both inclusions
-  ext L
-  simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
-  constructor
-  · -- L ∈ ℒ(CA_rt) → ∃ M ∈ ℒ(CA_rt), L = M^R
-    intro hL
-    -- Take M = L^R
-    use Language.rev L
-    constructor
-    · -- L^R ∈ ℒ(CA_rt)
-      -- L^R ∈ ℒ^R(CA_rt) ⊆ ℒ(CA_2n) = ℒ(CA_rt)
-      have h1 : Language.rev L ∈ ℒ_rev (CA_rt α) := by
-        simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
-        exact ⟨L, hL, rfl⟩
-      have h2 : Language.rev L ∈ ℒ (CA_2n α) := ca_rt_rev_subset_ca_2n h1
-      exact h.symm ▸ h2
-    · -- L = (L^R)^R
-      exact Language.rev_rev L
-  · -- ∃ M ∈ ℒ(CA_rt), L = M^R → L ∈ ℒ(CA_rt)
-    intro ⟨M, hM, hL_eq⟩
-    subst hL_eq
-    -- M^R ∈ ℒ^R(CA_rt) ⊆ ℒ(CA_2n) = ℒ(CA_rt)
-    have h1 : Language.rev M ∈ ℒ_rev (CA_rt α) := by
-      simp only [ℒ_rev, LanguageClass.rev, Set.mem_image]
-      exact ⟨M, hM, rfl⟩
-    have h2 : Language.rev M ∈ ℒ (CA_2n α) := ca_rt_rev_subset_ca_2n h1
-    exact h.symm ▸ h2
+  change ℒ (CA_rt α) = LanguageClass.rev (ℒ (CA_rt α))
+  apply LanguageClass.eq_rev_of_rev_subset (S := ℒ (CA_rt α))
+  intro L hL
+  rw [h]
+  exact ca_rt_rev_subset_ca_2n (α := α) hL
 
 /-! ## Section 3: Direction (⇐): ℒ(CA_rt) = ℒᴿ(CA_rt) ⟹ ℒ(CA_rt) = ℒ(CA_2n)
 

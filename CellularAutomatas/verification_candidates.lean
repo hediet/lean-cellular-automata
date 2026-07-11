@@ -16,28 +16,6 @@ variable {Γ} [Alphabet Γ]
 
 
 
--- TODO: Define tCellAutomaton.similar
--- theorem linear_time_dead_border (C: CA_lt α): ∃ C': tCellAutomaton α, C'.dead C'.border ∧ C'.similar C := by
---   sorry
-
--- TODO: rewrite for schema-parameterized types (CA α no longer exists as a set)
--- theorem const_speed_up: ℒ ({ C ∈ CA α | ∃ k, ∀ n, C.t n = n + k - 1 }) = ℒ (CA_rt α) := by
---   sorry
-
--- Moved to CellularAutomatas/proofs/rt_rev_implies_lt_eq_rt.lean
--- theorem ca_linear_time_eq_2n: ℒ (CA_lt α) = ℒ (CA_2n α)
-
-theorem oca_linear_time_eq_2n: ℒ (OCA_lt α) = ℒ (OCA_2n α) := by
-  sorry
-
-theorem ocar_lt_eq_ca_rt: ℒ (OCAr_lt α) = ℒ (CA_rt α) := by
-  sorry
-
--- TODO: rewrite for schema-parameterized types (CA α and CAr α no longer exist)
--- theorem ca_rt_equals_lt_of_closure_under_reversal: ℒ (CA α) = ℒ (CAr α) → ℒ (CA α) = ℒ (CA_lt α) := by
---   sorry
-
-
 section advice_theorems
   -- peeking into the future! Speed up theorem for two-stage advices.
   def advice_shift_left_rt (extension: Word α) (adv: Advice α Γ) (h: adv.is_two_stage_advice):
@@ -65,23 +43,6 @@ section advice_theorems
     sorry
 
 end advice_theorems
-
-/-- The CA_rt class equals the reverses of OCA_lt, OCA_2n, and the neg-2n OCA class.
-
-    Proof sketch:
-    - ℒ_rev(OCA_2n) = ℒ(CA_rt): mirroring an OCA_2n (left-independent, p=0, t=2(n-1))
-      gives a right-independent CA reading from position n-1 at time 2(n-1),
-      which by standard OCA-2n speedup equals CA_rt.
-    - ℒ_rev(OCA_lt) = ℒ_rev(OCA_2n): follows from oca_linear_time_eq_2n.
-    - ℒ(OCA_2n_neg2n) = ℒ_rev(OCA_2n): OCA_2n_neg2n natively reads from the
-      left boundary (position -(n-1)) at time 2*(n-1); the computation cone
-      covers -(n-1) to n-1, seeing the full word. This is equivalent to running
-      OCA_2n on the reversed word. -/
-theorem ca_rt_eq_rev_oca :
-    ℒ (CA_rt α) = ℒ_rev (OCA_2n α) ∧
-    ℒ_rev (OCA_2n α) = ℒ_rev (OCA_lt α) ∧
-    ℒ_rev (OCA_lt α) = ℒ (OCA_2n_neg2n α) := by
-  sorry
 
 -- If the middle_exp advice is weak-LT-closed over the unary alphabet,
 -- then CA_lt and CA_rt recognize the same unary languages.

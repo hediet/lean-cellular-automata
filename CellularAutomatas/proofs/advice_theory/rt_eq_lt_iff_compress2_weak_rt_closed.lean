@@ -37,11 +37,11 @@ open CellAutomaton
 /-! ## Trivial direction: `ℒ(CA_rt α) ⊆ ℒ(CA_lt α)` -/
 
 /-- Any real-time CA is a linear-time CA with `c = 1`: the schemas
-    `.rt_center` and `.lt_center 1` produce the same `t` and `p`. -/
+    `.rt_left` and `.lt_left 1` produce the same `t` and `p`. -/
 theorem ca_rt_subset_ca_lt : ℒ (CA_rt α) ⊆ ℒ (CA_lt α) := by
   intro L ⟨C, hL⟩
-  -- Wrap C as a tCellAutomaton with schema `.lt_center 1`.
-  -- The schemas `.rt_center` and `.lt_center 1` give the same `t` and `p`,
+  -- Wrap C as a tCellAutomaton with schema `.lt_left 1`.
+  -- The schemas `.rt_left` and `.lt_left 1` give the same `t` and `p`,
   -- so the same underlying CellAutomaton accepts the same words.
   refine ⟨⟨1, { toCellAutomaton := C.toCellAutomaton }⟩, ?_⟩
   show L = (⟨1, _⟩ : CA_lt α).2.L
@@ -49,7 +49,7 @@ theorem ca_rt_subset_ca_lt : ℒ (CA_rt α) ⊆ ℒ (CA_lt α) := by
   ext w
   show C.accepts w ↔ _
   simp only [tCellAutomaton.accepts, tCellAutomaton.L,
-             AcceptanceSchema.rt_center, AcceptanceSchema.lt_center, one_mul]
+             AcceptanceSchema.rt_left, AcceptanceSchema.lt_left, one_mul]
   rfl
 
 /-! ## Key lemma: `compress2 weak-rt-closed ⟹ ℒ(CA_2n α) ⊆ ℒ(CA_rt α)`

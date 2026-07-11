@@ -108,7 +108,7 @@ lemma proper_spec (adv : Advice α Γ) (hAdv : adv.IsNTimeAdvice)
     rw [h_not_empty]
     simp only [Bool.false_eq_true, ↓reduceIte]
     rw [chain_spec adv hAdv C w hw_pos]
-    simp [tCellAutomaton.accepts, AcceptanceSchema.rt_center, adv.len]
+    simp [tCellAutomaton.accepts, AcceptanceSchema.rt_left, adv.len]
 
 /-- Every RT language using `n`-time advice is recognizable at proper time
     `2n`: compute the annotated input, then run its RT recognizer. -/

@@ -281,8 +281,9 @@ lemma lift_mem_ca_rt (L : Language α) (hL : L ∈ ℒ (CA_rt α)) :
   obtain ⟨C, hCL⟩ := hL
   refine ⟨liftCA C, ?_⟩
   subst hCL
-  have ht : ∀ n, AcceptanceSchema.rt_center.t n ≥ n - 1 := fun n => by simp [AcceptanceSchema.rt_center]
-  have hp : ∀ n, AcceptanceSchema.rt_center.p n = 0 := fun _ => rfl
+  have ht : ∀ n, AcceptanceSchema.rt_left.t n ≥ n - 1 := fun n => by
+    simp [AcceptanceSchema.rt_left]
+  have hp : ∀ n, AcceptanceSchema.rt_left.p n = 0 := fun _ => rfl
   exact (liftCA_L_eq_lift C ht hp).symm
 
 /-- If (Language.lift L) ∈ ℒ(CA_rt (Option β)), then L ∈ ℒ(CA_rt β).
@@ -316,9 +317,9 @@ lemma lift_mem_ca_2n (L : Language α) (hL : L ∈ ℒ (CA_2n α)) :
   obtain ⟨C, hCL⟩ := hL
   refine ⟨liftCA C, ?_⟩
   subst hCL
-  have ht : ∀ n, AcceptanceSchema.time_2n_center.t n ≥ n - 1 := fun n => by
-    simp [AcceptanceSchema.time_2n_center]; omega
-  have hp : ∀ n, AcceptanceSchema.time_2n_center.p n = 0 := fun _ => rfl
+  have ht : ∀ n, AcceptanceSchema.time_2n_left.t n ≥ n - 1 := fun n => by
+    simp [AcceptanceSchema.time_2n_left]; omega
+  have hp : ∀ n, AcceptanceSchema.time_2n_left.p n = 0 := fun _ => rfl
   exact (liftCA_L_eq_lift C ht hp).symm
 
 omit [Alphabet α] in

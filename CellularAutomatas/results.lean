@@ -25,6 +25,8 @@ import CellularAutomatas.proofs.language.dfa_to_left_indep_ca
 import CellularAutomatas.proofs.language.oca_rt_proper_subset_ca_rt
 import CellularAutomatas.proofs.language.oca_rt_unary_regular
 import CellularAutomatas.proofs.constructions.linear_time_speedup
+import CellularAutomatas.proofs.constructions.speedup_right_border_oca
+import CellularAutomatas.proofs.language.oca_reversal_equivalences
 import CellularAutomatas.proofs.advice_theory.middle_exp_two_stage
 import CellularAutomatas.proofs.advice_theory.middle_iff_compress2_weak_rt_closed
 import CellularAutomatas.proofs.advice_theory.rt_eq_lt_iff_compress2_weak_rt_closed
@@ -319,6 +321,45 @@ section RTEquivalence
 theorem ca_2n_eq_ca_lt : ℒ (CA_2n α) = ℒ (CA_lt α) :=
   CellularAutomatas.ca_2n_eq_ca_lt
 #print axioms ca_2n_eq_ca_lt
+
+/-- Linear-time speedup for one-way CAs: every linear-time OCA language is
+    recognized by an OCA in time `2(n-1)`. -/
+theorem oca_linear_time_eq_2n : ℒ (OCA_lt α) = ℒ (OCA_2n α) :=
+  (CellularAutomatas.OCA_2n_eq_OCA_lt α).symm
+#print axioms oca_linear_time_eq_2n
+
+/-- A `2(n-1)`-time OCA is equivalent to a right-reading real-time CA. -/
+theorem oca_2n_eq_car_rt : ℒ (OCA_2n α) = ℒ (CAr_rt α) :=
+  CellularAutomatas.oca_2n_eq_car_rt
+#print axioms oca_2n_eq_car_rt
+
+/-- A `2(n-1)`-time OCA observed at `-(n-1)` is equivalent to a real-time CA. -/
+theorem oca_2n_left_neg_np1_eq_ca_rt :
+    ℒ (OCA_2n_left_neg_np1 α) = ℒ (CA_rt α) :=
+  CellularAutomatas.oca_2n_left_neg_np1_eq_ca_rt
+#print axioms oca_2n_left_neg_np1_eq_ca_rt
+
+/-- Reversing linear-time OCA languages gives exactly the languages of
+    right-reading linear-time right-independent CAs. -/
+theorem oca_lt_rev_eq_ocar_lt : ℒ_rev (OCA_lt α) = ℒ (OCAr_lt α) :=
+  CellularAutomatas.oca_lt_rev_eq_ocar_lt
+#print axioms oca_lt_rev_eq_ocar_lt
+
+/-- Right-reading right-independent linear-time CAs recognize exactly the
+    real-time CA languages. -/
+theorem ocar_lt_eq_ca_rt : ℒ (OCAr_lt α) = ℒ (CA_rt α) :=
+  CellularAutomatas.ocar_lt_eq_ca_rt
+#print axioms ocar_lt_eq_ca_rt
+
+/-- Real-time CA languages are equivalently reversed `2(n-1)`-time or
+  linear-time OCA languages, or `2(n-1)`-time OCA languages observed at
+  `-(n-1)`. -/
+theorem ca_rt_eq_rev_oca :
+    ℒ (CA_rt α) = ℒ_rev (OCA_2n α) ∧
+    ℒ_rev (OCA_2n α) = ℒ_rev (OCA_lt α) ∧
+  ℒ_rev (OCA_lt α) = ℒ (OCA_2n_left_neg_np1 α) :=
+  CellularAutomatas.ca_rt_eq_rev_oca
+#print axioms ca_rt_eq_rev_oca
 
 /-- Every unary real-time one-way CA language is regular. -/
 theorem oca_rt_unary_regular : ∀ L ∈ ℒ (OCA_rt Unit), L.IsRegular :=

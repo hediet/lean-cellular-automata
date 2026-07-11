@@ -333,16 +333,23 @@ section AcceptanceSchema
     p : ℕ → ℤ
 
   namespace AcceptanceSchema
-    /-- Real-time, center-reading: t(n) = n - 1, p = 0 -/
-    def rt_center    : AcceptanceSchema := ⟨(· - 1), fun _ => 0⟩
-    /-- Real-time, right-reading: t(n) = n - 1, p = n -/
-    def rt_right     : AcceptanceSchema := ⟨(· - 1), fun n => ((n : ℤ) - 1)⟩
-    /-- 2(n-1) time, center-reading -/
-    def time_2n_center : AcceptanceSchema := ⟨fun n => 2 * (n - 1), fun _ => 0⟩
-    /-- 2(n-1) time, left-reading at -(n-1) -/
-    def time_2n_left : AcceptanceSchema := ⟨fun n => 2 * (n - 1), fun n => -((n : ℤ) - 1)⟩
-    /-- Linear time c*(n-1), center-reading -/
-    def lt_center (c : ℕ) : AcceptanceSchema := ⟨fun n => c * (n - 1), fun _ => 0⟩
+    /-- Real-time, left-reading at position 0: t(n) = n - 1. -/
+    def rt_left : AcceptanceSchema := ⟨(· - 1), fun _ => 0⟩
+    /-- Real-time, right-reading at position n - 1. -/
+    def rt_right : AcceptanceSchema := ⟨(· - 1), fun n => ((n : ℤ) - 1)⟩
+    /-- 2(n-1) time, left-reading at position 0. -/
+    def time_2n_left : AcceptanceSchema := ⟨fun n => 2 * (n - 1), fun _ => 0⟩
+    /-- 2(n-1) time, right-reading at position n - 1. -/
+    def time_2n_right : AcceptanceSchema :=
+      ⟨fun n => 2 * (n - 1), fun n => (n : ℤ) - 1⟩
+    /-- 2(n-1) time, reading left of position 0 at position -(n-1). -/
+    def time_2n_left_neg_np1 : AcceptanceSchema :=
+      ⟨fun n => 2 * (n - 1), fun n => -((n : ℤ) - 1)⟩
+    /-- Linear time c*(n-1), left-reading at position 0. -/
+    def lt_left (c : ℕ) : AcceptanceSchema := ⟨fun n => c * (n - 1), fun _ => 0⟩
+    /-- Linear time c*(n-1), right-reading at position n - 1. -/
+    def lt_right (c : ℕ) : AcceptanceSchema :=
+      ⟨fun n => c * (n - 1), fun n => (n : ℤ) - 1⟩
   end AcceptanceSchema
 
 end AcceptanceSchema
@@ -376,25 +383,25 @@ section CAClasses
     variable (α : Type)
 
     /-- CA reading at cell 0, real-time: t(n) = n - 1 -/
-    abbrev CA_rt := tCellAutomaton .rt_center
+    abbrev CA_rt := tCellAutomaton .rt_left
     /-- CA reading at cell 0, time 2(n-1) -/
-    abbrev CA_2n := tCellAutomaton .time_2n_center
+    abbrev CA_2n := tCellAutomaton .time_2n_left
     /-- CA reading at cell n (right border), real-time -/
     abbrev CAr_rt := tCellAutomaton .rt_right
     /-- CA reading at cell -(n-1), time 2(n-1) -/
-    abbrev CA_2n_neg_n := tCellAutomaton .time_2n_left
-    /-- Linear-time center-reading: ∃ c, t(n) = c*(n-1) -/
-    def CA_lt := Σ c : ℕ, tCellAutomaton (.lt_center c) α
+    abbrev CA_2n_left_neg_np1 := tCellAutomaton .time_2n_left_neg_np1
+    /-- Linear-time left-reading at cell 0: ∃ c, t(n) = c*(n-1). -/
+    def CA_lt := Σ c : ℕ, tCellAutomaton (.lt_left c) α
 
     instance [Alphabet α] : DefinesLanguage (CA_lt α) α where
       L C := C.2.L
 
-    /-- One-way CA (left-independent), real-time, center-reading -/
+    /-- One-way CA (left-independent), real-time, left-reading at cell 0. -/
     def OCA_rt  := { C : CA_rt α // C.left_independent }
-    /-- One-way CA (left-independent), time 2(n-1), center-reading -/
+    /-- One-way CA (left-independent), time 2(n-1), left-reading at cell 0. -/
     def OCA_2n  := { C : CA_2n α // C.left_independent }
     /-- One-way CA (left-independent), linear-time -/
-    def OCA_lt  := Σ c : ℕ, { C : tCellAutomaton (.lt_center c) α // C.left_independent }
+    def OCA_lt  := Σ c : ℕ, { C : tCellAutomaton (.lt_left c) α // C.left_independent }
 
     instance [Alphabet α] : DefinesLanguage (OCA_rt α) α where
       L C := C.1.L
@@ -406,9 +413,11 @@ section CAClasses
     /-- Right-reading one-way CA (right-independent), real-time -/
     def OCAr_rt := { C : CAr_rt α // C.right_independent }
     /-- Right-reading one-way CA (right-independent), time 2(n-1) -/
-    def OCAr_2n := { C : CA_2n α // C.right_independent }
+    def OCAr_2n :=
+      { C : tCellAutomaton .time_2n_right α // C.right_independent }
     /-- Right-reading one-way CA (right-independent), linear-time -/
-    def OCAr_lt := Σ c : ℕ, { C : tCellAutomaton (.lt_center c) α // C.right_independent }
+    def OCAr_lt :=
+      Σ c : ℕ, { C : tCellAutomaton (.lt_right c) α // C.right_independent }
 
     instance [Alphabet α] : DefinesLanguage (OCAr_rt α) α where
       L C := C.1.L
@@ -418,9 +427,10 @@ section CAClasses
       L C := C.2.1.L
 
     /-- OCA at time 2*(n-1), reading at position -(n-1). -/
-    def OCA_2n_neg2n := { C : CA_2n_neg_n α // C.left_independent }
+    def OCA_2n_left_neg_np1 :=
+      { C : CA_2n_left_neg_np1 α // C.left_independent }
 
-    instance [Alphabet α] : DefinesLanguage (OCA_2n_neg2n α) α where
+    instance [Alphabet α] : DefinesLanguage (OCA_2n_left_neg_np1 α) α where
       L C := C.1.L
 
 end CAClasses
@@ -501,13 +511,13 @@ section Advice
       DefinesLanguage (Advised schema adv) α where
     L ca := { w | ca.C.accepts (adv.annotate w) }
 
-  /-- Type-level sugar: `CA_rt β + adv` means `Advised .rt_center adv`, etc.
-      Lets us write `ℒ (CA_rt (α × Γ) + adv)` instead of `ℒ (Advised .rt_center adv)`. -/
+  /-- Type-level sugar: `CA_rt β + adv` means `Advised .rt_left adv`, etc.
+      Lets us write `ℒ (CA_rt (α × Γ) + adv)` instead of `ℒ (Advised .rt_left adv)`. -/
   macro_rules
-    | `(CA_rt $_ + $adv)   => `(Advised .rt_center $adv)
-    | `(CA_2n $_ + $adv)   => `(Advised .time_2n_center $adv)
+    | `(CA_rt $_ + $adv)   => `(Advised .rt_left $adv)
+    | `(CA_2n $_ + $adv)   => `(Advised .time_2n_left $adv)
     | `(CAr_rt $_ + $adv)  => `(Advised .rt_right $adv)
-    | `(CA_2n_neg_n $_ + $adv) => `(Advised .time_2n_left $adv)
+    | `(CA_2n_left_neg_np1 $_ + $adv) => `(Advised .time_2n_left_neg_np1 $adv)
 
   /-- An advice `f` is weak-RT-closed if for every CA_rt over the extended alphabet,
       there exists a CA_rt over the base alphabet recognizing the same language. -/
@@ -772,6 +782,28 @@ section LanguageReversal
     ext w
     show w.reverse.reverse ∈ L ↔ w ∈ L
     simp
+
+  /-- Reversing every language in a class twice returns the original class. -/
+  @[simp]
+  lemma LanguageClass.rev_rev (S : Set (Language α)) :
+      LanguageClass.rev (LanguageClass.rev S) = S := by
+    ext L
+    constructor
+    · rintro ⟨_, ⟨L', hL', rfl⟩, rfl⟩
+      simpa using hL'
+    · intro hL
+      exact ⟨Language.rev L, ⟨L, hL, rfl⟩, Language.rev_rev L⟩
+
+  /-- Closure under reversal as an inclusion already gives equality with the reversed class. -/
+  lemma LanguageClass.eq_rev_of_rev_subset {S : Set (Language α)}
+      (h : LanguageClass.rev S ⊆ S) :
+      S = LanguageClass.rev S := by
+    apply Set.Subset.antisymm
+    · intro L hL
+      show L ∈ LanguageClass.rev S
+      have hRev : Language.rev L ∈ S := h ⟨L, hL, rfl⟩
+      exact ⟨Language.rev L, hRev, Language.rev_rev L⟩
+    · exact h
 
 end LanguageReversal
 

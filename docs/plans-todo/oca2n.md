@@ -1,14 +1,22 @@
-# Plan: OCA_lt = OCA_2n
+# Completed: OCA_lt = OCA_2n
 
-## Goal
-Prove `ℒ(OCA_lt) = ℒ(OCA_2n)` — linear-time OCAs accept the same languages as time-2(n-1) OCAs.
+## Result
+The theorem `ℒ(OCA_lt) = ℒ(OCA_2n)` is proved in
+`CellularAutomatas/proofs/constructions/speedup_right_border_oca.lean` and
+exported as `CellularAutomatas.results.oca_linear_time_eq_2n`.
 
-## Space-Time Diagram (k=2 Compression)
+The key correction to the original plan is exact timing. For a source OCA with
+coefficient `c ≥ 3`, the construction compresses tuples of width `m = c - 1`
+and reads component `j = c - 2`. Compressing with width `c` generally reaches a
+time later than `c(n-1)`, which is insufficient because acceptance need not be
+stable after its designated time.
+
+## Space-Time Diagram (m=2 Compression, c=3 Source)
 
 Input: `a b c d` (n=4), right border is `#` (quiescent).
 
-**Note:** k=2 is the baseline — no speedup occurs (2*(n-1) → 2*(n-1)). For actual speedup, use k≥3.
-This diagram shows the **mechanism**; the speedup becomes visible with k=3.
+Here `m` is the tuple width and the source coefficient is `c = m + 1`.
+Thus width `m=2` speeds source time `3(n-1)` up to `2(n-1)`.
 
 **Original OCA evolution:**
 ```
@@ -21,8 +29,10 @@ Time 3:      a₃   b₃   c₃   d₃   #    #    #
 Time 4:      a₄   b₄   c₄   d₄   #    #    #
 Time 5:      a₅   b₅   c₅   d₅   #    #    #
 Time 6:      a₆   b₆   c₆   d₆   #    #    #
-             ↑
-         Accept at time k*(n-1) = 2*3 = 6 for k=2
+   ...
+Time 9:      a₉   b₉   c₉   d₉   #    #    #
+                   ↑
+             Accept at time c*(n-1) = 3*3 = 9
 ```
 
 Where (by left-independence, δ only uses middle and right):
@@ -31,7 +41,7 @@ Where (by left-independence, δ only uses middle and right):
 - `c₁ = δ(c, d)`
 - `c₂ = δ(c₁, d₁)`
 
-**Compressed OCA (k=2) — pairs on the border:**
+**Compressed OCA (m=2) — pairs on the border:**
 ```
 Position:    0       1       2       3         4
            ───────────────────────────────────────────
@@ -44,7 +54,7 @@ Time 5:      (a₆,a₇) (b₇,b₈) (c₈,c₉) (d₉,d₁₀) (#₁₀,#₁₁
 Time 6:      (a₈,a₉) (b₉,b₁₀) (c₁₀,c₁₁) (d₁₁,d₁₂) (#₁₂,#₁₃)
              ↑
          At time 6 = 2*(n-1), position 0 has (a₈, a₉)
-         Component 0 gives a₈, component 1 gives a₉
+         Component j=c-2=1 gives exactly a₉
 ```
 
 Note: The "compression wave" propagates left. At compressed time t:
@@ -63,32 +73,31 @@ Result: `(d₁, d₂)` computed in **one** compressed step.
 
 **Propagation to position 0:**
 
-At compressed time `t`, position 0 has seen `k*t` diagonal steps worth of information from the right border (since each compressed border step does k original steps). So:
-- Original: accepts at time `k*(n-1)` at position 0
-- Compressed with factor k: accepts at time `2*(n-1)` at position 0
+At compressed time `t`, each tuple step advances `m` original time steps.
+For source coefficient `c=m+1`, component `j=m-1` at compressed time
+`2(n-1)` represents exactly source time `c(n-1)`.
 
-For k=2: no speedup (6 → 6)
-For k=3: speedup from 9 → 6
-For k=4: speedup from 12 → 6
+For `m=2`: speedup from 9 to 6.
+For `m=3`: speedup from 12 to 6.
 
 ## Key Insight
 
-For a left-independent OCA accepting at time `k*(n-1)` at position 0:
+For a left-independent OCA accepting at time `c*(n-1)` at position 0:
 - Cell (t, p) only depends on cells p, p+1, ..., p+t at time 0
 - Information flows **right-to-left**
 - The **right border** (positions ≥ n) is quiescent, containing #^∞
-- By compressing k border cells into one k-tuple, we can do k steps in one
+- By using tuples of width `m = c-1`, we can do `m` steps in one
 
 ## The Speedup Argument
 
-Original OCA C accepts at time `k*(n-1)`, position 0.
+Original OCA C accepts at time `c*(n-1)`, position 0.
 
-With right-border compression factor k:
-- Compress positions n, n+1, ..., n+k-1 into a single cell with state (q_n, q_{n+1}, ..., q_{n+k-1})
-- The compressed border cell evolves k times faster (in terms of diagonal propagation)
-- At time 2*(n-1), the cell at position 0 has received all the information it would have at time k*(n-1) in the original
+With tuple width `m = c-1`:
+- The compressed border stores `m` consecutive original states.
+- The compression wave reaches position 0 after `n` compressed steps.
+- At time `2(n-1)`, component `j = c-2` represents exactly original time `c(n-1)`.
 
-**Result:** `C.comp w (k*(n-1)) 0 = C'.comp w (2*(n-1)) 0`
+**Result:** `C.comp w (c*(n-1)) 0 = C'.comp w (2*(n-1)) 0`
 
 ## Required Construction: RightBorderSpeedupOCA
 
@@ -100,7 +109,7 @@ For OCA_lt = OCA_2n, we need `RightBorderSpeedupOCA` that compresses the **right
 
 **Setup:**
 - OCA C (left-independent), word of length n
-- Compression factor k ≥ 2
+- Tuple width `m ≥ 2`
 - Right border is quiescent: positions ≥ n have state #
 
 **When does position i become a tuple?**
@@ -112,21 +121,21 @@ The "compression wave" propagates left from the border:
 
 **Invariant:**
 
-For position i < n, compressed time t ≥ n - i, component j ∈ [0, k):
+For position i < n, compressed time t ≥ n - i, component j ∈ [0, m):
 
 At the moment of becoming a tuple (t = n - i):
 - Component j represents original time (n - i) + j
-- (We compute k original steps at once using the border k-tuple)
+- (We compute `m` original steps at once using the border tuple)
 
 After Δt = t - (n - i) additional compressed steps:
-- Each step advances by k original time units (foldLeft with right neighbor tuple)
-- Component j represents original time (n - i) + j + k · Δt
+- Each step advances by `m` original time units (foldLeft with the right-neighbor tuple)
+- Component j represents original time `(n-i) + j + m·Δt`
 
 **The mapping φ:**
 
 ```
-φ(t, i, j) = (n - i) + j + k · (t - (n - i))
-           = k·t - (k-1)·(n - i) + j
+φ(t, i, j) = (n - i) + j + m · (t - (n - i))
+           = m·t - (m-1)·(n - i) + j
 ```
 
 **Spec:**
@@ -138,48 +147,36 @@ C'.comp w t i [j] = C.comp w (φ(t, i, j)) i
 | t | i | j | φ(t,i,j) | Meaning |
 |---|---|---|----------|---------|
 | n-i | i | 0 | n-i | First tuple, component 0 |
-| n-i | i | k-1 | n-i+k-1 | First tuple, last component |
-| n-i+1 | i | 0 | n-i+k | After one more step |
+| n-i | i | m-1 | n-i+m-1 | First tuple, last component |
+| n-i+1 | i | 0 | n-i+m | After one more step |
 
-### At Position 0, Time 2·(n-1)
+### Exact Time at Position 0
 
+Set `m = c-1` and choose `j = c-2 = m-1`. At compressed time `2(n-1)`:
 ```
-φ(2(n-1), 0, j) = k·2(n-1) - (k-1)·n + j
-                = 2kn - 2k - kn + n + j
-                = (k+1)n - 2k + j
-```
-
-**For j = 0:** original time = (k+1)n - 2k
-
-**Comparing to target time k·(n-1) = kn - k:**
-```
-(k+1)n - 2k ≥ kn - k  ⟺  n ≥ k
+φ(2(n-1), 0, c-2)
+  = (c-1)·2(n-1) - (c-2)·n + (c-2)
+  = c(n-1).
 ```
 
-**Result:**
-- For n ≥ k: component 0 at time 2(n-1) gives original time **(k+1)n - 2k ≥ k(n-1)** ✓
-- For n < k: component **j = k - n** gives original time exactly **k(n-1)** ✓
+This equality, rather than an inequality, is what transfers acceptance without
+assuming that the source CA latches its answer.
 
-In both cases, compressed time 2(n-1) suffices to determine acceptance!
+## Completed Construction
 
-## Implementation Options
+`RightBorderSpeedupOCA` first makes the border quiescent while preserving
+left-independence, then propagates compressed tuples left from that border. Its
+main invariant is `spec_compressed_nextt`, proved by induction on compressed
+time with separate first-compression and steady-compression branches.
 
-1. **New `RightBorderSpeedupOCA`** — mirror the `LeftIndepSpeedup` proof with positions flipped
-
-2. **Use mirror construction:**
-   - `mirror_CA`: OCA → OCAr (swaps left/right independence)
-   - Write symmetric `RightIndepSpeedup` for OCAr (same work as option 1)
-   - Apply to mirrored CA, then mirror back
-
-~~3. **Derive from existing via reversed input**~~ — **Does not work:**
-   - Reversing input doesn't change which border has speedup potential (still right border for left-indep)
-   - Mirroring changes left-indep to right-indep, but `LeftIndepSpeedup` requires left-independence
-   - Would need symmetric `RightIndepSpeedup` anyway
-
-Option 1 is cleanest — the LeftIndepSpeedup proof structure transfers with sign changes.
+The language-level proof handles coefficients separately:
+- `c = 0`: preserve the embedded input state forever.
+- `c = 1`: repackage as real time, then delay with a left-independent latch.
+- `c = 2`: use the source machine unchanged.
+- `c ≥ 3`: use right-border compression with width `c-1`.
 
 ## Files to Create/Modify
 
-- [x] `CellularAutomatas/proofs/constructions/speedup_right_border_oca.lean` — new construction (created, 2 sorry in invariant proof)
-- [ ] `CellularAutomatas/results.lean` — add `oca_linear_time_eq_2n` theorem
-- [ ] Remove sorry from `CellularAutomatas/results_unproven.lean`
+- [x] `CellularAutomatas/proofs/constructions/speedup_right_border_oca.lean`
+- [x] `CellularAutomatas/results.lean`: exports `oca_linear_time_eq_2n`
+- [x] `CellularAutomatas/verification_candidates.lean`: candidate removed

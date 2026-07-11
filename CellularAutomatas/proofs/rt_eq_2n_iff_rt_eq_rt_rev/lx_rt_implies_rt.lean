@@ -1131,10 +1131,10 @@ private lemma lx_rt_agree_on_large_words {α : Type} [Alphabet α] (L : Language
       simp [advice_len]
     change (toRtCa e.C₇₀).toCellAutomaton.comp
       ⦋⟬w ⨂ e.foldAdvice.f w⟭⦌
-      (AcceptanceSchema.rt_center.t (w ⨂ e.foldAdvice.f w).length)
-      (AcceptanceSchema.rt_center.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
+      (AcceptanceSchema.rt_left.t (w ⨂ e.foldAdvice.f w).length)
+      (AcceptanceSchema.rt_left.p (w ⨂ e.foldAdvice.f w).length) = true ↔ _
     simp only [toRtCa, h_ann_len, CellAutomaton.trace, CellAutomaton.comp_apply,
-               AcceptanceSchema.rt_center, LxPipeline.n]
+               AcceptanceSchema.rt_left, LxPipeline.n]
 
   have h3 : e.C₇₀.trace (w ⨂ e.foldAdvice.f w) (e.n w - 1) = true ↔
       (e.x_prefix w ++ w) ∈ C.L := by

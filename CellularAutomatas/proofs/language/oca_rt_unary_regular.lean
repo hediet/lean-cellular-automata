@@ -240,7 +240,7 @@ private lemma unaryOcaDFA_accepts_iff
     (a : α) (C : LCellAutomaton α) (h_li : C.left_independent) (w : Word α) :
     w ∈ (unaryOcaDFA a C).accepts ↔ w ∈ Language.unarySlice a (toRtCa C).L := by
   simp only [DFA.mem_accepts, Language.mem_unarySlice, tCellAutomaton.L,
-             tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_center,
+             tCellAutomaton.accepts, toRtCa, AcceptanceSchema.rt_left,
              CellAutomaton.comp_apply]
   by_cases h_rep : w = List.replicate w.length a
   · -- Case 1: w is a replicate. Both sides reduce to a CA-acceptance condition.
