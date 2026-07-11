@@ -167,9 +167,9 @@ For a CA $C$, `C.trace_rt` records the outputs seen at position $0$ during the
 first $n$ steps. The second centerpiece constructs a real-time CA satisfying
 
 $$
-\operatorname{trace\_rt}_C =
-\operatorname{trace\_rt}_{C_2} \circ
-\operatorname{trace\_rt}_{C_1}.
+\mathrm{trace}_{\mathrm{rt},C} =
+\mathrm{trace}_{\mathrm{rt},C_2} \circ
+\mathrm{trace}_{\mathrm{rt},C_1}.
 $$
 
 This is not ordinary sequential execution: $C_2$ cannot wait for the complete
@@ -198,26 +198,27 @@ A recognizer using $f$ receives the pointwise zip of $w$ and $f(w)$.
 using $f$ can be replaced by an equivalent unadvised recognizer over $\alpha$.
 The uniform `rt_closed` notion also requires this after every finite refinement
 or relabeling $\pi : \beta \to \alpha$. On a $\beta$-word $w$, the lifted advice
-is $f(w.\operatorname{map}(\pi))$. For example, $\beta = \alpha \times S$ may
-add a finite auxiliary track and $\pi$ may forget it; uniform closure says that
-the advice remains eliminable on these decorated inputs.
+is $f(\pi_*(w))$, where $\pi_*$ applies $\pi$ pointwise. For example,
+$\beta = \alpha \times S$ may add a finite auxiliary track and $\pi$ may forget
+it; uniform closure says that the advice remains eliminable on these decorated
+inputs.
 
 The key representation is **two-stage advice**:
 
 $$
-f = M.\operatorname{scanr} \circ \operatorname{trace\_rt}_C,
+f = \mathrm{scanr}_M \circ \mathrm{trace}_{\mathrm{rt},C},
 $$
 
 where $C$ is a real-time CA transducer and $M$ is a finite-state transducer
 scanning right-to-left. Concretely, let
-$u = C.\operatorname{trace\_rt}(w) = u_0\ldots u_{n-1}$. The word
-$M.\operatorname{scanr}(u)$ also has length $n$. Starting with the initial
+$u = \mathrm{trace}_{\mathrm{rt},C}(w) = u_0\ldots u_{n-1}$. The word
+$\mathrm{scanr}_M(u)$ also has length $n$. Starting with the initial
 state at the right edge, it computes
 
 $$
 s_n = M.q_0, \qquad
 s_i = M.\delta(s_{i+1}, u_i), \qquad
-(M.\operatorname{scanr}(u))_i = M.f(s_i).
+(\mathrm{scanr}_M(u))_i = M.f(s_i).
 $$
 
 Thus the output at position $i$ may depend on the entire suffix
@@ -244,7 +245,7 @@ consecutive input symbols. The project proves
 $$
 \mathcal L(CA_{rt}) = \mathcal L(CA_{lt})
 \quad\Longleftrightarrow\quad
-\operatorname{compress2}\text{ is weakly RT-closed}.
+\mathrm{compress2}\text{ is weakly RT-closed}.
 $$
 
 Thus the time-collapse question is equivalent to asking whether a specific
