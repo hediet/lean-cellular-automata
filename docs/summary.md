@@ -1,216 +1,515 @@
-# Research Summary: Formalized Cellular Automata Theory in Lean 4
+# A Guide to the Cellular Automata Formalization
 
-This project formalizes key results about cellular automata that recognize languages, focusing on **real-time** recognition, **one-way (left-independent) CAs**, and **advice mechanisms**. All results compile with Lean 4 and Mathlib4; proofs are axiom-verified (only `Quot.sound`, `Classical.choice`, and `propext` are used).
+This document is a mathematical and architectural guide to the repository. It
+is intended for readers who know cellular automata or Lean, but not necessarily
+both. The concise public theorem index is
+[`results.lean`](../CellularAutomatas/results.lean); implementation lemmas live
+under [`proofs/`](../CellularAutomatas/proofs/).
 
----
+## 1. What Is Formalized?
 
-## Setup and Non-Standard Definitions
+The project studies one-dimensional, radius-one cellular automata (CAs) over
+finite alphabets. It treats a CA both as:
 
-### Cellular Automaton
+- a **transducer**, producing an output at every cell and time; and
+- a **language recognizer**, producing a Boolean at a prescribed time and
+  position.
 
-A CA is a one-dimensional cellular automaton with radius-1 neighborhood, given as a tuple $C = (Q, \Sigma, \Gamma, \delta, \text{embed}, \text{project})$ with state set $Q$, input alphabet $\Sigma$, output alphabet $\Gamma$, local transition $\delta : Q^3 \to Q$, and maps $\text{embed}: \Sigma \to Q$, $\text{project}: Q \to \Gamma$. The split into input/output types lets CAs act as transducers.
+The main themes are:
 
-A **configuration** is a map $c : \mathbb{Z} \to Q$. One step: $\text{next}(c)_p = \delta(c_{p-1}, c_p, c_{p+1})$. We write $\Delta^t_C(c)$ for the $t$-fold iterate, and $\text{comp}_C(c, t, i) = \text{project}(\Delta^t_C(\text{embed} \circ c)_i)$.
+1. simulations between unrestricted and one-way CAs;
+2. border normalization and constant-factor speedup;
+3. real-time, linear-time, and reversal equivalences;
+4. composition of real-time CA transductions; and
+5. structural properties of length-preserving advice.
 
-### Word Embedding (0-indexed)
+The declarations exported from `results.lean` are complete and checked by the
+repository's axiom verifier. Open questions and unfinished experiments are kept
+in explicitly named files rather than mixed into the stable result module.
 
-Words are embedded into configurations with **0-based indexing**: a word $w$ of length $n$ occupies positions $0, 1, \ldots, n-1$, with all other positions set to the border symbol $\#$. Formally:
+## 2. Core Model
 
-$$\langle w \rangle(p) = \begin{cases} w_p & \text{if } 0 \le p < |w| \\ \# & \text{otherwise}\end{cases}$$
+### 2.1 Finite alphabets and cellular automata
 
-For language-recognizing CAs the input alphabet is $\Sigma_\# = \Sigma \cup \{\#\}$, so $\text{embed}(\#)$ gives the border state. Note that in this formalization, the border state has **no a priori constraints** — it need not be quiescent or dead. This is more general than many textbook definitions, which assume $\delta(\#, \#, \#) = \#$. Results 4 and 5 below show that a passive or dead border can always be imposed without changing the recognized language, so this generalization is conservative and the language classes agree with the standard ones.
+An `Alphabet α` packages finite enumerability, decidable equality, and a default
+element. A cellular automaton separates its input, internal state, and output:
 
-### Trace
+```lean
+structure CellAutomaton (α β : Type) where
+  Q : Type
+  δ : Q → Q → Q → Q
+  embed : α → Q
+  project : Q → β
+```
 
-The **trace** of $C$ on configuration $c$ is the temporal output sequence at position 0:
+The state type `Q` is itself a finite alphabet. A configuration is a function
+`ℤ → Q`. One parallel transition is
 
-$$\text{trace}_C(c) : \mathbb{N} \to \Gamma, \quad t \mapsto \text{comp}_C(c, t, 0)$$
+$$
+  \Delta_C(c)(p) = \delta(c(p-1), c(p), c(p+1)).
+$$
 
-### Real-Time Trace
+`C.nextt c t` iterates this transition for `t` steps. The projected computation
+at time `t` and position `p` is `C.comp c t p`.
 
-The **real-time trace** is the word-to-word transduction where position $i$ reads out time $i$:
+Separating `embed` and `project` is useful: recognizers use Boolean output,
+while composition theorems use arbitrary finite output alphabets.
 
-$$\text{trace\_rt}_C(w) = \bigl(\text{trace}_C(\langle w \rangle)(0),\; \text{trace}_C(\langle w \rangle)(1),\; \ldots,\; \text{trace}_C(\langle w \rangle)(n{-}1)\bigr)$$
+### 2.2 Finite words on an infinite configuration
 
-This is the central notion for composing CA transducers: $\text{trace\_rt}_C : \Sigma^* \to \Gamma^*$ is a length-preserving map.
+A word $w$ of length $n$ occupies positions $0,\ldots,n-1$. Outside that
+interval, `word_to_config` returns `none`, the border symbol:
 
-### Left-Independent (One-Way) CA
+$$
+  \langle w \rangle(p) =
+  \begin{cases}
+    \operatorname{some}(w_p) & 0 \le p < n,\\
+    \operatorname{none} & \text{otherwise.}
+  \end{cases}
+$$
 
-A CA is **left-independent** if $\delta$ ignores its left argument:
-$$\forall\, a, a', b, c: \quad \delta(a, b, c) = \delta(a', b, c)$$
-These correspond to **one-way CAs (OCA)**. The **left-independent light cone** at position $p$ and time $t$ for a word of length $n$ is $\{p \mid -t \le p < n\}$.
+The basic recognizer type is therefore
+`LCellAutomaton α = CellAutomaton (Option α) Bool`.
 
-### Real-Time Language Class $\mathscr{L}(\text{CA}_{\text{rt}})$
+No quiescence or deadness condition is built into the border. Instead, the
+library proves constructions that impose quiescent or absorbing borders while
+preserving the relevant computation. This keeps the core model general and
+moves geometric assumptions into explicit theorems.
 
-A CA **accepts** a word $w$ of length $n$ by reading a designated cell at a designated time. A **timed CA** specifies functions $t(n)$ (time) and $p(n)$ (position) and accepts $w$ iff $\text{comp}_C(\langle w \rangle, t(|w|), p(|w|)) = \text{true}$.
+### 2.3 Trace and real-time trace
 
-For the standard classes:
-- $\text{CA}$: read position 0, i.e. $p(n) = 0$.
-- $\text{CA}_{\text{rt}}$: read position 0 at time $n - 1$ (real-time).
-- $\text{OCA}$: left-independent CA reading at position 0.
-- $\text{OCA}_{\text{rt}}$: left-independent, real-time.
+`C.trace c t` observes position `0` after `t` steps. For a word, the real-time
+trace collects the first `n` temporal outputs:
 
-The class $\mathscr{L}(\text{CA}_{\text{rt}})$ is the set of languages recognized by real-time CAs. Note the 0-indexed embedding: a word of length $n$ occupies positions $0, \ldots, n{-}1$, and at time $n - 1$ the information from the rightmost cell has just reached position 0.
+$$
+  \operatorname{trace\_rt}_C(w)_i =
+  \operatorname{comp}_C(\langle w\rangle,i,0), \qquad 0 \le i < |w|.
+$$
 
-### Advice Functions
+Thus `trace_rt` is a length-preserving word function. It is causal: its prefix
+of length `i` depends only on the input prefix of length `i`. This temporal
+transducer view is central to the advice theory.
 
-An **advice** is a length-preserving map $f : \Sigma^* \to \Gamma^*$ with $|f(w)| = |w|$.
+### 2.4 Acceptance schemas
 
-- **RT-closed:** $f$ is RT-closed if $\mathscr{L}(\text{CA}_{\text{rt}}(\Sigma \times \Gamma) / f) = \mathscr{L}(\text{CA}_{\text{rt}}(\Sigma))$, i.e. the advice does not increase the power of real-time CAs.
-- **Prefix-stable (causal):** $f(w_{[0..i)}) = f(w)_{[0..i)}$ for all $w, i$.
-- **Two-stage:** $f$ factors as $f = M \circ \text{trace\_rt}_C$, where $C$ is a CA real-time transducer and $M$ is a finite-state transducer scanning right-to-left.
+An `AcceptanceSchema` contains a time function `t : ℕ → ℕ` and an observation
+position `p : ℕ → ℤ`. A `tCellAutomaton schema α` accepts `w` when the projected
+state at `schema.t |w|` and `schema.p |w|` is true.
 
----
+The coordinate names are literal:
 
-## Part I: Formally Verified Base Results (sorry-free)
+| Schema | Time | Position |
+|---|---:|---:|
+| `rt_left` | $n-1$ | $0$ |
+| `rt_right` | $n-1$ | $n-1$ |
+| `time_2n_left` | $2(n-1)$ | $0$ |
+| `time_2n_right` | $2(n-1)$ | $n-1$ |
+| `time_2n_left_neg_np1` | $2(n-1)$ | $-(n-1)$ |
+| `lt_left c` | $c(n-1)$ | $0$ |
+| `lt_right c` | $c(n-1)$ | $n-1$ |
 
-The following results are well-known in the literature. The proofs here sometimes differ from the classical ones, as certain constructions were adapted to be more amenable to formal verification in Lean 4. All proofs are **completely sorry-free**.
+Consequently:
 
-### Result 1: Left-Independent ↔ Regular CA Simulation
+- `CA_rt`, `CA_2n`, and `CA_lt` observe the left end at position `0`;
+- `CAr_rt` observes the right end at position `n - 1`;
+- `OCA_*` adds left-independence: the local rule ignores its left neighbor;
+- `OCAr_*` adds right-independence and uses right-reading schemas.
 
-Given a left-independent CA $C$, construct a regular CA $C'$ such that:
+The notation `ℒ T` is the set of languages recognized by automata of type `T`.
+`Language.rev` reverses every word in a language, and `ℒ_rev T` reverses every
+language in `ℒ T`.
 
-$$\Delta^t_{C'}(c)_i = \Delta^{2t}_C(c)_{i-t}$$
+## 3. Construction Toolkit
 
-Conversely, given any CA $C$, construct a left-independent $C'$ with $Q' = Q \cup (Q \times Q)$ such that:
+### 3.1 Locality and coordinate algebra
 
-$$\Delta^{2t}_{C'}(c)_i = \Delta^t_C(c)_{i+t}$$
+The basic library proves that the state at `(t,p)` depends only on the radius
+`t` light cone, that computations commute with spatial shifts, and that time
+iterations compose. Most larger constructions reduce to these lemmas plus
+integer arithmetic discharged by `omega` or `ring`.
 
-This establishes the equivalence of OCA and CA up to a constant factor of 2 in time.
+### 3.2 Unrestricted and one-way simulation
 
-*Lean: `result_left_indep_to_regular`, `result_regular_to_left_indep` in `results.lean`.*
+A left-independent CA can be converted to an unrestricted CA that simulates two
+original steps per new step:
 
-### Result 2: $k$-Step Left-Independent Speedup
+$$
+  \operatorname{comp}_{C'}(c,t,i)
+  = \operatorname{comp}_C(c,2t,i-t).
+$$
 
-Given a left-independent CA $C = (Q, \delta)$ and $k \ge 2$, construct a left-independent $C' = (Q^k, \delta')$ compressing $k$ consecutive diagonal cells into one tuple. Define coordinate maps:
+Conversely, an unrestricted CA can be encoded by a left-independent CA whose
+even-time states represent
 
-$$\psi(i, j) = ki + j, \qquad \varphi(t, i, j) = t - (k{-}1)i - j$$
+$$
+  \operatorname{comp}_{C'}(c,2t,i)
+  = \operatorname{single}(\operatorname{comp}_C(c,t,i+t)).
+$$
 
-Then for $i < 0$ and $0 \le j < k$:
+These are exported as `result_left_indep_to_regular` and
+`result_regular_to_left_indep`. They are the geometric bridge behind several
+OCA/CA equivalences.
 
-$$\text{comp}_{C'}(w, t, i)_j = \text{comp}_C(w,\; \varphi(t,i,j),\; \psi(i,j))$$
+### 3.3 Border normalization
 
-The proof proceeds by outer induction on $t$ and inner descending induction on $j$ within each time step.
+`QuiescentBorderLeftIndep` gives a left-independent automaton a quiescent border
+while preserving its computation inside the one-way light cone. `DeadBorder`
+uses a zigzag lane folding to produce a completely absorbing border while
+preserving the trace for a prescribed linear-time window.
 
-*Lean: `result_left_indep_speedup` in `results.lean`.*
+The latter construction is important for iterated speedups: a passive boundary
+prevents information introduced by one transformation from contaminating the
+next.
 
-### Result 3: General $k$-Step RT Speedup
+### 3.4 Speedup
 
-For any CA $C$ and constant $k$, construct $C'$ such that:
+There are two distinct speedup mechanisms:
 
-$$\text{trace}_{C'}(w)(i) = \text{trace}_C(w)(i + k)$$
+- **Additive speedup** removes a fixed number of initial steps from a temporal
+  trace. It supports real-time transducer composition.
+- **Linear-time compression** packs several spatially adjacent states into a
+  tuple and simulates multiple original steps at once.
 
-This achieves a constant additive speedup by chaining QuiescentBorder and DeadBorder constructions.
+The language-level consequences include:
 
-*Lean: `SpeedupKSteps.spec` in `proofs/constructions/speedup_k_step.lean`.*
+$$
+  \mathcal L(CA_{2n}) = \mathcal L(CA_{lt})
+$$
 
-### Result 4: Quiescent Border for Left-Independent CAs
+and
 
-Given a left-independent CA $C$, construct $C'$ whose border is **quiescent** ($\delta(\#, \#, \#) = \#$), while $\text{comp}_{C'} = \text{comp}_C$ inside the left-independent light cone. Together with Result 5, this shows that the unconstrained border in our formalization is without loss of generality.
+$$
+  \mathcal L(OCA_{2n}) = \mathcal L(OCA_{lt}).
+$$
 
-*Lean: `result_quiescent_border_left_indep` in `results.lean`.*
+The OCA proof uses tuple width `c - 1` and reads component `c - 2`, which gives
+exactly $c(n-1)$ original steps at time $2(n-1)$.
 
-### Result 5: Dead Border
+## 4. Language-Class Results
 
-Given any CA $C$, construct $C'$ whose border state $\#$ is **dead** (absorbing: $\delta(\cdot, \#, \cdot) = \#$), while preserving the trace: $\text{trace}_{C'}(w)(t) = \text{trace}_C(w)(t)$ for all $t < c \cdot |w|$, where $c$ is a constant depending on $C'$. In particular, the trace is preserved for any linear-time computation. Uses a zigzag folding of cells into lanes.
+### 4.1 Regular languages and strict separation
 
-*Lean: `result_dead_border` in `results.lean`.*
+Every DFA language is recognized by a real-time OCA:
 
-### Result 6: Exponential Word Length is RT-Recognizable
+$$
+  \mathcal L(DFA) \subseteq \mathcal L(OCA_{rt}).
+$$
 
-The language $\{ w \mid |w| = 2^n \text{ for some } n \}$ is in $\mathscr{L}(\text{CA}_{\text{rt}})$. The construction uses a signal-bouncing technique: a signal is sent from the left border, bounces off the right border, and its return time encodes the word length.
+Over a unary alphabet, every real-time OCA language is regular. On the other
+hand, an unrestricted real-time CA recognizes the language of words whose
+length is a power of two. Lifting this witness to any inhabited finite alphabet
+gives the strict inclusion
 
-*Lean: `exp_word_length_rt` in `proofs/constructions/basic_exp_word.lean`.*
+$$
+  \mathcal L(OCA_{rt}) \subsetneq \mathcal L(CA_{rt}).
+$$
 
----
+The power-of-two recognizer uses a bouncing signal whose return times are
+$2^k-1$.
 
-## Part II: Advice Theory (Key Contribution)
+### 4.2 The OCA/CA diagonal
 
-The following results are likely **novel** and form the core contribution of this project. They develop a structural theory of *advice* for cellular automata, establishing closure properties of RT transducers and two-stage advice, and classifying prefix-stable RT-closed advice as RT transducers.
+The factor-two simulations become exact language equivalences when paired with
+appropriate observation positions:
 
-### Result 7: RT Transducers are Closed Under Composition *(sorry-free)*
+$$
+  \mathcal L(OCA_{2n}) = \mathcal L(CAr_{rt}),
+$$
 
-Given CA transducers $C_1 : \Sigma \to \Gamma_1$ and $C_2 : \Gamma_1 \to \Gamma_2$, there exists a CA $C$ with $\text{trace\_rt}_C = \text{trace\_rt}_{C_2} \circ \text{trace\_rt}_{C_1}$. This is the most technically challenging result in the project, requiring the full machinery of dead border, passive border, $k$-step speedup, and left-independent ↔ regular simulation. The proof uses a multi-stage pipeline:
+$$
+  \mathcal L(OCA_{2n}^{\,-(n-1)}) = \mathcal L(CA_{rt}).
+$$
 
-$$\text{AddBorder} \to \text{CompressToDiag} \to \text{SimFrom}\Lambda \to \text{DecompressTriple} \to \text{SpeedupKSteps}$$
+The second class is `OCA_2n_left_neg_np1`: it runs for $2(n-1)$ steps and is
+observed at $-(n-1)$.
 
-*Lean: `result_rt_transducers_closed_under_composition` in `results.lean`.*
+Flipping space exchanges left-reading and right-reading while reversing the
+input. Together with OCA linear-time speedup, this gives:
 
-### Result 8: Two-Stage Advice is RT-Closed *(sorry-free)*
+$$
+  \mathcal L^{R}(OCA_{lt}) = \mathcal L(OCAr_{lt})
+  = \mathcal L(CA_{rt}).
+$$
 
-If $f$ is two-stage, then $\mathscr{L}(\text{CA}_{\text{rt}}(\Sigma \times \Gamma) / f) = \mathscr{L}(\text{CA}_{\text{rt}}(\Sigma))$. This follows from Result 7: the CA component is RT-closed, and the right-to-left FST can be absorbed into the receiving CA.
+The combined statement is exported as `ca_rt_eq_rev_oca`.
 
-*Lean: `result_two_stage_is_rt_closed` in `results.lean`.*
+```mermaid
+flowchart LR
+  O2["OCA 2(n-1), read 0"] -->|diagonal simulation| CR["CA real time, read n-1"]
+  O2 -->|linear speedup| OLT["OCA linear time, read 0"]
+  OLT -->|reverse / spatial flip| ORLT["right-independent linear time, read n-1"]
+  ORLT -->|characterization| CRT["CA real time, read 0"]
+  ON["OCA 2(n-1), read -(n-1)"] -->|diagonal simulation| CRT
+```
 
-### Result 9: Prefix-Membership Advice is Two-Stage *(sorry-free)*
+### 4.3 Real time, linear time, and reversal
 
-For any $L \in \mathscr{L}(\text{CA}_{\text{rt}})$, the advice $f_L$ defined by
+The central global equivalence is
 
-$$f_L(w)_i = [w_{[0..i+1)} \in L]$$
+$$
+\begin{aligned}
+  &\forall \beta,\quad
+    \mathcal L(CA_{rt}(\beta)) = \mathcal L(CA_{lt}(\beta))\\
+  \Longleftrightarrow\;&
+  \forall \gamma,\quad
+    \mathcal L(CA_{rt}(\gamma)) =
+    \mathcal L^{R}(CA_{rt}(\gamma)).
+\end{aligned}
+$$
 
-is itself a two-stage advice (and hence an RT transducer): $f_L = \text{trace\_rt}_C$ for a suitable CA $C$ that runs the recognizer for $L$ and outputs the acceptance bit at each step.
+This is `result_rt_eq_lt_iff_rt_eq_rt_rev`.
 
-*Lean: `result_advice_prefix_mem_is_two_stage_advice` in `results.lean`.*
+The forward direction is short after normalization to `CA_2n`: reversals of
+real-time languages can be recognized in time $2(n-1)$, and the assumed class
+equality brings them back to real time.
 
-### Result 10: RT-Closed $\wedge$ Causal $\Rightarrow$ CArt Advice *(sorry-free)*
+The reverse direction is more delicate. It pads words over `Option β`, applies
+reversal closure twice, and removes the padding with `lx_rt_implies_rt`. This is
+why the hypothesis quantifies over **all alphabets**: pointwise reversal closure
+only for `β` does not provide the required closure for `Option β`.
 
-If an advice $f$ is both RT-closed and causal (prefix-stable), then $f$ is a CArt advice, i.e., computable by a single CA RT transducer. The proof constructs $C$ by observing that causality lets one reduce $f$ to a product of prefix-membership advices (one for each output symbol $c \in \Gamma$, via the language $L_c = \{w \mid f(w)_{|w|} = c\}$), each of which is an RT transducer by Result 9.
+## 5. Real-Time Transducers
 
-*Lean: `result_is_cart_advice_of_rt_closed_and_causal` in `results.lean`.*
+The theorem `result_rt_transducers_closed_under_composition` constructs a CA
+whose real-time trace is the composition of two real-time traces:
 
-### Result 11: Two-Stage Advice is Closed Under Composition *(sorry-free)*
+$$
+  \operatorname{trace\_rt}_C
+  = \operatorname{trace\_rt}_{C_2}
+    \circ \operatorname{trace\_rt}_{C_1}.
+$$
 
-Given two-stage advices $f_1 : \Sigma^* \to \Gamma_1^*$ and $f_2 : \Gamma_1^* \to \Gamma_2^*$, the composition $f_2 \circ f_1$ is again two-stage. The proof works by commuting the FST of $f_1$ past the CA of $f_2$ using a "backwards FSM" construction that absorbs the FST into the CA's state space.
+This is not ordinary sequential execution: the second CA would normally need
+the entire output word of the first before it could start. The construction
+rearranges the first trace onto diagonals, simulates the second CA from those
+diagonal events, restores the output stream, and removes a constant delay:
 
-*Lean: `result_two_stage_closed_under_composition` in `results.lean`.*
+```text
+AddBorder
+  -> CompressToDiag
+  -> SimFromLambda
+  -> DecompressTriple
+  -> SpeedupKSteps
+```
 
-### Result 12: Middle Advice is NOT Two-Stage *(sorry-free)*
+The proof is split into small construction modules under
+`proofs/advice_theory/compose_trace_rt/` and
+`proofs/constructions/`. Each module states a local space-time invariant; the
+final composition theorem mostly assembles those invariants.
 
-The advice $f_{\text{mid}}$ that marks position $\lfloor n/2 \rfloor$ (i.e., $f_{\text{mid}}(w)_i = [i = \lfloor |w|/2 \rfloor]$) cannot be expressed as a two-stage advice. The proof uses a bottleneck argument: the FST has finitely many states, but the middle position requires information about the full word length, which the CA's real-time trace at the midpoint cannot encode in bounded state.
+## 6. Advice Theory
 
-*Lean: `result_middle_not_two_stage_advice` in `results.lean`.*
+### 6.1 Advice and closure
 
----
+An `Advice α Γ` is a length-preserving map from input words to annotation words.
+A recognizer using advice sees `w` zipped with `adv w`.
 
-## Incomplete Results (with sorry)
+Two closure notions are deliberately distinguished:
 
-### Exponential-Middle Advice is Two-Stage *(4 sorry remaining)*
+- `adv.weak_rt_closed` maps each real-time recognizer using `adv` to an
+  equivalent unadvised recognizer over the same base alphabet.
+- `adv.rt_closed` requires this eliminability uniformly under finite alphabet
+  refinements and relabelings.
 
-The advice that marks the largest power-of-2 position $\le n/2$ is conjectured to be two-stage. The two-stage decomposition (a CA transducer marking powers of 2, composed with an FST selecting the last `true`) is fully constructed. The 4 remaining `sorry`s are in combinatorial counting lemmas (`countPow2After_eq`, `middle_exp_idx_char`, `trace_drop_count_eq_countPow2After`).
+More precisely, for every finite alphabet `β` and map `π : β → α`, the lifted
+advice is
 
-*Lean: `middle_exp_two_stage_advice` in `proofs/middle_exp_two_stage.lean`.*
+$$
+  (\operatorname{adv.lift}\;\pi)(w)
+  = \operatorname{adv}(w.\operatorname{map}(\pi)).
+$$
 
-### Unproven Conjectures (in `results_unproven.lean`)
+Uniform closure requires this lifted advice to be weakly RT-closed over `β`.
+For example, `β = α × S` may add a finite track of construction-specific state
+and `π` may forget that track. Weak closure over `α` alone does not by itself
+cover such decorated inputs; uniform closure guarantees that advice elimination
+survives the refinement. This is why `rt_closed`, rather than only
+`weak_rt_closed`, is the natural interface for composing constructions.
 
-The following are stated but unproven (8 `sorry`):
+Closure means that advice can be **eliminated from recognition**. It is not the
+same as `IsRtAdvice`, which says that the whole advice word can be **computed as
+a spatial slice** of a CA at time $n-1$.
 
-- **Constant speedup:** $\mathscr{L}(\{C \in \text{CA} \mid t(n) = n + k - 1\}) = \mathscr{L}(\text{CA}_{\text{rt}})$
-- **CA linear time = 2n:** $\mathscr{L}(\text{CA}_{\text{lt}}) = \mathscr{L}(\text{CA}_{2n})$
-- **OCA linear time = 2n:** $\mathscr{L}(\text{OCA}_{\text{lt}}) = \mathscr{L}(\text{OCA}_{2n})$
-- **OCAr linear time = CA rt:** $\mathscr{L}(\text{OCA}^r_{\text{lt}}) = \mathscr{L}(\text{CA}_{\text{rt}})$
-- **Reversal closure implies lt = rt:** $\mathscr{L}(\text{CA}) = \mathscr{L}(\text{CA}^r) \Rightarrow \mathscr{L}(\text{CA}) = \mathscr{L}(\text{CA}_{\text{lt}})$
-- **Advice shift-left preserves two-stage:** shifting a two-stage advice by appending a constant word yields another two-stage advice
-- **CartTraceFstAdvice classification:** a characterization of two-stage advice via finite decomposition into RT-closed causal components
+### 6.2 Temporal and two-stage advice
 
----
+A `CArtTransducer` computes a causal advice by the temporal trace at cell `0`.
+A `TwoStageAdvice` consists of:
 
-## Open Question
+1. a real-time CA transducer; and
+2. a finite-state transducer scanning its output right-to-left.
 
-Is every RT-closed advice two-stage, without the causality assumption? We conjecture that no such counterexample exists. However, if a non-two-stage RT-closed advice did exist, its RT-closedness proof would probably require a fundamentally different, non-geometric simulation construction — and it could be promising to investigate whether such a construction can be shown to be generally uncomputable.
+Thus
 
----
+$$
+  f = M.\operatorname{scanr} \circ \operatorname{trace\_rt}_C.
+$$
 
-## Project Statistics
+The stable results prove:
 
-| Category | Files | Sorry-free | With sorry |
-|---|---|---|---|
-| Core proofs & utilities | 7 | 7 | 0 |
-| Main theorems | 5 | 4 | 1 |
-| Basic CA constructions | 10 | 10 | 0 |
-| Speedup constructions | 3 | 3 | 0 |
-| Direction conversions | 2 | 2 | 0 |
-| Composition pipeline | 8 | 8 | 0 |
-| Framework & scripts | 4 | 4 | 0 |
-| **Total** | **39** | **38** | **1** |
+- two-stage advice is uniformly RT-closed;
+- two-stage advice is closed under composition;
+- uniformly RT-closed advice is closed under composition;
+- prefix-membership advice for an RT language is two-stage;
+- causal weakly RT-closed advice is computed by a single real-time CA trace;
+- middle-marker advice is not two-stage; and
+- exponential-middle advice is two-stage.
 
-Total `sorry` count: **4** in proof files (`middle_exp_two_stage.lean`) + **8** in `results_unproven.lean` (conjectured theorems). The 10 results in `results.lean` are **completely sorry-free**.
+The composition proof uses a backwards-FSM construction: the second CA stores a
+simulation for every possible state of the first finite-state transducer, and
+the final FST selects the simulation corresponding to the actual state.
+
+### 6.3 Compression advice and the RT/LT question
+
+`Advice.compress2` annotates each position with a pair of consecutive input
+symbols (or border markers after the packed input ends). The project proves:
+
+$$
+  \mathcal L(CA_{rt}) = \mathcal L(CA_{lt})
+  \quad\Longleftrightarrow\quad
+  \operatorname{compress2}\text{ is weakly RT-closed}.
+$$
+
+This turns the real-time versus linear-time question into an advice-elimination
+question. Over a unary alphabet, middle-marker advice and `compress2` have
+equivalent weak closure behavior, yielding the corresponding unary
+characterization.
+
+## 7. Why the Formalization Is Difficult
+
+The mathematical model is local, but the important proof obligations are
+global. Defining one transition is easy; proving that a sequence of transformed
+automata represents the intended original cell at the intended time is where
+most of the work lies.
+
+### 7.1 Turning diagrams into invariants
+
+Informal CA proofs rely heavily on space-time diagrams. A signal is shifted,
+two lanes are folded together, or a block of cells is packed into one larger
+state. In Lean, each step needs:
+
+1. a finite state type and local transition rule;
+2. an embedding of the previous configuration;
+3. a decoder for the represented state; and
+4. an invariant quantified over every relevant time and position.
+
+The coordinates use several number systems at once: time and word lengths are
+natural numbers, positions are integers, and components of packed cells use
+finite index types. Consequently, an identity suggested by a picture becomes
+an exact statement involving casts, shifts, inequalities, and conventions such
+as $n-1$. A one-cell or one-step mismatch at one interface invalidates every
+later stage.
+
+Automation can usually discharge the local arithmetic once the correct
+invariant has been stated. It does not choose the representation or discover
+the coordinate invariant that makes two independently useful constructions
+compose.
+
+### 7.2 Borders and finite exceptions
+
+The border symbol is not assumed to be quiescent. This makes the core model
+general, but every construction that relies on an empty exterior must first
+manufacture and verify the required boundary behavior. The dead-border and
+quiescent-border constructions prove that unwanted signals cannot enter the
+light cone used by the simulation.
+
+Small inputs are another genuine proof obligation. Expressions such as $n-1$
+behave differently at $n=0$, compressed blocks may not exist yet, and a signal
+construction may need a minimum amount of room. The padding-elimination
+pipeline, for example, is proved directly for $n \geq 9$; the finitely many
+shorter words are repaired using closure under finite symmetric difference.
+This is the formal replacement for the common paper phrase “ignoring finitely
+many small cases.”
+
+### 7.3 The hard RT/LT-reversal direction
+
+The key equivalence reconstructs
+[a result of Ibarra and Jiang (1988)](https://doi.org/10.1016/0304-3975(88)90040-0),
+combined with the linear speedup theorem to replace $2(n-1)$ time by linear
+time. The hard implication assumes real-time closure under reversal and must
+turn a $2(n-1)$-time recognizer into a real-time one.
+
+The proof first moves to `Option α`, using `none` as a fresh padding symbol.
+Enough padding makes the original computation fit within real time on the
+longer word. Reversal closure moves the padding from one end to the other, but
+then the padding must be simulated and removed when only the original word is
+available.
+
+The lemma `lx_rt_implies_rt` performs that removal through a multi-stage
+space-time pipeline. It converts between unrestricted and one-way automata,
+broadcasts and repositions a diagonal value, compresses by a factor aligned
+with `nextPow2`, folds the negative half-line onto the input half-line, and
+normalizes the border. After these geometric transformations, the remaining
+marker describing the implicit prefix is expressed as two-stage advice and
+eliminated by the general RT-closure theorem.
+
+Each stage has a useful local specification. The difficulty is making the
+output equation of one stage syntactically and arithmetically match the input
+equation of the next across the entire pipeline.
+
+### 7.4 Abstractions that remove proof debt
+
+The advice theory is valuable because it turns the final marker-removal trick
+from a theorem-specific construction into a reusable interface. Once an advice
+is exhibited as a real-time trace followed by a right-to-left finite-state
+scan, uniform RT-closure eliminates it from any compatible recognizer.
+
+The same principle drives real-time transducer composition. The second machine
+cannot wait for the first machine to finish. The proof therefore changes the
+geometry of the first trace, simulates from staggered events, and removes the
+resulting delay. For composition of two-stage advice, a backwards-FST
+construction additionally carries simulations for every possible finite-state
+summary and lets the final scan select the correct one.
+
+The main value of the repository is this collection of reusable verified
+interfaces: locality, shifts, border control, speedup, folding, temporal
+traces, finite-state scans, and advice elimination. The final language-class
+equalities are concise because the difficult geometry has been isolated behind
+those interfaces, not because the underlying constructions are simple.
+
+## 8. Reading the Lean Development
+
+A useful reading order is:
+
+1. [`defs.lean`](../CellularAutomatas/defs.lean): model, schemas, language
+   classes, advice, and reversal.
+2. [`basic.lean`](../CellularAutomatas/proofs/basic.lean): locality, shifts,
+   time composition, and trace lemmas.
+3. [`left_indep_to_regular.lean`](../CellularAutomatas/proofs/constructions/left_indep_to_regular.lean)
+   and [`left_indep_from_regular.lean`](../CellularAutomatas/proofs/constructions/left_indep_from_regular.lean):
+   the fundamental diagonal simulations.
+4. [`linear_time_speedup.lean`](../CellularAutomatas/proofs/constructions/linear_time_speedup.lean)
+   and [`speedup_right_border_oca.lean`](../CellularAutomatas/proofs/constructions/speedup_right_border_oca.lean):
+   the two linear speedup theorems.
+5. [`oca_reversal_equivalences.lean`](../CellularAutomatas/proofs/language/oca_reversal_equivalences.lean):
+   the OCA/CA reversal diagram.
+6. [`rt_eq_2n_iff_rt_eq_rt_rev.lean`](../CellularAutomatas/proofs/rt_eq_2n_iff_rt_eq_rt_rev/rt_eq_2n_iff_rt_eq_rt_rev.lean):
+   the global RT/LT equivalence.
+7. [`results.lean`](../CellularAutomatas/results.lean): the curated endpoint.
+
+For advice theory, start with the definitions in `defs.lean`, then read
+`rt_closed/of_two_stage.lean`, `compose_trace_rt/compose_cart.lean`, and
+`rt_eq_lt_iff_compress2_weak_rt_closed.lean`.
+
+## 9. Build, Trust, and Open Work
+
+Build the stable result module and run the configured axiom policy with:
+
+```bash
+lake build ./CellularAutomatas/results.lean
+lake build verify_proofs
+```
+
+The verifier permits only `Quot.sound`, `Classical.choice`, and `propext` for
+its configured modules. It checks dependencies, so a hidden `sorryAx` in the
+stable result graph would fail verification.
+
+The repository also contains explicit research workspaces:
+
+- `open_questions.lean` states unresolved conjectures;
+- `verification_candidates.lean` contains candidates awaiting promotion;
+- `proofs/wip/` contains unfinished constructions; and
+- `proofs/advice_theory/rt_lt_advice.lean` contains unfinished spatial-advice
+  implications.
+
+These files are useful for ongoing work but are not part of the stable theorem
+surface documented above.

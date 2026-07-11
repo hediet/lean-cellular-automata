@@ -90,3 +90,7 @@ def analyzeAndVerify (env : Environment) (config : List (Name × List Name)) : I
       for detail in err.details do
         IO.eprintln s!"  • {detail}"
     throwError s!"Verification failed with {errors.length} error(s)"
+
+end CellularAutomatas
+
+def main : IO Unit := pure ()

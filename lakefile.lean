@@ -8,10 +8,7 @@ package «cellular-automatas» where
 lean_lib «CellularAutomatas» where
   -- add library configuration options here
 
-lean_lib «scripts» where
-  -- Scripts library (includes VerifyConfig)
-
 lean_exe «verify_proofs» where
-  root := `scripts.verify_proofs
+  root := `CellularAutomatas.scripts.verify_proofs
 
 require mathlib from git "https://github.com/leanprover-community/mathlib4"
