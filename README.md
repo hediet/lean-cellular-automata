@@ -192,14 +192,14 @@ composition theory, and the connection between advice elimination and the
 real-time versus linear-time problem. This is a cautious provenance statement,
 not a definitive claim of priority over all existing literature.
 
-An `Advice α Γ` is a length-preserving annotation $f : \alpha^* \to \Gamma^*$.
-A recognizer using $f$ receives the pointwise zip of $w$ and $f(w)$.
-`weak_rt_closed` fixes the input alphabet $\alpha$: every real-time recognizer
-using $f$ can be replaced by an equivalent unadvised recognizer over $\alpha$.
+An `Advice α Γ` is a length-preserving annotation $`f : \alpha^* \to \Gamma^*`$.
+A recognizer using $`f`$ receives the pointwise zip of $`w`$ and $`f(w)`$.
+`weak_rt_closed` fixes the input alphabet $`\alpha`$: every real-time recognizer
+using $`f`$ can be replaced by an equivalent unadvised recognizer over $`\alpha`$.
 The uniform `rt_closed` notion also requires this after every finite refinement
-or relabeling $\pi : \beta \to \alpha$. On a $\beta$-word $w$, the lifted advice
-is $f(\pi_*(w))$, where $\pi_*$ applies $\pi$ pointwise. For example,
-$\beta = \alpha \times S$ may add a finite auxiliary track and $\pi$ may forget
+or relabeling $`\pi : \beta \to \alpha`$. On a $`\beta`$-word $`w`$, the lifted advice
+is $`f(\pi_*(w))`$, where $`\pi_*`$ applies $`\pi`$ pointwise. For example,
+$`\beta = \alpha \times S`$ may add a finite auxiliary track and $`\pi`$ may forget
 it; uniform closure says that the advice remains eliminable on these decorated
 inputs.
 
@@ -209,10 +209,10 @@ $$
 f = \mathrm{scanr}_M \circ \mathrm{trace}_{\mathrm{rt},C},
 $$
 
-where $C$ is a real-time CA transducer and $M$ is a finite-state transducer
+where $`C`$ is a real-time CA transducer and $`M`$ is a finite-state transducer
 scanning right-to-left. Concretely, let
-$u = \mathrm{trace}_{\mathrm{rt},C}(w) = u_0\ldots u_{n-1}$. The word
-$\mathrm{scanr}_M(u)$ also has length $n$. Starting with the initial
+$`u = \mathrm{trace}_{\mathrm{rt},C}(w) = u_0\ldots u_{n-1}`$. The word
+$`\mathrm{scanr}_M(u)`$ also has length $`n`$. Starting with the initial
 state at the right edge, it computes
 
 $$
@@ -221,10 +221,10 @@ s_i = M.\delta(s_{i+1}, u_i), \qquad
 (\mathrm{scanr}_M(u))_i = M.f(s_i).
 $$
 
-Thus the output at position $i$ may depend on the entire suffix
-$u_i\ldots u_{n-1}$, but only through one of finitely many states. Here
+Thus the output at position $`i`$ may depend on the entire suffix
+$`u_i\ldots u_{n-1}`$, but only through one of finitely many states. Here
 `scanr` is an extensional right fold over the intermediate word, not a claim
-that a CA first materializes $u$ and then spends $n$ additional steps scanning
+that a CA first materializes $`u`$ and then spends $`n`$ additional steps scanning
 it. The RT-closure theorem is precisely what allows a recognizer using this
 two-stage advice to absorb the finite-state suffix pass into a real-time CA.
 
