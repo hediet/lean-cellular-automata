@@ -27,7 +27,15 @@ def rel_repr (adv: Advice α Γ) (p s: Word α) := (adv (p ++ s)).take p.length
 def rel (adv: Advice α Γ) (p s1 s2: Word α) :=
   rel_repr adv p s1 = rel_repr adv p s2
 
-def Advice.finite_lookahead (adv: Advice α Γ) :=
+/-- The advice restricted to a fixed prefix takes only boundedly many values as the
+continuation varies: there is a single `N` such that above *every* prefix `p` at most
+`N` distinct words `rel_repr adv p s` occur.
+
+This bounds *how much* the future can change what is already visible, not *how far*
+ahead the advice looks — an advice satisfying it may still depend on the entire
+suffix (see `lengthPow2Mask`). It is the weakening of `Advice.finite_future_index`
+that counts values instead of equivalence classes. -/
+def Advice.finite_future_variation (adv: Advice α Γ) :=
   ∃ N: ℕ, ∀ p: Word α, (Set.univ.image (fun s: Word α => rel_repr adv p s)).encard ≤ N
 
 
