@@ -729,6 +729,48 @@ namespace DeadBorder
         exact this
 
 
+  /-- Every interior output reads lane zero of the unfolded configuration. -/
+  lemma comp_eq_project_unfold (w : Word e.α) (t : ℕ) (p : ℤ)
+      (hp : p ∈ w.range) :
+      e.C.comp w t p =
+        e.C_orig.project (unfold (e.C.nextt w t) w.length p) := by
+    have hpos : 0 ≤ p ∧ p < (w.length : ℤ) := by
+      simpa only [Word.range, Set.mem_setOf_eq] using hp
+    simp only [CellAutomaton.comp, Function.comp_apply, CellAutomaton.project_config,
+      unfold, e.map_coord_p_lane_0 w.length p hpos]
+    obtain ⟨cell, hcell⟩ :=
+      Option.isSome_iff_exists.mp ((shape_preserved w t p).mpr hp)
+    simp only [hcell, Option.get!_some]
+    have hvalid : e.is_valid_idx 0 := by simp [is_valid_idx]
+    simp only [C, Cell.get_z, hvalid, dite_true]
+
+  /-- Folding preserves each interior output while its dependency cone stays
+  within the retained lanes, not only the output at the origin. -/
+  lemma spec_comp (w : Word e.α) (t : ℕ) (p : ℤ)
+      (hp : p ∈ w.range)
+      (hcone : |p| < (e.c : ℤ) * w.length - t) :
+      e.C.comp w t p = e.C_orig.comp w t p := by
+    calc
+      e.C.comp w t p =
+          e.C_orig.project (unfold (e.C.nextt w t) w.length p) :=
+        comp_eq_project_unfold w t p hp
+      _ = e.C_orig.comp w t p := by
+        rw [inv w t p hcone]
+        rfl
+
+  /-- One extra word length of retained workspace covers the entire output
+  row. This is the spatial interface needed by an LT prefix transformation. -/
+  lemma spec_comp_row (w : Word e.α) (t : ℕ)
+      (ht : t + w.length ≤ e.c * w.length) (p : ℤ) (hp : p ∈ w.range) :
+      e.C.comp w t p = e.C_orig.comp w t p := by
+    apply spec_comp w t p hp
+    have hpos : 0 ≤ p ∧ p < (w.length : ℤ) := by
+      simpa only [Word.range, Set.mem_setOf_eq] using hp
+    have htime : (t : ℤ) + w.length ≤ (e.c : ℤ) * w.length := by
+      exact_mod_cast ht
+    rw [abs_of_nonneg hpos.1]
+    omega
+
   -- Key observation 1: e.C.trace is e.C_orig.project of unfold at position 0
   private lemma trace_eq_project_unfold (w: Word e.α) (t: ℕ) (h: w.length > 0):
       e.C.trace w t = e.C_orig.project (unfold (e.C.nextt w t) w.length 0) := by
