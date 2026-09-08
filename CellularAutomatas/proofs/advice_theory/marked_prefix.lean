@@ -23,6 +23,9 @@ import CellularAutomatas.proofs.advice_theory.marked_prefix.async_origin
 import CellularAutomatas.proofs.advice_theory.marked_prefix.async_catchup
 import CellularAutomatas.proofs.advice_theory.marked_prefix.reversal_rt_closed
 import CellularAutomatas.proofs.advice_theory.marked_prefix.lt
+import CellularAutomatas.proofs.advice_theory.marked_prefix.retain_input
+import CellularAutomatas.proofs.advice_theory.marked_prefix.prefix_replace
+import CellularAutomatas.proofs.advice_theory.marked_prefix.two_stage_sandwich
 
 /-!
 # Strongly RT-closed marked-prefix transformations
@@ -35,4 +38,10 @@ symbols. More generally, every spatially linear-time-computable transformation
 of the dyadic prefix gives strongly RT-closed advice. The LT construction
 includes concrete online packing, a bounded finite-strip producer, and the
 complete consumer pipeline; no auxiliary existence hypotheses remain.
+
+Input-retaining and suffix-preserving prefix variants are also strongly
+RT-closed. The concrete class consisting of two-stage advice and one LT-prefix
+transform between two two-stage factors is strongly RT-closed and preserved by
+two-stage composition on either side. Its equality with the full finite
+composition hull is not asserted here.
 -/

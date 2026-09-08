@@ -9,6 +9,15 @@ import CellularAutomatas.proofs.advice_theory.rt_closed.of_prefix_mem
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_compose
 -- import CellularAutomatas.proofs.compose_two_stage
 import CellularAutomatas.proofs.advice_theory.middle_not_two_stage
+import CellularAutomatas.proofs.advice_theory.rev_not_finite_future_variation
+import CellularAutomatas.proofs.advice_theory.finite_future_variation_not_future_index
+import CellularAutomatas.proofs.advice_theory.marker_future_variation
+import CellularAutomatas.proofs.advice_theory.future_variation_closure
+import CellularAutomatas.proofs.advice_theory.rt_disclosure_observability
+import CellularAutomatas.proofs.advice_theory.two_stage_question_hardness
+import CellularAutomatas.proofs.advice_theory.natural_weak_rt_closed
+import CellularAutomatas.proofs.hom
+import CellularAutomatas.proofs.causal_simulation
 -- import CellularAutomatas.proofs.cart_transducers
 import CellularAutomatas.proofs.finite_state_transducers
 -- import CellularAutomatas.proofs.lcellautomaton

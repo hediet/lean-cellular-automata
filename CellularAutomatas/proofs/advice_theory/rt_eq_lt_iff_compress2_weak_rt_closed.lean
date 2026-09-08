@@ -298,25 +298,43 @@ theorem ca_rt_eq_ca_lt_of_compress2_weak_rt_closed
 
 /-! ## (→) direction -/
 
-/-- Given `ℒ(CA_rt α) = ℒ(CA_lt α)`, the compress2 advice is weak-rt-closed.
-    A CA_rt over the compress2-annotated alphabet has language in `ℒ(CA_lt α)`
-    (it can compute the compress2 layout in linear time and then run the inner CA);
-    the equality then yields a witnessing CA_rt over the base alphabet. -/
-theorem compress2_weak_rt_closed_of_ca_rt_eq_ca_lt
+/-- **`ℒ(CA_rt) = ℒ(CA_lt)` is a *uniform* sufficient condition for closure:**
+    it makes *every* `n`-time advice weak-rt-closed, not just `compress2`.
+
+    An advised CA_rt over an `n`-time advice can drop the advice at proper
+    time `2n` (spend `n` steps computing the annotation, then run the inner CA
+    for `n` more), so its language lies in `ℒ(CA_lt α)`; the assumed equality
+    moves it back into `ℒ(CA_rt α)`.
+
+    Consequence for `open_question_1`: any advice that is linear-time
+    constructible — `compress2`, `middle`, `log_marker`, … — is closed as soon
+    as `ℒ(CA_rt) = ℒ(CA_lt)`. So *refuting* closure for such an advice would
+    also prove `ℒ(CA_rt) ≠ ℒ(CA_lt)`; only the *positive* direction (proving
+    closure) is free of that barrier. -/
+theorem Advice.weak_rt_closed_of_isNTimeAdvice {Γ : Type} [Alphabet Γ]
+    (adv : Advice α Γ) (hAdv : adv.IsNTimeAdvice)
     (h : ℒ (CA_rt α) = ℒ (CA_lt α)) :
-    Nonempty (Advice.compress2 α).weak_rt_closed := by
+    Nonempty adv.weak_rt_closed := by
   refine ⟨Advice.WeakRtClosed.of_language_eq ?_⟩
   rw [CArtWithAdvice_eq_CArt_iff]
   intro L hL
+  -- Advised RT ⊆ proper 2n ⊆ 2n ⊆ lt, then transport back along `h`.
   have h_proper : L ∈ ℒ (CA_2n_proper α) :=
-    RunAfterNTimeAdvice.advised_ca_rt_subset_ca_2n_proper
-      (Advice.compress2 α) Advice.compress2_is_n_time_advice hL
+    RunAfterNTimeAdvice.advised_ca_rt_subset_ca_2n_proper adv hAdv hL
   have h_2n : L ∈ ℒ (CA_2n α) :=
     ca_2n_proper_subset_ca_2n h_proper
   have h_lt : L ∈ ℒ (CA_lt α) :=
     ca_2n_subset_ca_lt h_2n
   rw [h]
   exact h_lt
+
+/-- Given `ℒ(CA_rt α) = ℒ(CA_lt α)`, the compress2 advice is weak-rt-closed.
+    Instance of `Advice.weak_rt_closed_of_isNTimeAdvice`, since `compress2`
+    is an `n`-time advice. -/
+theorem compress2_weak_rt_closed_of_ca_rt_eq_ca_lt
+    (h : ℒ (CA_rt α) = ℒ (CA_lt α)) :
+    Nonempty (Advice.compress2 α).weak_rt_closed :=
+  Advice.weak_rt_closed_of_isNTimeAdvice _ Advice.compress2_is_n_time_advice h
 
 /-! ## The iff, packaging the two directions. -/
 

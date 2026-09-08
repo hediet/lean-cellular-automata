@@ -2,6 +2,7 @@ import CellularAutomatas.defs
 import CellularAutomatas.proofs.advice_theory.middle_not_two_stage
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_prefix_mem
 import CellularAutomatas.proofs.advice_theory.is_two_stage_of_rt_closed_and_causal
+import CellularAutomatas.proofs.advice_theory.finite_rt_disclosure
 import CellularAutomatas.proofs.constructions.left_indep_to_regular
 import CellularAutomatas.proofs.constructions.left_indep_from_regular
 import CellularAutomatas.proofs.constructions.speedup_left_independent
@@ -23,6 +24,15 @@ import CellularAutomatas.proofs.language.oca_reversal_equivalences
 import CellularAutomatas.proofs.advice_theory.middle_exp_two_stage
 import CellularAutomatas.proofs.advice_theory.middle_iff_compress2_weak_rt_closed
 import CellularAutomatas.proofs.advice_theory.rt_eq_lt_iff_compress2_weak_rt_closed
+import CellularAutomatas.proofs.advice_theory.finite_future_variation_iff_free_disclosure
+import CellularAutomatas.proofs.advice_theory.future_variation_closure
+import CellularAutomatas.proofs.advice_theory.rt_disclosure_observability
+import CellularAutomatas.proofs.advice_theory.finite_future_variation_not_future_index
+import CellularAutomatas.proofs.advice_theory.two_stage_not_finite_future_index
+import CellularAutomatas.proofs.advice_theory.broadcast_language_classification
+import CellularAutomatas.proofs.advice_theory.two_stage_question_hardness
+import CellularAutomatas.proofs.advice_theory.natural_weak_rt_closed
+import CellularAutomatas.proofs.causal_simulation
 
 /-!
 # Stable Results
@@ -408,6 +418,250 @@ def result_is_cart_advice_of_rt_closed_and_causal :
       adv.weak_rt_closed → adv.causal → adv.is_cart_advice :=
   is_cart_advice_of_rt_closed_and_causal
 
+/-- A finite advised probe leaks one finite observation at every prefix time
+under weak RT closure.
+
+  **Proof idea.** Eliminate the advice separately from the real-time
+  recognizer for each probe fiber, run all resulting recognizers in parallel,
+  and decode their unique true output. Locality identifies output time `i`
+  with the probe value on the prefix of length `i + 1`. -/
+def result_rt_probe_disclosure_is_cart_advice
+    {Δ : Type} [Alphabet Δ]
+    (adv : Advice α Γ) (probe : adv.RtProbe Δ) :
+    adv.weak_rt_closed → probe.disclosure.is_cart_advice :=
+  probe.disclosure_is_cart_advice
+
+/-- Finite RT disclosure forgets to finite free disclosure by dropping the
+fiber recognizers and retaining the same prefix diary and backward transducer. -/
+def result_finite_rt_disclosure_has_finite_free_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.finite_rt_disclosure → adv.finite_free_disclosure :=
+  fun _ hdisclosure => hdisclosure.finite_free_disclosure
+
+/-- Uniform RT closure makes the complete graph of the advice real-time
+recognizable. A graph input is a word of pairs `(input, candidateAdvice)`;
+membership says that the candidate track is exactly the advice of the input
+track.
+
+  **Proof idea.** Lift the advice along `Prod.fst`. An advised real-time DFA
+  compares the candidate and actual advice symbols at every position. Uniform
+  closure eliminates the actual advice track, leaving one fixed unadvised
+  real-time CA for the graph. -/
+theorem result_rt_closed_advice_graph_in_ca_rt
+    (adv : Advice α Γ) (hclosed : adv.rt_closed) :
+    adv.graph_language ∈ ℒ (CA_rt (α × Γ)) :=
+  adv.graph_language_in_ca_rt hclosed
+
+/-- The graph CA accepts exactly the advice word among all equal-length
+candidates, which is the correctness specification for exhaustive search. -/
+theorem result_rt_closed_advice_graph_accepts_exactly
+    (adv : Advice α Γ) (hclosed : adv.rt_closed)
+    (input : Word α) (candidate : Word Γ)
+    (h_length : candidate.length = input.length) :
+    (adv.graphCa hclosed).accepts (input ⨂ candidate) ↔
+      candidate = adv input :=
+  adv.graphCa_accepts_zip_iff hclosed input candidate h_length
+
+/-- Finite future index implies finite free disclosure.
+
+  **Proof idea.** Future-equivalent suffixes force the same advice prefix, so
+  the reachable advice prefixes of any prefix are already realized by the
+  finitely many class representatives. That is `finite_future_variation`, which is
+  equivalent to finite free disclosure. -/
+noncomputable def result_finite_future_index_has_finite_free_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.finite_future_index → adv.finite_free_disclosure :=
+  fun _ hindex => hindex.finite_free_disclosure
+
+/-- Finite free disclosure is *equivalent* to finite future variation.
+
+  **Proof idea.** Forwards: the backward transducer state is the only channel through
+  which the suffix can influence the advice on a prefix, so at most `|Q|` advice prefixes
+  are reachable. Backwards: enumerate the boundedly many reachable advice prefixes of
+  every prefix; the index into that enumeration is a finite state, and the disclosure at
+  a prefix is the table saying, for each index, which advice symbol it selects and which
+  index it induces on the shorter prefix.
+
+  Consequently the gap between `finite_free_disclosure` and `finite_rt_disclosure` — i.e.
+  the gap in the open question `weak_rt_closed → two_stage` — is exactly the demand that
+  the disclosed table be observable in real time; that table records counterfactual data
+  (which advice symbol a prefix would carry under other continuations). -/
+theorem result_finite_future_variation_iff_finite_free_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.finite_future_variation ↔ Nonempty adv.finite_free_disclosure :=
+  fun adv => adv.finite_future_variation_iff_nonempty_finite_free_disclosure
+
+/-- Finite future variation is *strictly* weaker than finite future index, so the
+equivalence above strictly strengthens the finite-future-index route.
+
+  **Witness.** The length-triggered mask `lengthPow2Mask w = w` when `|w|` is a
+  power of two and `0^|w|` otherwise. Above any prefix only two advice prefixes
+  are reachable, but suffixes of different lengths are separated by a left
+  context that lands the shorter one exactly on a power of two. -/
+theorem result_finite_future_variation_not_imp_finite_future_index :
+    ¬ (∀ adv : Advice Bool Bool,
+        adv.finite_future_variation → Nonempty adv.finite_future_index) :=
+  finite_future_variation_not_imp_finite_future_index
+
+/-- An RT recognizer can control a whole-word mask without leaving two-stage advice:
+retain its prefix answers, broadcast the final answer backwards, and mask the input. -/
+def result_rt_mask_is_two_stage (C : CA_rt α) (blank : α) :
+    (Advice.rtMask C blank).is_two_stage_advice :=
+  Advice.rtMask_is_two_stage C blank
+
+/-- Finite future index is not necessary for two-stage advice or uniform RT closure.
+The power-of-two mask witnesses both separations simultaneously. -/
+theorem result_two_stage_rt_closed_without_finite_future_index :
+    ∃ adv : Advice Bool Bool,
+      Nonempty adv.is_two_stage_advice ∧ Nonempty adv.rt_closed ∧
+        IsEmpty adv.finite_future_index :=
+  exists_two_stage_rt_closed_without_finite_future_index
+
+/-- Even a one-state future index is insufficient without a computational hypothesis:
+prefix advice for any non-RT language excluding the empty word is not two-stage. -/
+theorem result_prefix_mem_finite_future_index_not_two_stage
+    (L : Language α) [DecidablePred L]
+    (h_empty : [] ∉ L) (h_not_rt : L ∉ ℒ (CA_rt α)) :
+    Nonempty (Advice.prefix_mem L).finite_future_index ∧
+      IsEmpty (Advice.prefix_mem L).is_two_stage_advice :=
+  prefix_mem_finite_future_index_not_two_stage L h_empty h_not_rt
+
+/-- Whole-word Boolean broadcasts form a solved bounded-variation family:
+two-stage, weak RT closure, and uniform RT closure are all equivalent to the
+broadcast language being recognizable in real time. -/
+theorem result_broadcast_language_classification (L : Language α) :
+    (Nonempty (Advice.broadcastLanguage L).is_two_stage_advice ↔ L ∈ ℒ (CA_rt α)) ∧
+    (Nonempty (Advice.broadcastLanguage L).weak_rt_closed ↔ L ∈ ℒ (CA_rt α)) ∧
+    (Nonempty (Advice.broadcastLanguage L).rt_closed ↔ L ∈ ℒ (CA_rt α)) :=
+  ⟨Advice.broadcastLanguage_two_stage_iff L,
+    Advice.broadcastLanguage_weak_rt_closed_iff L, Advice.broadcastLanguage_rt_closed_iff L⟩
+
+/-- The middle marker fails the finite-future-variation condition outright, strengthening
+`result_middle_not_two_stage_advice`.
+
+  **Proof idea.** Above a prefix of length `2 * k`, varying the suffix length moves
+  the middle marker through at least `k` distinct positions, so at least `k`
+  distinct advice prefixes are observable. No uniform bound survives. -/
+theorem result_middle_not_finite_future_variation :
+    ¬ (Advice.middle α).finite_future_variation :=
+  Advice.middle_not_finite_future_variation
+
+/-- General criterion for marker advice: a single moving marker destroys finite future
+variation exactly when arbitrarily many marker positions remain reachable from arbitrarily
+long prefixes.
+
+  This separates sparse from dense revelation boundaries. `middle_exp` pins its marker to
+  within a factor of four of the prefix length and *is* two-stage; `middle` and the
+  logarithmic boundary do not and are not. -/
+theorem result_from_len_marker_not_finite_future_variation (f : ℕ → Option ℕ)
+    (hunbounded : ∀ N : ℕ, ∃ k, N ≤ (reachable_markers f k).card) :
+    ¬ (Advice.from_len_marker (α := α) f).finite_future_variation :=
+  from_len_marker_not_finite_future_variation f hunbounded
+
+/-- The logarithmic revelation boundary — "position `i` is revealed once the word has
+length at least `2 ^ i`" — is not two-stage.
+
+  Unlike `middle`, its weak RT closure is not known to be equivalent to
+  `ℒ(CA_rt) = ℒ(CA_lt)`: it hands a real-time CA only `⌊log₂ n⌋`, and hands it already at
+  time `⌊log₂ n⌋`. It is therefore the leading candidate for an unconditional refutation
+  of `open_question_1`. -/
+theorem result_log_marker_not_two_stage :
+    IsEmpty (Advice.log_marker α).is_two_stage_advice :=
+  Advice.log_marker_not_two_stage
+
+/-- Answering the two-stage open question positively would separate real time from
+linear time, so the question is at least as hard as `CA_rt ≠ CA_lt`.
+
+  **Proof idea.** If `ℒ(CA_rt) = ℒ(CA_lt)` then, over a unary alphabet, width-two
+  compression advice is weakly RT-closed, hence so is the middle marker. But the
+  middle marker has unbounded future variation, so it would be a weakly RT-closed advice
+  that is not two-stage. -/
+theorem result_two_stage_question_implies_rt_ne_lt
+    (H : ∀ adv : Advice Unit Bool, adv.weak_rt_closed → adv.is_two_stage_advice) :
+    ℒ (CA_rt Unit) ≠ ℒ (CA_lt Unit) :=
+  ca_rt_ne_ca_lt_of_weak_rt_closed_imp_two_stage H
+
+/-- The same hardness already applies to the weaker combinatorial question, namely
+whether weak RT-closure forces finite future variation. -/
+theorem result_finite_future_variation_question_implies_rt_ne_lt
+    (H : ∀ adv : Advice Unit Bool, adv.weak_rt_closed → adv.finite_future_variation) :
+    ℒ (CA_rt Unit) ≠ ℒ (CA_lt Unit) :=
+  ca_rt_ne_ca_lt_of_weak_rt_closed_imp_finite_future_variation H
+
+/-- Weak RT closure and finite RT disclosure imply a two-stage presentation.
+
+  **Proof idea.** The leakage result turns the probe diary into an unadvised
+  CART trace. The finite-state reconstruction supplied by finite disclosure
+  is then exactly the second stage. -/
+def result_is_two_stage_of_weak_rt_closed_and_finite_rt_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.weak_rt_closed →
+      adv.finite_rt_disclosure →
+      adv.is_two_stage_advice :=
+  is_two_stage_of_weak_rt_closed_and_finite_rt_disclosure
+
+/-- Uniform RT closure and finite RT disclosure imply a two-stage
+presentation, by specializing uniform closure to the identity refinement. -/
+def result_is_two_stage_of_rt_closed_and_finite_rt_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.rt_closed →
+      adv.finite_rt_disclosure →
+      adv.is_two_stage_advice :=
+  is_two_stage_of_rt_closed_and_finite_rt_disclosure
+
+/-- Every two-stage advice has finite RT disclosure.
+
+  **Proof idea.** Probe the final output of the first-stage CART on each
+  complete prefix. Its disclosure diary is exactly the CART trace, so the
+  original right-to-left transducer reconstructs the advice. -/
+def result_two_stage_has_finite_rt_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.is_two_stage_advice → adv.finite_rt_disclosure :=
+  fun _ htwoStage => htwoStage.finite_rt_disclosure
+
+/-- Among weakly RT-closed advice, finite RT disclosure is equivalent to a
+two-stage presentation. `Nonempty` turns the three witness structures into
+propositions. -/
+theorem result_weak_rt_closed_and_finite_rt_disclosure_iff_two_stage
+    (adv : Advice α Γ) :
+    Nonempty adv.weak_rt_closed ∧ Nonempty adv.finite_rt_disclosure ↔
+      Nonempty adv.is_two_stage_advice :=
+  weak_rt_closed_and_finite_rt_disclosure_iff_two_stage adv
+
+/-- Uniform RT closure together with finite RT disclosure is equivalent to a
+two-stage presentation. -/
+theorem result_rt_closed_and_finite_rt_disclosure_iff_two_stage
+    (adv : Advice α Γ) :
+    Nonempty adv.rt_closed ∧ Nonempty adv.finite_rt_disclosure ↔
+      Nonempty adv.is_two_stage_advice :=
+  rt_closed_and_finite_rt_disclosure_iff_two_stage adv
+
+/-- Every causal advice has finite RT disclosure, whether or not it is
+RT-closed: probe the last advice symbol of each prefix and use the identity
+right-to-left transducer. -/
+def result_causal_has_finite_rt_disclosure :
+    ∀ adv : Advice α Γ,
+      adv.causal → adv.finite_rt_disclosure :=
+  Advice.finite_rt_disclosure_of_causal
+
+/-- Finite RT disclosure alone does not force a two-stage presentation.
+
+  For any language `L` excluding `[]` and lying outside real-time CA, the
+  causal advice `prefix_mem L` has finite RT disclosure. If it were two-stage,
+  reading its final bit would give a real-time recognizer for `L`. It is
+  therefore neither two-stage nor weakly or uniformly RT-closed. -/
+theorem result_prefix_mem_separates_finite_rt_disclosure
+    (L : Language α) [DecidablePred L]
+    (h_empty : [] ∉ L) (h_not_rt : L ∉ ℒ (CA_rt α)) :
+    Nonempty (Advice.prefix_mem L).finite_rt_disclosure ∧
+      IsEmpty (Advice.prefix_mem L).is_two_stage_advice ∧
+      IsEmpty (Advice.prefix_mem L).weak_rt_closed ∧
+      IsEmpty (Advice.prefix_mem L).rt_closed :=
+  ⟨⟨Advice.prefix_mem_finite_rt_disclosure L⟩,
+    Advice.prefix_mem_not_two_stage L h_empty h_not_rt,
+    Advice.prefix_mem_not_weak_rt_closed L h_empty h_not_rt,
+    Advice.prefix_mem_not_rt_closed L h_empty h_not_rt⟩
+
 /-- Two-stage advice is closed under composition.
 
   **Proof idea.** Naive substitution produces the stages in the bad order
@@ -484,5 +738,160 @@ theorem ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed :
     ℒ (CA_rt α) = ℒ (CA_lt α) ↔
     Nonempty (Advice.compress2 α).weak_rt_closed :=
   CellularAutomatas.ca_rt_eq_ca_lt_iff_compress2_weak_rt_closed
+
+/-- **`CA_rt = CA_lt` closes *every* linear-time-constructible advice.**
+
+  If the advice can be produced spatially by a cellular automaton in `n` steps,
+  then an advised real-time recognizer becomes an unadvised proper-`2n`
+  recognizer, hence a linear-time one; under `CA_rt = CA_lt` it becomes real
+  time again, which is exactly weak RT-closure.
+
+  **Why this matters for `open_question_1`.** It makes the barrier asymmetric
+  for every candidate counterexample that is linear-time constructible
+  (`compress2`, `Advice.middle`, `Advice.log_marker`, …):
+
+  * *Proving* such an advice closed is barrier-free, and would refute
+    `open_question_1` outright as soon as the advice is known not to be
+    two-stage.
+  * *Refuting* its closure would prove `ℒ(CA_rt) ≠ ℒ(CA_lt)`, so it is at
+    least as hard as that long-standing open problem.
+
+  For `compress2` and `Advice.middle` the implication is in fact an
+  equivalence, so *both* directions are barrier-bound there. For advices where
+  only this one direction is known — `Advice.log_marker` being the leading
+  example — the positive direction remains a genuine attack route. -/
+theorem weak_rt_closed_of_isNTimeAdvice {Γ : Type} [Alphabet Γ]
+    (adv : Advice α Γ) (hAdv : adv.IsNTimeAdvice)
+    (h : ℒ (CA_rt α) = ℒ (CA_lt α)) :
+    Nonempty adv.weak_rt_closed :=
+  CellularAutomatas.Advice.weak_rt_closed_of_isNTimeAdvice adv hAdv h
+
+/-- A homomorphism of cellular automata forces equality of the recognized languages,
+  for every acceptance schema.
+
+  **Proof idea.** The state map commutes with the local transition function, so it
+  commutes with the global step and hence with every iterate. It also respects the
+  initialisation and preserves the output projection, so both automata display the
+  same symbol at every cell and every time step. Reading off the schema's cell and
+  time gives equality of acceptance, hence of the languages. -/
+theorem result_ca_hom_language_eq {schema : AcceptanceSchema} {C D : tCellAutomaton schema α}
+    (f : tCellAutomaton.Hom C D) : D.L = C.L :=
+  CellAutomaton.Hom.L_eq f
+
+/-- Requiring an advice-elimination construction to be natural with respect to CA
+  homomorphisms is vacuous: the choice-based witness already satisfies it.
+
+  **Proof idea.** A homomorphism forces the two machines to have the same language,
+  hence the same advised language. `of_language_eq` picks its output by choice from a
+  predicate that mentions `C` only through the advised language, so by proof irrelevance
+  it returns literally the same automaton on both sides, for which the identity map is a
+  homomorphism. A useful uniformity notion must therefore constrain the *state space* of
+  the output in terms of the state space of the input, as `Advice.NaturalWeakRtClosed`
+  does. -/
+theorem result_naturality_alone_is_vacuous {Γ : Type} [Alphabet Γ] {adv : Advice α Γ}
+    (h : ℒ (CA_rt (α × Γ) + adv) = ℒ (CA_rt α)) :
+    (Advice.WeakRtClosed.of_language_eq h).Natural :=
+  of_language_eq_natural h
+
+omit [Alphabet α] in
+/-- Requiring the eliminating automaton to simulate the advised automaton cell by cell and
+  step by step — preserving direct causality exactly — is instead far *too strong*: only
+  letterwise advices qualify.
+
+  **Proof idea.** At time `0` the decoder must already turn the simulator's initial cell
+  into `C.embed (wₚ, adv(w)ₚ)`. But the simulator's cell `p` at time `0` is `S.embed wₚ`,
+  which knows nothing but the letter at `p`. So two inputs agreeing at `p` give the same
+  advice symbol there. -/
+theorem result_exact_causal_simulation_forces_letterwise {β Γ : Type} {adv : Advice α Γ}
+    {S : CellAutomaton α？ β} {C : CellAutomaton (α × Γ)？ β}
+    (sim : adv.ExactCausalSimulation S C) (hinj : Function.Injective C.embed)
+    {w w' : Word α} {p : ℕ} (hp : p < w.length) (hp' : p < w'.length) (hw : w[p] = w'[p]) :
+    (adv w)[p]'(by simpa using hp) = (adv w')[p]'(by simpa using hp') :=
+  sim.advice_letterwise hinj hp hp' hw
+
+/-- Conversely every letterwise advice is exactly causally simulable, uniformly in the
+  automaton, so the characterization above is exact and not vacuous.
+
+  **Proof idea.** Fold the relabelling `a ↦ (a, g a)` into the initialisation and keep the
+  state set and local rule of `C` unchanged; the two initial configurations then coincide. -/
+def result_letterwise_is_exactly_causally_simulable {β Γ : Type} (g : α → Γ)
+    (C : CellAutomaton (α × Γ)？ β) :
+    (Advice.letterwise g).ExactCausalSimulation (relabelCA g C) C :=
+  letterwise_exactCausalSimulation g C
+
+/-! ### Isolating the remaining gap
+
+`finite_future_variation` and `finite_free_disclosure` are equivalent, and adding
+`weak_rt_closed` to `finite_rt_disclosure` characterises two-stage advice. The results
+below pin down what is left: a single real-time *observability* obligation. -/
+
+/-- **Isolation.** Finite RT disclosure is exactly finite free disclosure plus the
+requirement that *one* probe be observable by an advised real-time CA.
+
+  Together with the equivalence of finite future variation and finite free disclosure,
+  this turns the open question into a concrete question about real-time observability
+  of the canonical index-translation probe. -/
+theorem result_finite_rt_disclosure_iff_observable_free_disclosure (adv : Advice α Γ) :
+    Nonempty adv.finite_rt_disclosure ↔
+      ∃ h : adv.finite_free_disclosure, Nonempty h.probe.IsObservable :=
+  Advice.finite_rt_disclosure_iff_observable_free_disclosure adv
+
+/-- Future variation bounded by `1` is literally causality.
+
+  Since causal advices have finite RT disclosure unconditionally
+  (`result_causal_has_finite_rt_disclosure`), the smallest case of "does finite future
+  variation imply finite RT disclosure?" is already a theorem, and the first open case
+  is the bound `2`. -/
+theorem result_causal_iff_variation_le_one (adv : Advice α Γ) :
+    adv.causal ↔
+      ∀ p : Word α, (Set.univ.image (fun s : Word α => rel_repr adv p s)).encard ≤ 1 :=
+  Advice.causal_iff_variation_le_one adv
+
+/-- Every two-stage advice has finite future variation: the first stage's final-output
+probe has finitely many values, and they determine the whole advice prefix. -/
+theorem result_two_stage_has_finite_future_variation (adv : Advice α Γ)
+    (h : adv.is_two_stage_advice) : adv.finite_future_variation :=
+  h.finite_future_variation
+
+/-- Finite future variation is closed under post-composition with a right-to-left finite
+state transducer, so it can be used as a design tool for two-stage candidates. -/
+theorem result_finite_future_variation_compose_fst {Γ₁ Γ₂ : Type} [Alphabet Γ₁] [Alphabet Γ₂]
+    (adv : Advice α Γ₁) (h : adv.finite_future_variation) (M : FiniteStateTransducer Γ₁ Γ₂) :
+    (adv.compose M.advice).finite_future_variation :=
+  Advice.finite_future_variation_compose_fst h M
+
+/-- **Under weak RT closure, the advice track gives probes no extra power.** A probe is
+observable exactly when each of its fibers is a *plain* real-time language over `α`.
+
+  One direction is free — a recognizer may always ignore the advice track. The other is
+  exactly closure. -/
+theorem result_observable_iff_fibers_ca_rt {Δ : Type} {adv : Advice α Γ}
+    (hclosed : adv.weak_rt_closed) (probe : adv.FreeProbe Δ) :
+    Nonempty probe.IsObservable ↔ ∀ d, {u : Word α | probe.value u = d} ∈ ℒ (CA_rt α) :=
+  Advice.observable_iff_fibers_ca_rt hclosed probe
+
+/-- **`open_question_1`, with the advice eliminated.** For a weakly RT-closed advice a
+two-stage presentation exists exactly when some finite free disclosure has all of its probe
+fibers in `ℒ (CA_rt α)`.
+
+  No advised machine model survives in this formulation: what remains is the question
+  whether one bounded-range combinatorial function of the input — the canonical
+  index-translation table of the possibility tree — is real-time computable. -/
+theorem result_two_stage_iff_free_disclosure_with_rt_fibers (adv : Advice α Γ)
+    (hclosed : adv.weak_rt_closed) :
+    Nonempty adv.is_two_stage_advice ↔
+      ∃ h : adv.finite_free_disclosure,
+        ∀ d, {u : Word α | h.probe.value u = d} ∈ ℒ (CA_rt α) :=
+  Advice.two_stage_iff_free_disclosure_with_rt_fibers adv hclosed
+
+/-- **A weakly RT-closed advice cannot reveal information external to the input.** Reading
+the last advice symbol is an advised real-time test, so closure forces the resulting language
+of inputs to be plainly real-time.
+
+  Contrapositively this refutes closure — and hence any two-stage presentation — for every
+  advice whose last symbol encodes something a real-time CA cannot compute on its own. -/
+theorem result_weak_rt_closed_last_symbol_language_ca_rt {adv : Advice α Γ}
+    (hclosed : adv.weak_rt_closed) (c : Γ) : L_c adv c ∈ ℒ (CA_rt α) :=
+  hclosed.last_symbol_language_ca_rt c
 
 end TransducerAndAdviceResults
