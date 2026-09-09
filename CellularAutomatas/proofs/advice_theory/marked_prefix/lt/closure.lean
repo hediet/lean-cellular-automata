@@ -6,6 +6,7 @@ import CellularAutomatas.proofs.advice_theory.marked_prefix.lt.producer
 import CellularAutomatas.proofs.advice_theory.marked_prefix.lt.readout
 import CellularAutomatas.proofs.advice_theory.middle_exp_two_stage
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage
+import CellularAutomatas.proofs.advice_theory.local_horizon.dyadic_prefix
 
 namespace CellularAutomatas.MarkedPrefix.LT
 
@@ -39,82 +40,38 @@ theorem simulator_accepts_eq
         ((Advice.middle_exp α).annotate w) =
       consumer.accepts ((prefixTransform dyadicSelector F blank).annotate w) := by
   let q := packingFactor hF.c
-  let L := dyadicSelector w.length
-  let M := L / q
   letI : NeZero q := ⟨by
     have hlarge := packingFactor_large hF.c
     dsimp only [q]
     omega⟩
-
-  have hq_large : hF.c + 2 ≤ q := by
-    dsimp only [q]
-    exact packingFactor_large hF.c
-  have hq : 2 ≤ q := by omega
-  have hn_two : 2 ≤ w.length := by
-    have hq_pos : 0 < q := NeZero.pos q
+  let prepared := (Advice.middle_exp α).annotate w
+  have hlength : prepared.length = w.length := by
+    simp only [prepared, Advice.annotate, List.length_zip, advice_len, min_self]
+  have hinput : prepared.map Prod.fst = w :=
+    List.map_fst_zip (by simp)
+  have hvalid : LocalHorizon.dyadicValid q prepared := by
+    refine ⟨?_, ?_⟩
+    · show prepared = (Advice.middle_exp α).annotate (prepared.map Prod.fst)
+      rw [hinput]
+    · show 2 * q ≤ prepared.length
+      simpa only [hlength] using hn
+  have hnonempty : prepared ≠ [] := by
+    apply List.ne_nil_of_length_pos
+    have hpositive := NeZero.pos q
     omega
-  have hL_pos : 0 < L := by
-    dsimp only [L]
-    exact dyadicSelector_pos hn_two
-  have hdiv : q ∣ L := by
-    dsimp only [q, L]
-    exact packingFactor_dvd hn
-  have hlength : L = q * M := by
-    dsimp only [M]
-    exact (Nat.mul_div_cancel' hdiv).symm
-  have hM : 0 < M := by
-    dsimp only [M]
-    apply Nat.div_pos
-    · exact Nat.le_of_dvd hL_pos hdiv
-    · exact NeZero.pos q
-
-  obtain ⟨R, henvelope, hpackets⟩ :=
-    Producer.exists_packets q hF blank controller
-      dyadicSelector w M hM (by simpa only [L] using hlength)
-
-  let controllerWord :=
-    ReversalPackets.markedWord w (q * M - 1)
-  let advisedWord :=
-    (prefixTransform dyadicSelector F blank).annotate w
-  have hcontroller_length : controllerWord.length = w.length := by
-    simp only [controllerWord, ReversalPackets.markedWord_length]
-  have hadvised_length : advisedWord.length = w.length := by
-    simp only [advisedWord, Advice.annotate, List.length_zip,
-      advice_len, min_self]
-  have hcontroller_pos : 0 < controllerWord.length := by omega
-  have hcatch :
-      (q - 1 + hF.c) * M ≤
-        (q - 1) * ((controllerWord.length - 1) / q + 1) := by
-    have hbudget := packed_cost_le_catchup hF.c w.length hn
-    simpa only [hcontroller_length] using hbudget
-
-  have hfinal := consumerCA_trace_final q
-    (Producer.C q hF blank controller) consumer.toCellAutomaton
-    controllerWord advisedWord R controller.offset
-    ((q - 1 + hF.c) * M)
-    hq controller.offset_pos
-    (by omega) (by omega)
-    (by
-      intro t p
-      dsimp only [controllerWord, advisedWord]
-      exact hpackets t p)
-    henvelope hcatch
-
-  have hmarked :
-      (Advice.middle_exp α).annotate w = controllerWord := by
-    rw [middle_exp_annotate_eq_mapIdx w hn_two]
-    dsimp only [controllerWord, ReversalPackets.markedWord]
-    rw [← hlength]
-
+  -- All asynchronous timing now belongs to the local-horizon interface.
+  have hfinal := (LocalHorizon.dyadicProducer hF blank controller).trace_final
+    consumer.toCellAutomaton prepared hvalid hnonempty
   change
     (consumerCA q (Producer.C q hF blank controller)
-      consumer.toCellAutomaton controller.offset).trace
-        (word_to_config ((Advice.middle_exp α).annotate w))
-        (((Advice.middle_exp α).annotate w).length - 1) =
+      consumer.toCellAutomaton controller.offset).trace prepared
+        (prepared.length - 1) =
       consumer.toCellAutomaton.trace
-        (word_to_config advisedWord) (advisedWord.length - 1)
-  rw [hmarked]
-  simpa only [hcontroller_length, hadvised_length] using hfinal
+        ((prefixTransform dyadicSelector F blank).annotate w)
+        (((prefixTransform dyadicSelector F blank).annotate w).length - 1)
+  simpa only [LocalHorizon.PacketProducer.consumer, LocalHorizon.dyadicProducer,
+    LocalHorizon.PacketProducer.of_exists, LocalHorizon.dyadicOutput,
+    hinput, hlength, Advice.annotate, List.length_zip, advice_len, min_self] using hfinal
 
 end Closure
 

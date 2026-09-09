@@ -358,7 +358,175 @@ The composition proof uses a backwards-FSM construction: the second CA stores a
 simulation for every possible state of the first finite-state transducer, and
 the final FST selects the simulation corresponding to the actual state.
 
-### 6.3 Compression advice and the RT/LT question
+### 6.3 Packet-readout machines and asynchronous readout
+
+[`local_horizon.lean`](../CellularAutomatas/proofs/advice_theory/local_horizon.lean)
+provides a common interface for locally produced advice packets. The preferred
+definitions in
+[`machine.lean`](../CellularAutomatas/proofs/advice_theory/local_horizon/machine.lean)
+separate three things:
+
+- `PacketReadoutMachine`: a fixed packet width and finite clock/data CAs.
+- `machine.RTContractOn domain`: a proof-side firing schedule, unique pulses,
+  and the RT deadline on an **explicit** valid-input domain.
+- `Advice.IsPacketReadoutOn domain`: a machine realizes the specified advice
+  on that domain. `Advice.IsGlobalPacketReadout` names the all-input subclass.
+
+No domain or time function is supplied to the running machine. Empty inputs
+have no firing obligation. The machine is total even outside its domain, but
+the contract says nothing about its behavior there. Contracts can be restricted
+to smaller domains, and their readouts agree wherever both contracts apply.
+The older clock-only `RealizableHorizon` interface remains available, also with
+a mandatory domain; adapters reuse the existing normalization and consumer.
+
+For fixed packet width $q \ge 2$ and startup $\kappa \ge q$, logical output
+position $i=qp+r$ is sampled at **physical position $p$**, in packet slot $r$.
+With $K=\lceil |w|/q\rceil$, RT admissibility requires
+$f(w,p)\le\kappa+(q-1)K$ for $p<K$.
+The implementation locally latches advice and raw input, releasing occupied
+packets at $\max(\kappa+(q-1)p,f(w,p))$. All-border packets bypass the advice
+join, so the packet at $K$ arrives at exactly $\kappa+(q-1)K$ even if its
+horizon fires later.
+
+The generic asynchronous consumer reaches generation $K$ at the origin at
+exactly $\kappa+qK$. Serialization and fixed-delay removal recover the
+target's final state at time $|w|-1$.
+`result_local_horizon_rt_closed` proves strong RT closure, including input
+alphabet lifts and the empty-word exception.
+
+Two existing constructions instantiate this interface:
+
+- **CART:** geometric compression supplies triples at time $3+2p$.
+  `cart_readout_eq` identifies the sampled word with the original CART trace.
+  `cart_isGlobalPacketReadout` records the all-input contract.
+- **Dyadic-prefix LT:** the marked-prefix producer satisfies the same packet
+  deadline beyond its existing finite packing cutoff. The public
+  `dyadicPrefixTransform_rt_closed` theorem now uses the generic horizon
+  consumer, then eliminates the preparation marker and repairs short inputs.
+  `dyadic_isPacketReadoutOn` records only the correctly marked, sufficiently
+  long input domain. It does not assert `IsGlobalPacketReadout`.
+
+**Full trace composition needs causality.** `PacketProducer.trace_rt_eq`
+upgrades final-state agreement to full real-time trace equality when the
+generated word function is causal. Thus CART retains its composition theorem
+without another simulation proof. Arbitrary horizon readouts need not be
+causal: the checked lookahead example is RT-admissible and strongly RT-closed
+but already distinguishes a one-letter word from a two-letter extension at
+output position zero. No opaque-state uniform-local language, middle-marker
+separation, or maximality theorem is claimed by this interface.
+
+**All-input admissible readouts have bounded anticipation.**
+[`raw_sample_eq_take`](../CellularAutomatas/proofs/advice_theory/local_horizon/prefix_stability.lean)
+proves that the packet at $p$ stabilizes after the first
+$N=q(p+\kappa+1)$ input symbols. On that prefix the deadline is strictly
+before $N-p$, so neither the clock nor the sampled data can see the cut.
+The one-shot clock forces the same time and sample on every extension.
+For logical position $i=qp+r$, this gives a constant anticipation bound
+$q(\kappa+1)-1$. The domain-relative early-pulse lemma requires the truncated
+word to be valid too: prepared dyadic inputs need not satisfy that condition.
+This locality result is not itself a horizon-fusion theorem.
+
+**Producer fusion is a separate, domain-relative theorem.**
+[`fusion/composition.lean`](../CellularAutomatas/proofs/advice_theory/local_horizon/fusion/composition.lean)
+proves `Advice.IsPacketReadoutOn.compose`: if $A$ has a packet-readout
+contract on $V$, $B$ has one on $W$, and $A(V)\subseteq W$, then $B\circ A$
+has one on $V$. Neither contract needs to be global, and neither advice needs
+to be causal. The global subclass is consequently composition-closed.
+
+The construction normalizes exterior packets, retains the second producer's
+events **before** spatial/time packing, and asynchronously simulates its
+packed machine on the entire integer line. Raw blank cells initialize
+immediately; raw occupied cells wait for the first producer's packet. This
+uses neither a length oracle nor the proof-side release schedule at runtime.
+For widths $q_1,q_2$, the fused width is $Q=q_1q_2$. With normalized startup
+constants $\kappa_1,\kappa_2$, one sufficient fused startup is
+$\max(Q,\kappa_1+q_1\kappa_2)$, giving deadline
+$\kappa+(Q-1)\lceil n/Q\rceil$.
+
+`PacketProducer.exists_composition` also returns a single paced, padded
+producer after normalization, without requiring extra exterior bounds on
+the original producers. This is exact **whole-word** composition, not equality
+of event schedules or the stronger causal consumer trace identity. It does
+not prove interchange with an intervening right-to-left FST.
+
+**Locally clocked three-stage and finite-stage classes.**
+[`three_stage.lean`](../CellularAutomatas/proofs/advice_theory/three_stage.lean)
+defines a `ThreeStageAdvice` witness consisting of two-stage preparation $P$,
+a finite packet machine with an `RTContractOn (Set.range P)`, and two-stage
+postprocessing $Q$. Its advice is $Q\circ H\circ P$. This uses actual local
+clock pulses, not externally chosen sampling times, and the contract covers
+the entire preparation image, including all nonempty short inputs.
+
+`Advice.IsThreeStage` expresses existence of such a witness.
+`Advice.HasPacketStages k A` recursively presents $A$ using $k$ packet layers,
+starting with a two-stage transformation. Each new packet contract is on the
+image of the **entire preceding pipeline**, followed by a two-stage
+postprocessor. `Advice.IsFiniteStage A` means some fixed finite depth works
+for all inputs. It does not permit input-length-dependent depth.
+
+The sets `Advice.threeStageAdvices`, `Advice.packetStageAdvices ... k`
+(at most $k$ packet layers), and `Advice.finiteStageAdvices` expose these
+classes. Checked interface lemmas identify depth zero with two-stage advice,
+depth one with three-stage advice, establish two-stage inclusion by inserting
+an identity packet readout, and establish monotonicity of the bounded sets.
+Neither composition collapse to three-stage nor strictness over two-stage
+is built into these definitions or asserted by these interface lemmas.
+
+**A separate opaque-state uniform local simulation class.**
+[`uniform_local.lean`](../CellularAutomatas/proofs/uniform_local.lean) supplies
+a finite program language parameterized by a target CA. Primitive local rules
+have finite control and finitely many opaque target-state registers; they
+access the target only through its embedding, transition, and projection.
+There is no target-state enumeration, equality test, or representation inspection.
+Programs can be statically nested, and their interpreter always produces an
+ordinary radius-one CA. Nesting is not a runtime phase change.
+
+`CellAutomaton.IsUniformlyLocal f` means one program implements the transformer
+$f$ for every target CA. `PreservesRtEndpointOn` separately states exact
+real-time endpoint correctness on a promised domain. Both properties compose.
+`Advice.IsUniformlyLocallySimulatable` requires such endpoint simulation of
+the input-retaining annotation under every alphabet lift, with a program chosen
+before the consumer CA (but allowed to depend on the lift and output alphabet).
+The advice class is proved composition-closed; letterwise advice supplies
+checked examples. No correspondence at time zero is required.
+
+This is a candidate formal notion, not a claimed characterization of the
+three-stage or finite-stage classes. A single primitive-rule flattening theorem,
+existing packet/two-stage program witnesses, and relationships with the earlier
+classes are not established by this definition.
+The [membership proof outline](uniform-local-simulation-proof-outline.md)
+records the expected FST and packet-consumer encodings and their CART,
+two-stage, and finite-stage consequences; these proofs are deferred.
+
+**The all-input subclass has an exact characterization.**
+[`bounded_anticipation.lean`](../CellularAutomatas/proofs/advice_theory/bounded_anticipation.lean)
+proves, for finite input and output alphabets,
+
+$$
+\begin{aligned}
+ A\text{ is a global packet readout}
+ &\iff A\text{ has bounded anticipation and is weakly RT-closed}\\
+ &\iff A\text{ has bounded anticipation and is strongly RT-closed}.
+\end{aligned}
+$$
+
+The converse observes the last $a+1$ advice symbols with a finite-state probe.
+Weak closure turns its prefix diary into a raw CART. A fixed local history,
+tagged with the input-border signal, selects the newest available diary and
+decodes an output at constant delay. This handles the final symbols even on
+words shorter than the delay. Geometric compression and fixed-distance event
+routing then produce width-three packets with clock $\kappa+2p$.
+The proof increases the anticipation bound to the positive multiple
+$3(a+1)$, giving $\kappa=3+3(a+1)$; no optimal startup bound is claimed.
+
+These equivalences are exported as
+`result_global_packet_readout_iff_bounded_anticipation_weak_rt_closed`
+and `result_global_packet_readout_iff_bounded_anticipation_rt_closed`.
+The `Nonempty` in their Lean statements expresses existence of the
+constructive closure witnesses. The equivalence does **not** apply to arbitrary
+prepared-domain contracts.
+
+### 6.4 Compression advice and the RT/LT question
 
 `Advice.compress2` annotates each position with a pair of consecutive input
 symbols (or border markers after the packed input ends). The project proves:

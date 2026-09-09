@@ -16,7 +16,9 @@ suffix packets then initialize the accelerated real-time consumer.
 
 For coefficient `c`, a fixed power-of-two factor `q >= c+2` exactly packs all
 sufficiently long dyadic prefixes. The producer's bound `(q-1+c)*(L/q)` fits
-the consumer's catch-up envelope; finite-exception repair handles short words.
+local-horizon deadline. The producer is packaged by
+`LocalHorizon.dyadicProducer`, and the generic local-horizon consumer supplies
+the exact final readout; finite-exception repair handles short words.
 No controller-existence or simulator-correctness premises remain in the public
 theorem.
 -/

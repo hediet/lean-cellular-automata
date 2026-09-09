@@ -1,6 +1,7 @@
 import CellularAutomatas.proofs.advice_theory.marked_prefix.async_origin
 import CellularAutomatas.proofs.advice_theory.marked_prefix.consumer_normalization
 import CellularAutomatas.proofs.advice_theory.marked_prefix.release_envelope
+import CellularAutomatas.proofs.advice_theory.local_horizon.deadline
 
 namespace CellularAutomatas.MarkedPrefix.LT
 
@@ -94,26 +95,22 @@ theorem halfLineArrivalSpec (R : ℕ → ℕ) :
 variable {q : ℕ} [NeZero q]
   {ρ δ β : Type} [Alphabet δ] [Alphabet β]
 
-/-- Once the release envelope has caught up, the concrete driven CA exposes
-exactly generation `j` of the synchronous normalized speedup at the origin.
+/-- At its certified arrival time, the concrete driven CA exposes exactly
+generation `j` of the synchronous normalized speedup at the origin.
 No right border is removed: the packet hypothesis and arrival recurrence range
 over every `p : ℕ`. -/
-theorem source_trace_eq_normalized
+theorem source_trace_eq_normalized_at_arrival
     (producer :
       CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
     (consumer : CellAutomaton (Option δ) β)
     (controllerWord : Word ρ) (hcontroller : 0 < controllerWord.length)
-    (v : Word δ) (R : ℕ → ℕ) (κ D j : ℕ)
-    (hq : 2 ≤ q)
+    (v : Word δ) (R : ℕ → ℕ) (κ j : ℕ)
     (hproducer : ∀ t p : ℕ,
       producer.comp ⦋word_to_config controllerWord⦌ t (p : ℤ) =
         if t = R p then
           some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
         else none)
-    (henvelope : ∀ p,
-      κ + (q - 1) * p ≤ R p ∧
-        R p ≤ κ + max ((q - 1) * p) D)
-    (hcatch : D ≤ (q - 1) * j) :
+    (harrivalTime : halfLineArrival R j 0 = κ + q * j) :
     (source q producer consumer).trace
         (word_to_config controllerWord) (κ + q * j) =
       (normalizedSpeedupAndTrace q consumer).C.trace
@@ -171,9 +168,7 @@ theorem source_trace_eq_normalized
       (inner.nextt initial j 0) (inner.nextt initial (j - 1) 0) hrun
 
   have htime : H 0 j = κ + q * j := by
-    dsimp only [H]
-    exact halfLineArrival_origin_of_caught_up
-      R q κ D j (by omega) henvelope hcatch
+    exact harrivalTime
 
   rw [← htime]
   change driven.C.comp ⦋word_to_config controllerWord⦌ (H 0 j) 0 =
@@ -181,5 +176,47 @@ theorem source_trace_eq_normalized
       (inner.embed_config
         (SpeedupKx.compress q (word_to_config v))) j 0)
   exact hcomp
+
+theorem source_trace_eq_normalized
+    (producer : CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
+    (consumer : CellAutomaton (Option δ) β)
+    (controllerWord : Word ρ) (hcontroller : 0 < controllerWord.length)
+    (v : Word δ) (R : ℕ → ℕ) (κ D j : ℕ) (hq : 2 ≤ q)
+    (hproducer : ∀ t p : ℕ,
+      producer.comp ⦋word_to_config controllerWord⦌ t (p : ℤ) =
+        if t = R p then
+          some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
+        else none)
+    (henvelope : ∀ p,
+      κ + (q - 1) * p ≤ R p ∧
+        R p ≤ κ + max ((q - 1) * p) D)
+    (hcatch : D ≤ (q - 1) * j) :
+    (source q producer consumer).trace
+        (word_to_config controllerWord) (κ + q * j) =
+      (normalizedSpeedupAndTrace q consumer).C.trace
+        (SpeedupKx.compress q (word_to_config v)) j := by
+  exact source_trace_eq_normalized_at_arrival producer consumer controllerWord
+    hcontroller v R κ j hproducer
+    (halfLineArrival_origin_of_caught_up R q κ D j (by omega) henvelope hcatch)
+
+theorem source_trace_eq_normalized_of_deadline
+    (producer : CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
+    (consumer : CellAutomaton (Option δ) β)
+    (controllerWord : Word ρ) (hcontroller : 0 < controllerWord.length)
+    (v : Word δ) (R : ℕ → ℕ) (κ j : ℕ) (hq : 2 ≤ q)
+    (hproducer : ∀ t p : ℕ,
+      producer.comp ⦋word_to_config controllerWord⦌ t (p : ℤ) =
+        if t = R p then
+          some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
+        else none)
+    (hlower : ∀ p, κ + (q - 1) * p ≤ R p)
+    (hupper : ∀ p, p ≤ j → R p ≤ κ + (q - 1) * j) :
+    (source q producer consumer).trace
+        (word_to_config controllerWord) (κ + q * j) =
+      (normalizedSpeedupAndTrace q consumer).C.trace
+        (SpeedupKx.compress q (word_to_config v)) j := by
+  exact source_trace_eq_normalized_at_arrival producer consumer controllerWord
+    hcontroller v R κ j hproducer
+    (halfLineArrival_origin_of_deadline R q κ j (by omega) hlower hupper)
 
 end CellularAutomatas.MarkedPrefix.LT

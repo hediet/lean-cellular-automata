@@ -335,15 +335,15 @@ def consumerCA
 one-shot packet contract and affine release envelope yields the original
 consumer's final real-time trace, after dead-border normalization,
 asynchronous catch-up, periodic serialization, and fixed-delay removal. -/
-theorem consumerCA_trace_final
+theorem consumerCA_trace_final_at_arrival
     (q : ℕ) [NeZero q]
     {ρ δ β : Type} [Alphabet ρ] [Alphabet δ] [Alphabet β]
     (producer :
       CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
     (consumer : CellAutomaton (Option δ) β)
     (controllerWord : Word ρ) (v : Word δ)
-    (R : ℕ → ℕ) (κ D : ℕ)
-    (hq : 2 ≤ q) (hκ : 0 < κ)
+    (R : ℕ → ℕ) (κ : ℕ)
+    (hκ : 0 < κ)
     (hlength : controllerWord.length = v.length)
     (hnonempty : 0 < v.length)
     (hproducer : ∀ t p : ℕ,
@@ -351,18 +351,16 @@ theorem consumerCA_trace_final
         if t = R p then
           some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
         else none)
-    (henvelope : ∀ p,
-      κ + (q - 1) * p ≤ R p ∧
-        R p ≤ κ + max ((q - 1) * p) D)
-    (hcatch :
-      D ≤ (q - 1) * ((controllerWord.length - 1) / q + 1)) :
+    (harrivalTime :
+      halfLineArrival R ((controllerWord.length - 1) / q + 1) 0 =
+        κ + q * ((controllerWord.length - 1) / q + 1)) :
     (consumerCA q producer consumer κ).trace
         (word_to_config controllerWord) (controllerWord.length - 1) =
       consumer.trace (word_to_config v) (controllerWord.length - 1) := by
   let a := (controllerWord.length - 1) / q
   let r : Fin q :=
     ⟨(controllerWord.length - 1) % q,
-      Nat.mod_lt _ (by omega)⟩
+      Nat.mod_lt _ (NeZero.pos q)⟩
   let packet : Fin q → β :=
     (normalizedSpeedupAndTrace q consumer).C.trace
       (SpeedupKx.compress q (word_to_config v)) (a + 1)
@@ -376,10 +374,9 @@ theorem consumerCA_trace_final
           (word_to_config controllerWord) (κ + q * (a + 1)) =
         packet := by
     dsimp only [packet]
-    apply source_trace_eq_normalized
-      producer consumer controllerWord hcontroller v R κ D (a + 1)
-      hq hproducer henvelope
-    simpa only [a] using hcatch
+    exact source_trace_eq_normalized_at_arrival
+      producer consumer controllerWord hcontroller v R κ (a + 1)
+      hproducer harrivalTime
   have hreadout :
       (consumerCA q producer consumer κ).trace
           (word_to_config controllerWord) (controllerWord.length - 1) =
@@ -402,5 +399,54 @@ theorem consumerCA_trace_final
           (word_to_config v) (controllerWord.length - 1) := by
         simpa only [hlength] using
           normalizedConsumer_trace_final consumer v hnonempty
+
+/-- Backwards-compatible affine-envelope specialization. -/
+theorem consumerCA_trace_final
+    (q : ℕ) [NeZero q]
+    {ρ δ β : Type} [Alphabet ρ] [Alphabet δ] [Alphabet β]
+    (producer : CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
+    (consumer : CellAutomaton (Option δ) β)
+    (controllerWord : Word ρ) (v : Word δ)
+    (R : ℕ → ℕ) (κ D : ℕ) (hq : 2 ≤ q) (hκ : 0 < κ)
+    (hlength : controllerWord.length = v.length) (hnonempty : 0 < v.length)
+    (hproducer : ∀ t p : ℕ,
+      producer.comp ⦋word_to_config controllerWord⦌ t (p : ℤ) =
+        if t = R p then
+          some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
+        else none)
+    (henvelope : ∀ p,
+      κ + (q - 1) * p ≤ R p ∧
+        R p ≤ κ + max ((q - 1) * p) D)
+    (hcatch : D ≤ (q - 1) * ((controllerWord.length - 1) / q + 1)) :
+    (consumerCA q producer consumer κ).trace
+        (word_to_config controllerWord) (controllerWord.length - 1) =
+      consumer.trace (word_to_config v) (controllerWord.length - 1) := by
+  exact consumerCA_trace_final_at_arrival q producer consumer controllerWord v R κ
+    hκ hlength hnonempty hproducer
+    (halfLineArrival_origin_of_caught_up R q κ D _ (by omega) henvelope hcatch)
+
+/-- A common deadline on the finite backward cone suffices for exact readout. -/
+theorem consumerCA_trace_final_of_deadline
+    (q : ℕ) [NeZero q]
+    {ρ δ β : Type} [Alphabet ρ] [Alphabet δ] [Alphabet β]
+    (producer : CellAutomaton (Option ρ) (Option (Fin q → Option δ)))
+    (consumer : CellAutomaton (Option δ) β)
+    (controllerWord : Word ρ) (v : Word δ)
+    (R : ℕ → ℕ) (κ : ℕ) (hq : 2 ≤ q) (hκ : 0 < κ)
+    (hlength : controllerWord.length = v.length) (hnonempty : 0 < v.length)
+    (hproducer : ∀ t p : ℕ,
+      producer.comp ⦋word_to_config controllerWord⦌ t (p : ℤ) =
+        if t = R p then
+          some (SpeedupKx.compress q (word_to_config v) (p : ℤ))
+        else none)
+    (hlower : ∀ p, κ + (q - 1) * p ≤ R p)
+    (hupper : ∀ p, p ≤ (controllerWord.length - 1) / q + 1 →
+      R p ≤ κ + (q - 1) * ((controllerWord.length - 1) / q + 1)) :
+    (consumerCA q producer consumer κ).trace
+        (word_to_config controllerWord) (controllerWord.length - 1) =
+      consumer.trace (word_to_config v) (controllerWord.length - 1) := by
+  exact consumerCA_trace_final_at_arrival q producer consumer controllerWord v R κ
+    hκ hlength hnonempty hproducer
+    (halfLineArrival_origin_of_deadline R q κ _ (by omega) hlower hupper)
 
 end CellularAutomatas.MarkedPrefix.LT

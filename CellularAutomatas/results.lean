@@ -32,7 +32,12 @@ import CellularAutomatas.proofs.advice_theory.two_stage_not_finite_future_index
 import CellularAutomatas.proofs.advice_theory.broadcast_language_classification
 import CellularAutomatas.proofs.advice_theory.two_stage_question_hardness
 import CellularAutomatas.proofs.advice_theory.natural_weak_rt_closed
+import CellularAutomatas.proofs.advice_theory.local_horizon
+import CellularAutomatas.proofs.advice_theory.bounded_anticipation
+import CellularAutomatas.proofs.advice_theory.three_stage
+import CellularAutomatas.proofs.advice_theory.marked_prefix.lt.rt_closed
 import CellularAutomatas.proofs.causal_simulation
+import CellularAutomatas.proofs.uniform_local
 
 /-!
 # Stable Results
@@ -391,6 +396,71 @@ def result_two_stage_is_rt_closed
     (adv : TwoStageAdvice α Γ) :
     adv.advice.rt_closed :=
   two_stage_is_rt_closed adv
+
+/-- Locally realized packet readouts with an RT deadline are strongly
+RT-closed. Raw-input joining and exterior padding are constructed locally. -/
+noncomputable def result_local_horizon_rt_closed
+    (q κ : ℕ) [NeZero q]
+    (horizon : RealizableHorizon α (fun _ => True))
+    (data : CellAutomaton (Option α) (Fin q → Γ))
+    (hadmissible : LocalHorizon.RTAdmissibleHorizon q κ horizon) :
+    (LocalHorizon.readout q horizon data).rt_closed :=
+  LocalHorizon.rt_closed q κ horizon data hadmissible
+
+/-- All-input packet readouts are exactly the bounded-anticipation advices
+whose advised real-time recognizers can be eliminated. Weak closure suffices. -/
+theorem result_global_packet_readout_iff_bounded_anticipation_weak_rt_closed
+    (adv : Advice α Γ) :
+    adv.IsGlobalPacketReadout ↔
+      adv.BoundedAnticipation ∧ Nonempty adv.weak_rt_closed :=
+  Advice.isGlobalPacketReadout_iff_boundedAnticipation_and_weak_rt_closed
+
+/-- Under bounded anticipation, the same characterization holds for strong
+RT closure, including arbitrary alphabet lifts. -/
+theorem result_global_packet_readout_iff_bounded_anticipation_rt_closed
+    (adv : Advice α Γ) :
+    adv.IsGlobalPacketReadout ↔
+      adv.BoundedAnticipation ∧ Nonempty adv.rt_closed :=
+  Advice.isGlobalPacketReadout_iff_boundedAnticipation_and_rt_closed
+
+/-- Domain-relative packet readouts are closed under whole-word composition
+when the first readout establishes the second readout's input promise. -/
+theorem result_packet_readouts_closed_under_composition
+    {β : Type} [Alphabet β] (A : Advice α β) (B : Advice β Γ)
+    (domain : Word α → Prop) (middle : Word β → Prop)
+    (hA : A.IsPacketReadoutOn domain) (hB : B.IsPacketReadoutOn middle)
+    (hcompatible : ∀ w, domain w → middle (A w)) :
+    (A.compose B).IsPacketReadoutOn domain :=
+  hA.compose hB hcompatible
+
+/-- The global subclass is closed under composition without promises. -/
+theorem result_global_packet_readouts_closed_under_composition
+    {β : Type} [Alphabet β] (A : Advice α β) (B : Advice β Γ)
+    (hA : A.IsGlobalPacketReadout) (hB : B.IsGlobalPacketReadout) :
+    (A.compose B).IsGlobalPacketReadout :=
+  hA.compose hB
+
+/-- CART is a local horizon with packet width three and firing time `3+2*p`. -/
+theorem result_cart_is_horizon_readout (C : CArtTransducer α Γ) (w : Word α) :
+    LocalHorizon.readout 3 (LocalHorizon.cartProducer C).horizon
+        (LocalHorizon.cartProducer C).data w = C.trace_rt w :=
+  LocalHorizon.cart_readout_eq C w
+
+/-- The generic local-horizon consumer preserves the complete CART
+composition trace, because the CART word function is causal. -/
+theorem result_local_horizon_cart_composition
+    {β : Type} [Alphabet β] (C : CArtTransducer α Γ)
+    (target : CellAutomaton (Option Γ) β) :
+    ((LocalHorizon.cartProducer C).consumer target).trace_rt =
+      target.trace_rt ∘ C.trace_rt :=
+  LocalHorizon.cart_composition C target
+
+/-- Dyadic-prefix LT transformations are strongly RT-closed through the
+same local-horizon producer/consumer contract, after marked preparation. -/
+noncomputable def result_dyadic_prefix_lt_rt_closed
+    (F : Advice α Γ) (hF : F.IsLtAdvice) (blank : Γ) :
+    (MarkedPrefix.prefixTransform MarkedPrefix.dyadicSelector F blank).rt_closed :=
+  MarkedPrefix.dyadicPrefixTransform_rt_closed F hF blank
 
 /-- Prefix-membership advice for a real-time language is two-stage.
 
