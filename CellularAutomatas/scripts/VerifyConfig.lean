@@ -41,6 +41,7 @@ def verifyConfig : List (Name × List Name) :=
       `propext
     ])
   ] ++ [
+    `CellularAutomatas.proofs.constructions.speedup_one_step_pair,
     `CellularAutomatas.proofs.advice_theory.three_stage,
     `CellularAutomatas.proofs.uniform_local.expressions,
     `CellularAutomatas.proofs.uniform_local.program,

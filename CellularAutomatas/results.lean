@@ -9,6 +9,7 @@ import CellularAutomatas.proofs.constructions.speedup_left_independent
 import CellularAutomatas.proofs.constructions.border_quiescent_left_independent
 import CellularAutomatas.proofs.constructions.border_dead
 import CellularAutomatas.proofs.constructions.speedup_k_step
+import CellularAutomatas.proofs.constructions.speedup_one_step_pair
 import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_cart
 import CellularAutomatas.proofs.advice_theory.rt_closed.of_two_stage
 import CellularAutomatas.proofs.advice_theory.compose_trace_rt.compose_two_stage

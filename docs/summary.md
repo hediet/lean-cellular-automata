@@ -170,6 +170,15 @@ There are two distinct speedup mechanisms:
 - **Linear-time compression** packs several spatially adjacent states into a
   tuple and simulates multiple original steps at once.
 
+The [pair-state one-step construction](../CellularAutomatas/proofs/constructions/speedup_one_step_pair.lean)
+uses state space $Q_C \times Q_C$ instead of $Q_C \times (Q_C \to Q_C)$.
+A pair $(b,c)$ represents the table $a \mapsto \delta_C(a,b,c)$, so storing
+the table explicitly is unnecessary. Its output agrees with the existing
+border-selected construction on every input configuration, time, and position.
+For a target with a left-dead border and $t+1 \ge |w|$, its origin output at
+time $t$ equals the target's at time $t+1$. These hypotheses are essential;
+this is not an unconditional one-step advance of the entire diagram.
+
 The language-level consequences include:
 
 $$
